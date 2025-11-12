@@ -105,10 +105,22 @@ export default function InterviewAccessPage() {
   };
   const location = useLocation();
   const navigate = useNavigate();
-  useEffect(() => {
-    try { document.body.classList.add('alpha-has-header'); } catch {}
-    return () => { try { document.body.classList.remove('alpha-has-header'); } catch {} };
-  }, []);
+useEffect(() => {
+  try {
+    document.body.classList.add('alpha-has-header');
+    document.documentElement.style.overflowY = 'auto';
+    document.body.style.overflowY = 'auto';
+    document.body.style.height = 'auto';
+  } catch {}
+  return () => {
+    try {
+      document.body.classList.remove('alpha-has-header');
+      document.documentElement.style.overflowY = '';
+      document.body.style.overflowY = '';
+      document.body.style.height = '';
+    } catch {}
+  };
+}, []);
   // Normalize param names for token
   const params = useParams();
   const paramToken = params?.role_token || params?.token || params?.role || params?.id || '';
@@ -408,6 +420,17 @@ export default function InterviewAccessPage() {
 
         {/* Page-scoped CSS for the Tavus slot */}
         <style>{`
+          html, body {
+            height: auto !important;
+            min-height: 100%;
+            overflow-y: auto !important;
+          }
+          .alpha-theme.alpha-page {
+            min-height: 100%;
+          }
+          body.alpha-has-header {
+            overflow-y: auto !important;
+          }
           .tavus-stage { width: 100%; }
           .tavus-slot {
             position: relative;
