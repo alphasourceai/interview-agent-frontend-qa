@@ -139,3 +139,68 @@ Use these local directories for testing before pushing to the appropriate branch
 | **Dev → QA** | Local → `qa-*` | Developer push |
 | **QA → Staging** | `qa-*` → `staging-*` | Internal validation complete |
 | **Staging → Prod** | `staging-*` → `prod-*-legacy` | MVP verified and approved |
+
+---
+
+## 🧭 Environment Sync & Promotion Guide
+
+### 1. Database Sync (Prod → QA / Staging)
+To ensure data parity across environments:
+```bash
+# Dump production database
+pg_dump --format=custom --compress=9 --no-owner --no-privileges \
+  --exclude-schema='pg_*' --exclude-schema='information_schema' \
+  --dbname="$PROD_URL" --file=prod_full_$(date +%Y%m%d_%H%M).dump
+
+# Restore to QA
+pg_restore --clean --if-exists --no-owner --no-privileges \
+  --dbname="$QA_URL" prod_full_YYYYMMDD_HHMM.dump
+
+# Restore to Staging
+pg_restore --clean --if-exists --no-owner --no-privileges \
+  --dbname="$STG_URL" prod_full_YYYYMMDD_HHMM.dump
+```
+
+✅ *Notes:*
+- `PROD_URL`, `QA_URL`, and `STG_URL` should point to their Supabase Postgres connection strings.
+- The source (Prod) database remains read-only during this process.
+- QA and Staging are safely overwritten.
+
+---
+
+### 2. Storage Sync (Prod → QA / Staging)
+Used to mirror Supabase Storage buckets.
+
+```bash
+DRY_RUN=1 node storage-mirror.js --from=prod --to=qa
+DRY_RUN=1 node storage-mirror.js --from=prod --to=stg
+
+# When verified
+DRY_RUN=0 node storage-mirror.js --from=prod --to=qa
+DRY_RUN=0 node storage-mirror.js --from=prod --to=stg
+```
+
+✅ *Notes:*
+- The `.env` file should contain `PROD_URL`, `QA_URL`, `STG_URL` and their corresponding `SERVICE_KEY`s.
+- The script reads from Prod only; it never modifies or deletes anything there.
+- Use DRY_RUN first to preview changes.
+
+---
+
+### 3. Verification Checklist
+| Step | Task | Expected Result |
+|------|------|-----------------|
+| ✅ 1 | Confirm DB schemas/tables match | `\dt` and `\d` show identical structure |
+| ✅ 2 | Check data counts | Counts for key tables match Prod |
+| ✅ 3 | Confirm storage buckets | Bucket lists identical in all environments |
+| ✅ 4 | Deploy QA/Staging | App loads without data errors |
+| ✅ 5 | Promote to Prod | All validation steps pass |
+
+---
+
+### 4. Safety Practices
+- Never run `pg_restore` with reversed targets (QA → Prod).
+- Always use a new dump file for each sync event.
+- Perform syncs during low activity windows.
+- After sync, run basic API checks for roles, candidates, and reports.
+
