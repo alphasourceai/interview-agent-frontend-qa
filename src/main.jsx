@@ -184,7 +184,14 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         </div>
         <Toaster
           position="top-center"
-          toastOptions={{ duration: 1000 }}
+          toastOptions={{
+            duration: 1000,
+            style: {
+              fontSize: '0.9rem',
+              color: '#ffffff',
+              background: '#2f2a4a'
+            }
+          }}
           containerStyle={{ marginTop: 64 }}
         />
       </SessionRecoveryWrapper>

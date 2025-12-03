@@ -260,3 +260,8 @@ html.embedded .report {
 
 /* Stop nested scroll chaining/bounce inside the iframe */
 html.embedded * { overscroll-behavior: contain; }
+
+/* Remove native <dialog> modal backdrop (fix dark overlay in iframe) */
+dialog::backdrop {
+  background: transparent !important;
+}

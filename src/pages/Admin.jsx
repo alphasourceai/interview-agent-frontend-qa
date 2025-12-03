@@ -379,34 +379,12 @@ export default function Admin() {
   // Robust clipboard helper: tries modern Clipboard API, falls back to execCommand, then prompt
   async function safeCopy(text) {
     try {
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-        await navigator.clipboard.writeText(text);
-        toast.success('Link copied to clipboard', { duration: 1000 });
-        return;
-      }
+      await navigator.clipboard.writeText(text);
+      toast.success('Link copied to clipboard', { duration: 1000 });
     } catch (err) {
-      console.warn('navigator.clipboard.writeText failed:', err);
+      console.warn('Copy failed:', text, err);
+      toast.error('Unable to copy link. Please try again.', { duration: 1500 });
     }
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'fixed';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if (ok) {
-        toast.success('Link copied to clipboard', { duration: 1000 });
-        return;
-      }
-    } catch (err2) {
-      console.warn('document.execCommand copy failed:', err2);
-    }
-    console.warn('Copy failed; manual copy needed:', text);
-    toast.error('Unable to copy link. Please try again.', { duration: 1500 });
   }
 
   // ---------- Roles ----------
