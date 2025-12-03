@@ -182,7 +182,11 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <RouterProvider router={router} />
           </React.Suspense>
         </div>
-        <Toaster position="bottom-center" />
+        <Toaster
+          position="top-center"
+          toastOptions={{ duration: 1000 }}
+          containerStyle={{ marginTop: 64 }}
+        />
       </SessionRecoveryWrapper>
     </Sentry.ErrorBoundary>
   </React.StrictMode>

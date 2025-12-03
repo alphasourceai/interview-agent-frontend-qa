@@ -406,7 +406,7 @@ export default function Admin() {
       console.warn('document.execCommand copy failed:', err2);
     }
     console.warn('Copy failed; manual copy needed:', text);
-    toast.error('Copy failed. Please copy manually.', { duration: 2000 });
+    toast.error('Unable to copy link. Please try again.', { duration: 1500 });
   }
 
   // ---------- Roles ----------

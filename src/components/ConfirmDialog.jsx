@@ -22,16 +22,17 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelL
     >
       <div
         style={{
-          background: '#fff',
+          background: '#ffffff',
           borderRadius: 10,
           padding: 20,
           maxWidth: 420,
           width: '100%',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.18)'
+          boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+          color: '#111827'
         }}
       >
-        <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 18, fontWeight: 700 }}>{title}</h3>
-        <p style={{ marginTop: 0, marginBottom: 16, lineHeight: 1.5 }}>{message}</p>
+        <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 18, fontWeight: 700, color: '#111827' }}>{title}</h3>
+        <p style={{ marginTop: 0, marginBottom: 16, lineHeight: 1.5, color: '#1f2937' }}>{message}</p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button
             type="button"
@@ -40,9 +41,13 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelL
               padding: '8px 12px',
               borderRadius: 8,
               border: '1px solid #d1d5db',
-              background: '#fff',
-              cursor: 'pointer'
+              background: '#e5e7eb',
+              color: '#111827',
+              cursor: 'pointer',
+              outline: 'none'
             }}
+            onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.4)'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             {cancelLabel}
           </button>
@@ -55,8 +60,11 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelL
               border: 'none',
               background: '#dc2626',
               color: '#fff',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              outline: 'none'
             }}
+            onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 3px rgba(220,38,38,0.4)'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
           >
             {confirmLabel}
           </button>
