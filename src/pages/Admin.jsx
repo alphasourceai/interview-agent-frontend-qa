@@ -376,14 +376,42 @@ export default function Admin() {
     }
   };
 
-  // Robust clipboard helper: tries modern Clipboard API, falls back to execCommand, then prompt
+  // Robust clipboard helper: tries modern Clipboard API, falls back to execCommand
   async function safeCopy(text) {
     try {
-      await navigator.clipboard.writeText(text);
-      toast.success('Link copied to clipboard', { duration: 1000 });
+      // First, try modern Clipboard API if available in a secure context
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        toast.success('Link copied to clipboard', { duration: 1000 });
+        return;
+      }
+      throw new Error('clipboard_api_unavailable');
     } catch (err) {
-      console.warn('Copy failed:', text, err);
-      toast.error('Unable to copy link. Please try again.', { duration: 1500 });
+      console.warn('Clipboard API failed, falling back to execCommand:', err);
+      try {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.top = '-9999px';
+        textarea.style.left = '-9999px';
+        textarea.setAttribute('readonly', '');
+        document.body.appendChild(textarea);
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        if (successful) {
+          toast.success('Link copied to clipboard', { duration: 1000 });
+          return;
+        }
+
+        throw new Error('execCommand_copy_failed');
+      } catch (fallbackErr) {
+        console.error('Copy failed after fallback:', fallbackErr);
+        toast.error('Unable to copy link. Please right-click and copy link address.', { duration: 2500 });
+      }
     }
   }
 
