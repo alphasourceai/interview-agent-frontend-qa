@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabaseClient";
 import { ErrorBoundary } from "react-error-boundary";
 import { useClientContext } from "../lib/clientContext";
 import { apiGet, apiPost } from "../lib/api";
+import toast from "react-hot-toast";
 
 const label = { fontSize: 14, fontWeight: 600, marginRight: 8 };
 const select = { border: "1px solid #d1d5db", borderRadius: 6, padding: "6px 10px" };
@@ -79,15 +80,19 @@ function Account() {
       await apiPost("/clients/invite", { client_id: currentClientId, email: inviteEmail, name: inviteName || null, role: inviteRole });
       setInviteName(""); setInviteEmail(""); setInviteRole("member");
       await refresh();
-      alert("Invitation sent.");
-    } catch (e) { setError(e.message || "Invite failed"); }
+      toast.success("Invitation sent", { duration: 1000 });
+    } catch (e) { setError(e.message || "Invite failed"); toast.error(e.message || "Invite failed", { duration: 2000 }); }
   }
 
   async function revoke(user_id) {
     if (!currentClientId || !user_id) return;
     setError("");
-    try { await apiPost("/clients/members/revoke", { client_id: currentClientId, user_id }); await refresh(); }
-    catch (e) { setError(e.message || "Revoke failed"); }
+    try {
+      await apiPost("/clients/members/revoke", { client_id: currentClientId, user_id });
+      await refresh();
+      toast.success("Member removed", { duration: 1000 });
+    }
+    catch (e) { setError(e.message || "Revoke failed"); toast.error(e.message || "Revoke failed", { duration: 2000 }); }
   }
   if (!authReady) {
     return <div style={{ padding: 20 }}>Loading...</div>;

@@ -2,6 +2,8 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { apiGet, apiPost, apiDelete, api } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import toast from 'react-hot-toast';
+import ConfirmDialog from '../components/ConfirmDialog.jsx';
 
 import '../styles/adminTheme.css';
 
@@ -70,6 +72,9 @@ export default function Admin() {
   const [memberEmail, setMemberEmail] = useState('');
   const [memberName, setMemberName] = useState('');
   const [memberRole, setMemberRole] = useState('member'); // member | manager | admin
+  const [confirmClient, setConfirmClient] = useState({ open: false, id: null });
+  const [confirmRole, setConfirmRole] = useState({ open: false, id: null });
+  const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
 
   // collapsibles — default collapsed unless user has toggled them on before
   const readToggle = (key) => (localStorage.getItem(key) === '1' ? true : false);
@@ -277,27 +282,42 @@ export default function Admin() {
       await requestSafariStorageAccess();
     } catch {}
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return alert('Sign in failed: ' + error.message);
+    if (error) {
+      toast.error('Sign in failed: ' + error.message, { duration: 2000 });
+      return;
+    }
     setSession(data?.session || null);
     window.location.replace('/admin');
   };
 
   const startReset = async () => {
-    if (!email) return alert('Enter your email above first.');
+    if (!email) {
+      toast.error('Enter your email above first.', { duration: 1500 });
+      return;
+    }
     const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/admin?pwreset=1`
     });
-    if (error) return alert('Could not start reset: ' + error.message);
-    alert('Check your email for a password reset link.');
+    if (error) {
+      toast.error('Could not start reset: ' + error.message, { duration: 2000 });
+      return;
+    }
+    toast.success('Check your email for a password reset link.', { duration: 1500 });
   };
 
   const submitReset = async (e) => {
     e.preventDefault();
-    if (!newPass1 || newPass1 !== newPass2) return alert('Passwords do not match.');
+    if (!newPass1 || newPass1 !== newPass2) {
+      toast.error('Passwords do not match.', { duration: 1500 });
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPass1 });
-    if (error) return alert('Could not update password: ' + error.message);
-    alert('Password updated. You can sign in now.');
+    if (error) {
+      toast.error('Could not update password: ' + error.message, { duration: 2000 });
+      return;
+    }
+    toast.success('Password updated. You can sign in now.', { duration: 1500 });
     setShowReset(false);
     setNewPass1(''); setNewPass2('');
     const url = new URL(window.location.href);
@@ -340,14 +360,20 @@ export default function Admin() {
   };
 
   const deleteClient = async (id) => {
-    if (!confirm('Delete this client?')) return;
-    await apiDelete('/admin/clients/' + id);
-    await refreshClients();
-    if (selectedClientId === id) setSelectedClientId(clients[0]?.id || '');
-    setRoles([]);
-    setMembers([]);
-    postEmbedSize();
-    setTimeout(postEmbedSize, 300);
+    try {
+      await apiDelete('/admin/clients/' + id);
+      await refreshClients();
+      if (selectedClientId === id) setSelectedClientId(clients[0]?.id || '');
+      setRoles([]);
+      setMembers([]);
+      toast.success('Client deleted', { duration: 1000 });
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    } catch (e) {
+      toast.error(e?.message || 'Could not delete client.', { duration: 2000 });
+    } finally {
+      setConfirmClient({ open: false, id: null });
+    }
   };
 
   // Robust clipboard helper: tries modern Clipboard API, falls back to execCommand, then prompt
@@ -355,7 +381,7 @@ export default function Admin() {
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
         await navigator.clipboard.writeText(text);
-        alert('Link copied to clipboard');
+        toast.success('Link copied to clipboard', { duration: 1000 });
         return;
       }
     } catch (err) {
@@ -373,18 +399,14 @@ export default function Admin() {
       const ok = document.execCommand('copy');
       document.body.removeChild(ta);
       if (ok) {
-        alert('Link copied to clipboard');
+        toast.success('Link copied to clipboard', { duration: 1000 });
         return;
       }
     } catch (err2) {
       console.warn('document.execCommand copy failed:', err2);
     }
-    // Last resort: show prompt so user can copy manually
-    try {
-      window.prompt('Copy this link:', text);
-    } catch (_) {
-      alert('Copy failed. Please copy this link manually: ' + text);
-    }
+    console.warn('Copy failed; manual copy needed:', text);
+    toast.error('Copy failed. Please copy manually.', { duration: 2000 });
   }
 
   // ---------- Roles ----------
@@ -400,7 +422,7 @@ export default function Admin() {
     const title = newRoleTitle.trim();
     if (!title) return;
     if (!jobFile) {
-      alert('Please choose a Job Description file (PDF or DOCX) before creating the role.');
+      toast.error('Please choose a Job Description file (PDF or DOCX) before creating the role.', { duration: 2000 });
       return;
     }
     setRoleBusy(true);
@@ -408,19 +430,20 @@ export default function Admin() {
       const payload = { client_id: selectedClientId, title, interview_type: interviewType };
       const resp = await apiPost('/admin/roles', payload);
       const role = resp?.item;
-      if (!role) { alert('Role create failed'); return; }
+      if (!role) { toast.error('Role create failed', { duration: 2000 }); return; }
       try {
         const out = await uploadJDToBackend(role.id, jobFile);
         if (out?.parsed_text_preview) console.log('[JD preview]', out.parsed_text_preview);
       } catch (e) {
         console.error('uploadJDToBackend error', e);
-        alert('Role created, but JD processing failed: ' + e.message);
+        toast.error('Role created, but JD processing failed: ' + e.message, { duration: 2000 });
       }
       await refreshRoles(selectedClientId);
       setNewRoleTitle('');
       setJobFile(null);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
+      toast.success('Role created', { duration: 1000 });
     } finally {
       setRoleBusy(false);
     }
@@ -428,7 +451,6 @@ export default function Admin() {
 
   // Delete role: try canonical DELETE with query params, then fall back to POST if not available
   const deleteRole = async (id) => {
-    if (!confirm('Delete this role?')) return;
     try {
       // Preferred: DELETE /admin/roles?id=...&client_id=...
       const url = `/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(selectedClientId)}`;
@@ -450,6 +472,7 @@ export default function Admin() {
         setRoles(prev => prev.filter(r => r.id !== id));
         postEmbedSize();
         setTimeout(postEmbedSize, 300);
+        toast.success('Role deleted', { duration: 1000 });
       }
     } catch (err) {
       const msg =
@@ -457,7 +480,9 @@ export default function Admin() {
         (err?.message) ||
         'Could not delete role. Please refresh and try again.';
       console.error('Role delete failed:', err);
-      alert(msg);
+      toast.error(msg, { duration: 2000 });
+    } finally {
+      setConfirmRole({ open: false, id: null });
     }
   };
 
@@ -475,16 +500,22 @@ export default function Admin() {
       setMemberRole('member');
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
-      alert('Invite sent and member added');
+      toast.success('Invite sent and member added', { duration: 1000 });
     }
   };
 
   const removeMember = async (id) => {
-    if (!confirm('Remove this member?')) return;
-    await apiDelete('/admin/client-members/' + id);
-    setMembers(members.filter(m => m.id !== id));
-    postEmbedSize();
-    setTimeout(postEmbedSize, 300);
+    try {
+      await apiDelete('/admin/client-members/' + id);
+      setMembers(members.filter(m => m.id !== id));
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+      toast.success('Member removed', { duration: 1000 });
+    } catch (e) {
+      toast.error(e?.message || 'Could not remove member.', { duration: 2000 });
+    } finally {
+      setConfirmMember({ open: false, id: null });
+    }
   };
 
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
@@ -560,228 +591,260 @@ export default function Admin() {
 
   // ---------- Admin app ----------
   return (
-    <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
-      {/* Header with logo (left), title, and account (right) */}
-      <div className="alpha-header alpha-header--dash">
-        <div className="alpha-header-left">
-          <h1>Admin Dashboard</h1>
-        </div>
-        <div className="alpha-actions">
-          <span>{me?.user?.email || me?.email}</span>
-          <button onClick={handleSignOut}>Sign Out</button>
-        </div>
-      </div>
-
-      {/* current client selector under header */}
-      <div className="alpha-card alpha-card--bar">
-        <div className="row">
-          <label className="mr-2">Current client</label>
-          <select className="alpha-input alpha-select" value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="alpha-grid">
-        {/* Clients */}
-        <div className="alpha-card">
-          <div style={{ height: 12 }} />
-          <div className="section-head">
-            <h2 className="section-title">Clients</h2>
+    <>
+      <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
+        {/* Header with logo (left), title, and account (right) */}
+        <div className="alpha-header alpha-header--dash">
+          <div className="alpha-header-left">
+            <h1>Admin Dashboard</h1>
           </div>
+          <div className="alpha-actions">
+            <span>{me?.user?.email || me?.email}</span>
+            <button onClick={handleSignOut}>Sign Out</button>
+          </div>
+        </div>
 
-          {/* create row */}
+        {/* current client selector under header */}
+        <div className="alpha-card alpha-card--bar">
           <div className="row">
-            <input className="alpha-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
-            <input className="alpha-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
-            <input className="alpha-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
-            <button onClick={createClient}>Create</button>
+            <label className="mr-2">Current client</label>
+            <select className="alpha-input alpha-select" value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </div>
+        </div>
 
-          {/* toggle UNDER inputs */}
-          <div className="toggle-row">
-            <button
-              type="button"
-              className="toggle"
-              aria-pressed={showClients}
-              onClick={() => {
-                setShowClients(v => !v);
-                postEmbedSize();
-                setTimeout(postEmbedSize, 300);
-              }}
-            >
-              {showClients ? 'Hide clients' : 'Show clients'}
-            </button>
-          </div>
+        <div className="alpha-grid">
+          {/* Clients */}
+          <div className="alpha-card">
+            <div style={{ height: 12 }} />
+            <div className="section-head">
+              <h2 className="section-title">Clients</h2>
+            </div>
 
-          {showClients && (
-            <div className="list list--rows" id="clients-list">
-              {clients.map(c => (
-                <div key={c.id} className="list-row">
-                  <div className="grow">
-                    <div className="title">{c.name}</div>
-                    <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
+            {/* create row */}
+            <div className="row">
+              <input className="alpha-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
+              <input className="alpha-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
+              <input className="alpha-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
+              <button onClick={createClient}>Create</button>
+            </div>
+
+            {/* toggle UNDER inputs */}
+            <div className="toggle-row">
+              <button
+                type="button"
+                className="toggle"
+                aria-pressed={showClients}
+                onClick={() => {
+                  setShowClients(v => !v);
+                  postEmbedSize();
+                  setTimeout(postEmbedSize, 300);
+                }}
+              >
+                {showClients ? 'Hide clients' : 'Show clients'}
+              </button>
+            </div>
+
+            {showClients && (
+              <div className="list list--rows" id="clients-list">
+                {clients.map(c => (
+                  <div key={c.id} className="list-row">
+                    <div className="grow">
+                      <div className="title">{c.name}</div>
+                      <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
+                    </div>
+                    <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
+                      <IconTrash size={24} />
+                    </button>
                   </div>
-                  <button className="btn-icon" onClick={() => deleteClient(c.id)} title="Delete client">
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Roles */}
+          <div className="alpha-card">
+            <div style={{ height: 12 }} />
+            <div className="section-head">
+              <h2 className="section-title">Roles</h2>
+            </div>
+
+            <div className="row">
+              <input className="alpha-input" placeholder="Role title" value={newRoleTitle} onChange={e => setNewRoleTitle(e.target.value)} />
+              <select className="alpha-input alpha-select" value={interviewType} onChange={e => setInterviewType(e.target.value)}>
+                <option value="BASIC">BASIC</option>
+                <option value="DETAILED">DETAILED</option>
+                <option value="TECHNICAL">TECHNICAL</option>
+              </select>
+
+              {/* file picker + clear */}
+              <div className="file-stack">
+                <input
+                  key={fileKey}
+                  className="alpha-input file"
+                  type="file"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={e => setJobFile(e.target.files?.[0] || null)}
+                  aria-label="Job Description file (PDF or DOCX)"
+                  ref={fileInputRef}
+                />
+                {jobFile && (
+                  <button
+                    className="btn-icon file-clear"
+                    onClick={() => {
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                      setJobFile(null);
+                      setFileKey(k => k + 1); // fully reset the input element
+                    }}
+                    title="Remove file"
+                  >
                     <IconTrash size={24} />
                   </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Roles */}
-        <div className="alpha-card">
-          <div style={{ height: 12 }} />
-          <div className="section-head">
-            <h2 className="section-title">Roles</h2>
-          </div>
-
-          <div className="row">
-            <input className="alpha-input" placeholder="Role title" value={newRoleTitle} onChange={e => setNewRoleTitle(e.target.value)} />
-            <select className="alpha-input alpha-select" value={interviewType} onChange={e => setInterviewType(e.target.value)}>
-              <option value="BASIC">BASIC</option>
-              <option value="DETAILED">DETAILED</option>
-              <option value="TECHNICAL">TECHNICAL</option>
-            </select>
-
-            {/* file picker + clear */}
-            <div className="file-stack">
-              <input
-                key={fileKey}
-                className="alpha-input file"
-                type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={e => setJobFile(e.target.files?.[0] || null)}
-                aria-label="Job Description file (PDF or DOCX)"
-                ref={fileInputRef}
-              />
-              {jobFile && (
-                <button
-                  className="btn-icon file-clear"
-                  onClick={() => {
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                    setJobFile(null);
-                    setFileKey(k => k + 1); // fully reset the input element
-                  }}
-                  title="Remove file"
-                >
-                  <IconTrash size={24} />
-                </button>
-              )}
-            </div>
-
-            <button
-              disabled={!selectedClientId || roleBusy || !newRoleTitle.trim() || !jobFile}
-              onClick={createRole}
-              title={!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role'}
-            >
-              {roleBusy ? 'Creating…' : 'Create'}
-            </button>
-          </div>
-
-          {/* toggle UNDER inputs */}
-          <div className="toggle-row">
-            <button
-              type="button"
-              className="toggle"
-              aria-pressed={showRoles}
-              onClick={() => {
-                setShowRoles(v => !v);
-                postEmbedSize();
-                setTimeout(postEmbedSize, 300);
-              }}
-            >
-              {showRoles ? 'Hide roles' : 'Show roles'}
-            </button>
-          </div>
-
-          {showRoles && (
-            <div className="table like" id="roles-table">
-              <div className="t-head">
-                <div>Role</div><div>Created</div><div>KB</div><div>JD</div><div>Link</div><div>Delete</div>
+                )}
               </div>
-              <div className="t-body">
-                {roles.map(r => {
-                  const hasKB = !!r.kb_document_id;
-                  const hasJD = !!r.job_description_url || !!r.description;
-                  return (
-                    <div key={r.id} className="t-row">
-                      <div>
-                        <div className="title">{r.title}</div>
-                        <div className="sub">Type: {r.interview_type || '—'} • Token: {r.slug_or_token}</div>
+
+              <button
+                disabled={!selectedClientId || roleBusy || !newRoleTitle.trim() || !jobFile}
+                onClick={createRole}
+                title={!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role'}
+              >
+                {roleBusy ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+
+            {/* toggle UNDER inputs */}
+            <div className="toggle-row">
+              <button
+                type="button"
+                className="toggle"
+                aria-pressed={showRoles}
+                onClick={() => {
+                  setShowRoles(v => !v);
+                  postEmbedSize();
+                  setTimeout(postEmbedSize, 300);
+                }}
+              >
+                {showRoles ? 'Hide roles' : 'Show roles'}
+              </button>
+            </div>
+
+            {showRoles && (
+              <div className="table like" id="roles-table">
+                <div className="t-head">
+                  <div>Role</div><div>Created</div><div>KB</div><div>JD</div><div>Link</div><div>Delete</div>
+                </div>
+                <div className="t-body">
+                  {roles.map(r => {
+                    const hasKB = !!r.kb_document_id;
+                    const hasJD = !!r.job_description_url || !!r.description;
+                    return (
+                      <div key={r.id} className="t-row">
+                        <div>
+                          <div className="title">{r.title}</div>
+                          <div className="sub">Type: {r.interview_type || '—'} • Token: {r.slug_or_token}</div>
+                        </div>
+                        <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                        <div className="center">{hasKB ? '✓' : '—'}</div>
+                        <div className="center">{hasJD ? '✓' : '—'}</div>
+                        <div>
+                          <button onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
+                        </div>
+                        <div className="center">
+                          <button className="btn-icon" onClick={() => setConfirmRole({ open: true, id: r.id })} title="Delete role">
+                            <IconTrash size={24} />
+                          </button>
+                        </div>
                       </div>
-                      <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                      <div className="center">{hasKB ? '✓' : '—'}</div>
-                      <div className="center">{hasJD ? '✓' : '—'}</div>
-                      <div>
-                        <button onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
-                      </div>
-                      <div className="center">
-                        <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
-                          <IconTrash size={24} />
-                        </button>
-                      </div>
+                    );
+                  })}
+                  {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Members */}
+          <div className="alpha-card">
+            <div style={{ height: 12 }} />
+            <div className="section-head">
+              <h2 className="section-title">Client Members</h2>
+            </div>
+
+            <div className="row">
+              <input className="alpha-input" placeholder="Member name" value={memberName} onChange={e => setMemberName(e.target.value)} />
+              <input className="alpha-input" placeholder="Member email" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
+              <select className="alpha-input alpha-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
+                <option value="member">Member</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+              <button disabled={!selectedClientId} onClick={addMember}>Add</button>
+            </div>
+
+            {/* toggle UNDER inputs */}
+            <div className="toggle-row">
+              <button
+                type="button"
+                className="toggle"
+                aria-pressed={showMembers}
+                onClick={() => {
+                  setShowMembers(v => !v);
+                  postEmbedSize();
+                  setTimeout(postEmbedSize, 300);
+                }}
+              >
+                {showMembers ? 'Hide members' : 'Show members'}
+              </button>
+            </div>
+
+            {showMembers && (
+              <div className="list list--rows" id="members-list">
+                {members.map(m => (
+                  <div key={m.id} className="list-row">
+                    <div className="grow">
+                      <div className="title">{m.name}</div>
+                      <div className="sub">{m.email} • {m.role || 'member'}</div>
                     </div>
-                  );
-                })}
-                {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Members */}
-        <div className="alpha-card">
-          <div style={{ height: 12 }} />
-          <div className="section-head">
-            <h2 className="section-title">Client Members</h2>
-          </div>
-
-          <div className="row">
-            <input className="alpha-input" placeholder="Member name" value={memberName} onChange={e => setMemberName(e.target.value)} />
-            <input className="alpha-input" placeholder="Member email" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
-            <select className="alpha-input alpha-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
-              <option value="member">Member</option>
-              <option value="manager">Manager</option>
-              <option value="admin">Admin</option>
-            </select>
-            <button disabled={!selectedClientId} onClick={addMember}>Add</button>
-          </div>
-
-          {/* toggle UNDER inputs */}
-          <div className="toggle-row">
-            <button
-              type="button"
-              className="toggle"
-              aria-pressed={showMembers}
-              onClick={() => {
-                setShowMembers(v => !v);
-                postEmbedSize();
-                setTimeout(postEmbedSize, 300);
-              }}
-            >
-              {showMembers ? 'Hide members' : 'Show members'}
-            </button>
-          </div>
-
-          {showMembers && (
-            <div className="list list--rows" id="members-list">
-              {members.map(m => (
-                <div key={m.id} className="list-row">
-                  <div className="grow">
-                    <div className="title">{m.name}</div>
-                    <div className="sub">{m.email} • {m.role || 'member'}</div>
+                    <button onClick={() => setConfirmMember({ open: true, id: m.id })}>Remove</button>
                   </div>
-                  <button onClick={() => removeMember(m.id)}>Remove</button>
-                </div>
-              ))}
-              {members.length === 0 && <div className="muted">No members for this client</div>}
-            </div>
-          )}
+                ))}
+                {members.length === 0 && <div className="muted">No members for this client</div>}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <ConfirmDialog
+        open={confirmClient.open}
+        title="Delete client"
+        message="Are you sure you want to delete this client? This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => confirmClient.id && deleteClient(confirmClient.id)}
+        onCancel={() => setConfirmClient({ open: false, id: null })}
+      />
+
+      <ConfirmDialog
+        open={confirmRole.open}
+        title="Delete role"
+        message="Are you sure you want to delete this role? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onConfirm={() => confirmRole.id && deleteRole(confirmRole.id)}
+        onCancel={() => setConfirmRole({ open: false, id: null })}
+      />
+
+      <ConfirmDialog
+        open={confirmMember.open}
+        title="Remove member"
+        message="Remove this member from the client?"
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        onConfirm={() => confirmMember.id && removeMember(confirmMember.id)}
+        onCancel={() => setConfirmMember({ open: false, id: null })}
+      />
+    </>
   );
 }

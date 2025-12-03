@@ -1,6 +1,7 @@
 // src/pages/SignIn.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
 
 export default function SignIn() {
@@ -134,26 +135,26 @@ export default function SignIn() {
 
   async function startReset() {
     if (!email) {
-      alert('Enter your email first.');
+      toast.error('Enter your email first.', { duration: 1500 });
       return;
     }
     const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/signin?pwreset=1`
     });
-    if (error) alert('Could not start reset: ' + error.message);
-    else alert('Check your email for a password reset link.');
+    if (error) toast.error('Could not start reset: ' + error.message, { duration: 2000 });
+    else toast.success('Check your email for a password reset link.', { duration: 1500 });
   }
 
   async function submitReset(e) {
     e.preventDefault();
     if (!newPass1 || newPass1 !== newPass2) {
-      alert('Passwords do not match.');
+      toast.error('Passwords do not match.', { duration: 1500 });
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPass1 });
-    if (error) return alert('Could not update password: ' + error.message);
-    alert('Password updated. You can sign in now.');
+    if (error) return toast.error('Could not update password: ' + error.message, { duration: 2000 });
+    toast.success('Password updated. You can sign in now.', { duration: 1500 });
     setShowReset(false);
     setNewPass1(''); setNewPass2('');
     setTimeout(() => postEmbedSizeBurst(), 40);
