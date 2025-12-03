@@ -9,13 +9,14 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelL
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        background: 'rgba(0, 0, 0, 0.4)',
+        left: 0,
+        right: 0,
+        top: 64,
         display: 'flex',
-        alignItems: 'center',
         justifyContent: 'center',
         zIndex: 9999,
-        padding: 16
+        padding: 16,
+        pointerEvents: 'none'
       }}
       role="dialog"
       aria-modal="true"
@@ -28,7 +29,8 @@ function ConfirmDialog({ open, title, message, confirmLabel = 'Confirm', cancelL
           maxWidth: 420,
           width: '100%',
           boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
-          color: '#111827'
+          color: '#111827',
+          pointerEvents: 'auto'
         }}
       >
         <h3 style={{ marginTop: 0, marginBottom: 8, fontSize: 18, fontWeight: 700, color: '#111827' }}>{title}</h3>
