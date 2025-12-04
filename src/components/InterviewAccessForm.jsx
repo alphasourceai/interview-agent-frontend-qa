@@ -2,6 +2,9 @@
 // Submits candidate info + resume -> returns candidate/role/email to parent (no navigation)
 
 import React, { useRef, useState } from 'react';
+import toast from 'react-hot-toast';
+
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
 function joinUrl(base, path) {
   if (!base) return path;
@@ -25,6 +28,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -38,6 +42,12 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
   const onSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!isValidEmail(form.email)) {
+      setEmailError('Please enter a valid email address.');
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
+    setEmailError('');
 
     if (!roleToken) {
       setError('Missing role link. Please use the correct interview URL.');
@@ -120,10 +130,12 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           name="email"
           value={form.email}
           onChange={onChange}
+          onBlur={() => setEmailError(isValidEmail(form.email) ? '' : (form.email ? 'Please enter a valid email address.' : ''))}
           required
-          className="alpha-input w-full"
+          className={`alpha-input w-full ${emailError ? 'input-error' : ''}`}
           disabled={isLocked}
         />
+        {emailError && <div className="input-error-text">{emailError}</div>}
       </div>
       <div>
         <label className="alpha-label">Phone</label>

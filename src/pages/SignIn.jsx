@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -12,6 +14,7 @@ export default function SignIn() {
   const [showReset, setShowReset] = useState(false);
   const [newPass1, setNewPass1] = useState('');
   const [newPass2, setNewPass2] = useState('');
+  const [emailError, setEmailError] = useState('');
 
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
@@ -118,6 +121,12 @@ export default function SignIn() {
   async function handleSignIn(e) {
     e.preventDefault();
     if (!email || !password || loading) return;
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
+    setEmailError('');
     setErr('');
     setLoading(true);
     try { await requestSafariStorageAccess(); } catch (_) {}
@@ -138,6 +147,12 @@ export default function SignIn() {
       toast.error('Enter your email first.', { duration: 1500 });
       return;
     }
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
+    setEmailError('');
     const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/signin?pwreset=1`
@@ -205,14 +220,16 @@ export default function SignIn() {
           <label htmlFor="email">Email</label>
           <input
             id="email"
-            className="alpha-input"
+            className={`alpha-input ${emailError ? 'input-error' : ''}`}
             type="email"
             placeholder="you@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
             required
             autoComplete="email"
           />
+          {emailError && <div className="input-error-text">{emailError}</div>}
 
           <label htmlFor="password">Password</label>
           <input

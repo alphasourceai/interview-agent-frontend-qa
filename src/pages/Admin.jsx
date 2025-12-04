@@ -5,6 +5,8 @@ import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+
 import '../styles/adminTheme.css';
 
 // Detect if running inside an iframe (Wix embed)
@@ -75,6 +77,7 @@ export default function Admin() {
   const [confirmClient, setConfirmClient] = useState({ open: false, id: null });
   const [confirmRole, setConfirmRole] = useState({ open: false, id: null });
   const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
+  const [emailError, setEmailError] = useState('');
 
   // collapsibles — default collapsed unless user has toggled them on before
   const readToggle = (key) => (localStorage.getItem(key) === '1' ? true : false);
@@ -278,6 +281,12 @@ export default function Admin() {
 
   const handleSignIn = async (e) => {
     e.preventDefault();
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
+    setEmailError('');
     try {
       await requestSafariStorageAccess();
     } catch {}
@@ -295,6 +304,12 @@ export default function Admin() {
       toast.error('Enter your email above first.', { duration: 1500 });
       return;
     }
+    if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
+    setEmailError('');
     const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${origin}/admin?pwreset=1`
@@ -563,7 +578,16 @@ export default function Admin() {
           </div>
           <form onSubmit={handleSignIn}>
             <label htmlFor="admin-email">Email</label>
-            <input id="admin-email" className="alpha-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input
+              id="admin-email"
+              className={`alpha-input ${emailError ? 'input-error' : ''}`}
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
+              required
+            />
+            {emailError && <div className="input-error-text">{emailError}</div>}
             <label htmlFor="admin-password">Password</label>
             <input id="admin-password" className="alpha-input" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
             <button type="submit" style={{ width: '100%' }}>Sign In</button>
