@@ -722,9 +722,6 @@ export default function Admin() {
                   ref={fileInputRef}
                 />
                 {jobFile && (
-                  <span className="file-name-display" title={jobFile.name}>{jobFile.name}</span>
-                )}
-                {jobFile && (
                   <button
                     className="btn-icon file-clear"
                     onClick={() => {

@@ -337,14 +337,6 @@ button.danger:hover { border-color: rgba(255, 80, 80, 0.9); }
 
 /* File input + clear icon stacked */
 .file-stack .file-clear { position: absolute; right: -36px; }
-.file-name-display {
-  color: #fff;
-  font-size: 12px;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 .signout-btn {
   background: var(--alpha-primary) !important;
