@@ -462,6 +462,8 @@ export default function Admin() {
       await refreshRoles(selectedClientId);
       setNewRoleTitle('');
       setJobFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setFileKey((k) => k + 1);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
       toast.success('Role created', { duration: 1000 });
@@ -719,6 +721,9 @@ export default function Admin() {
                   aria-label="Job Description file (PDF or DOCX)"
                   ref={fileInputRef}
                 />
+                {jobFile && (
+                  <span className="file-name-display" title={jobFile.name}>{jobFile.name}</span>
+                )}
                 {jobFile && (
                   <button
                     className="btn-icon file-clear"

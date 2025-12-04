@@ -286,6 +286,16 @@ button.danger:hover { border-color: rgba(255, 80, 80, 0.9); }
 /* file input wrapper so clear icon can sit beside it */
 .file-stack { position: relative; display: flex; align-items: center; gap: 8px; margin-right: 36px; }
 .file-stack .file { width: 220px; }
+.file-stack .file { color: transparent; }
+.file-stack .file::file-selector-button,
+.file-stack .file::-webkit-file-upload-button {
+  color: #111827;
+  background: #f8fafc;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
 
 /* lilac circular icon buttons; icon itself is white via SVG fill/stroke */
 .btn-icon.lilac {
@@ -329,6 +339,14 @@ button.danger:hover { border-color: rgba(255, 80, 80, 0.9); }
 
 /* File input + clear icon stacked */
 .file-stack .file-clear { position: absolute; right: -36px; }
+.file-name-display {
+  color: #fff;
+  font-size: 12px;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .signout-btn {
   background: var(--alpha-primary) !important;
