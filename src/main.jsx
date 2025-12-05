@@ -3,6 +3,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider, Navigate, useRouteError } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
+import { Elements } from '@stripe/react-stripe-js'
+import { loadStripe } from '@stripe/stripe-js'
 
 import * as Sentry from '@sentry/react'
 
@@ -13,6 +15,7 @@ const SignIn = React.lazy(() => import('./pages/SignIn.jsx'))
 const VerifyOtp = React.lazy(() => import('./pages/VerifyOtp.jsx'))
 const InterviewAccessPage = React.lazy(() => import('./pages/InterviewAccessPage.jsx'))
 const Admin = React.lazy(() => import('./pages/Admin.jsx'))
+const PaymentTerminal = React.lazy(() => import('./pages/PaymentTerminal.jsx'))
 
 const ClientDashboard = React.lazy(() => import('./pages/ClientDashboard.jsx'))
 const RoleCreator = React.lazy(() => import('./pages/RoleCreator.jsx'))
@@ -24,6 +27,8 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 
 import { supabase } from './lib/supabaseClient'
 import { useEffect } from 'react'
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
 
 // --- Sentry (frontend) ---
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN
@@ -145,6 +150,7 @@ const router = createBrowserRouter([
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
   { path: '/admin', element: <Admin />, errorElement },
+  { path: '/payment-terminal', element: <PaymentTerminal />, errorElement },
 
   // legacy single-page + role views
   { path: '/dashboard', element: <ProtectedRoute><ClientDashboard /></ProtectedRoute>, errorElement },
@@ -179,7 +185,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <SessionRecoveryWrapper>
         <div style={{ height: '100vh', overflow: 'hidden' }}>
           <React.Suspense fallback={<div style={{ padding: 16 }}>Loading…</div>}>
-            <RouterProvider router={router} />
+            <Elements stripe={stripePromise}>
+              <RouterProvider router={router} />
+            </Elements>
           </React.Suspense>
         </div>
         <Toaster

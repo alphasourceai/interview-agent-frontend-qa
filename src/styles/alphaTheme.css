@@ -335,3 +335,26 @@ dialog::backdrop {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* Payment terminal */
+.payment-terminal-card {
+  max-width: 520px;
+  width: 100%;
+  padding: 24px 28px;
+  border-radius: 16px;
+}
+.payment-terminal-card .card-element-wrap {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+}
+.payment-terminal-card form > div {
+  margin-bottom: 10px;
+}
+.payment-terminal-card .alpha-input {
+  width: 100%;
+}
+.payment-terminal-card .btn-wide {
+  width: 100%;
+}
