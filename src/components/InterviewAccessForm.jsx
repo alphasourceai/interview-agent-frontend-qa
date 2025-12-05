@@ -98,7 +98,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
     <form onSubmit={onSubmit} className="alpha-form-grid gap-y-4">
       {/* First / Last (row 1) */}
       <div>
-        <label className="alpha-label">First name</label>
+        <label className="alpha-label">First name <span className="required-asterisk">*</span></label>
         <input
           type="text"
           name="first_name"
@@ -108,9 +108,10 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           className="alpha-input w-full"
           disabled={isLocked}
         />
+        <div className="required-note">Required</div>
       </div>
       <div>
-        <label className="alpha-label">Last name</label>
+        <label className="alpha-label">Last name <span className="required-asterisk">*</span></label>
         <input
           type="text"
           name="last_name"
@@ -120,11 +121,12 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           className="alpha-input w-full"
           disabled={isLocked}
         />
+        <div className="required-note">Required</div>
       </div>
 
       {/* Email / Phone (row 2) */}
       <div>
-        <label className="alpha-label">Email</label>
+        <label className="alpha-label">Email <span className="required-asterisk">*</span></label>
         <input
           type="email"
           name="email"
@@ -136,9 +138,10 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           disabled={isLocked}
         />
         {emailError && <div className="input-error-text">{emailError}</div>}
+        <div className="required-note">Required</div>
       </div>
       <div>
-        <label className="alpha-label">Phone</label>
+        <label className="alpha-label">Phone <span className="required-asterisk">*</span></label>
         <input
           type="tel"
           name="phone"
@@ -153,10 +156,12 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           className="alpha-input w-full"
           disabled={isLocked}
         />
+        <div className="required-note">Required</div>
       </div>
 
       {/* Upload Resume (left column, row 3) */}
       <div>
+        <label className="alpha-label">Resume <span className="required-asterisk">*</span></label>
         {isLocked ? (
           <div className="text-green-300 text-sm">Candidate created. OTP emailed.</div>
         ) : (
@@ -175,6 +180,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
             />
           </>
         )}
+        <div className="required-note">Required</div>
       </div>
 
       {/* Submit (right column, row 3) */}
