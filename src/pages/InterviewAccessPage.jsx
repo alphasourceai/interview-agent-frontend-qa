@@ -338,178 +338,180 @@ useEffect(() => {
 
   const noRoom = !roomUrl;
 
-  return (
-    <div className="alpha-theme alpha-page">
-      <div className="space-y-6">
-        {header}
+  const interviewContent = (
+    <div className="space-y-6">
+      {header}
 
-        {showPreInterviewNotice ? (
-          <div className="pre-interview-overlay">
-            <div className="alpha-card pre-interview-card">
-              <h2>Before you start your interview</h2>
-              <p>
-                To make sure your interview goes smoothly, please move to a quiet, distraction-free area. Our AI Agent
-                will pick up background conversations and noises, which can interfere with your answers and result in a less effective interview.
-              </p>
-              <label className="pre-interview-checkbox">
-                <input
-                  type="checkbox"
-                  checked={hasAcknowledgedQuiet}
-                  onChange={(e) => setHasAcknowledgedQuiet(e.target.checked)}
-                />
-                <span>I understand and I am in a quiet place.</span>
-              </label>
-              <button
-                className="alpha-button"
-                disabled={!hasAcknowledgedQuiet}
-                onClick={handleConfirmPreInterview}
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Full-bleed, opaque hallway hero */}
-            <div className="alpha-hero fullbleed">
-              <div className={`tavus-stage${prejoin ? ' prejoin' : ''}`} ref={roomRef}>
-                <div
-                  id="tavus-slot"
-                  className={`tavus-slot${noRoom ? ' no-room' : ''}`}
-                  aria-label="Interview video area"
-                >
-                  {roomUrl ? (
-                    <iframe
-                      title="Interview"
-                      src={roomUrl}
-                      loading="lazy"
-                      allow="camera; microphone; autoplay; clipboard-read; clipboard-write; display-capture; fullscreen; storage-access"
-                      referrerPolicy="no-referrer"
-                      allowFullScreen
-                    />
-                  ) : (
-                    <div className="placeholder">
-                      <div className="center-msg">
-                        {!roleToken
-                          ? "You’re almost there—this page needs a role link. Open the invite link you were sent, or contact your recruiter to resend it."
-                          : "Your interview room will appear here after verification."}
-                      </div>
-                    </div>
-                  )}
+      {/* Full-bleed, opaque hallway hero */}
+      <div className="alpha-hero fullbleed">
+        <div className={`tavus-stage${prejoin ? ' prejoin' : ''}`} ref={roomRef}>
+          <div
+            id="tavus-slot"
+            className={`tavus-slot${noRoom ? ' no-room' : ''}`}
+            aria-label="Interview video area"
+          >
+            {roomUrl ? (
+              <iframe
+                title="Interview"
+                src={roomUrl}
+                loading="lazy"
+                allow="camera; microphone; autoplay; clipboard-read; clipboard-write; display-capture; fullscreen; storage-access"
+                referrerPolicy="no-referrer"
+                allowFullScreen
+              />
+            ) : (
+              <div className="placeholder">
+                <div className="center-msg">
+                  {!roleToken
+                    ? "You’re almost there—this page needs a role link. Open the invite link you were sent, or contact your recruiter to resend it."
+                    : "Your interview room will appear here after verification."}
                 </div>
-              </div>
-            </div>
-
-            {/* Forms + actions are shown until the room URL actually exists */}
-            {!roomUrl && (
-              <div className="alpha-form">
-                <div className="alpha-form-grid-3">
-                  {/* Step 1 spans columns 1–2 */}
-                  <div className="alpha-span-2">
-                    <InterviewAccessForm
-                      roleToken={roleToken}
-                      onSubmitted={(payload) => {
-                        setSubmitted(payload);
-                        setVerified(false);
-                        setRoomUrl('');
-                        setTimeout(pingEmbedSize, 80);
-                      }}
-                    />
-                  </div>
-
-                  {/* Step 2 only renders once Step 1 is submitted */}
-                  {submitted ? (
-                    <OtpInline
-                      email={submitted.email}
-                      candidateId={submitted.candidate_id}
-                      roleId={submitted.role_id}
-                      onVerified={(info) => {
-                        setVerified(true);
-                        setSubmitted((s) => ({ ...(s || {}), ...info }));
-                        setTimeout(pingEmbedSize, 80);
-                      }}
-                      onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
-                    />
-                  ) : (
-                    <div className="alpha-step2">
-                      {/* Hidden until submitted; left here for layout stability if needed */}
-                    </div>
-                  )}
-                </div>
-
-                {/* Start Interview appears ONLY after verified; centered below the grid */}
-                {verified && (
-                  <div className="start-block">
-                    <button
-                      type="button"
-                      disabled={!canStart || starting}
-                      onClick={startInterview}
-                      className="btn-xl btn-outline-lilac btn-wide"
-                    >
-                      {starting ? 'Starting…' : 'Start Interview'}
-                    </button>
-                  </div>
-                )}
-                {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
               </div>
             )}
-
-            {/* Page-scoped CSS for the Tavus slot */}
-            <style>{`
-              html, body {
-                height: auto !important;
-                min-height: 100%;
-                overflow-y: auto !important;
-              }
-              .alpha-theme.alpha-page {
-                min-height: 100%;
-              }
-              body.alpha-has-header {
-                overflow-y: auto !important;
-              }
-              .tavus-stage { width: 100%; }
-              .tavus-slot {
-                position: relative;
-                width: 100%;
-                border-radius: 16px;
-                border: 1px solid rgba(255,255,255,0.1);
-                background: rgba(0,0,0,0.85);
-                overflow: hidden;
-                margin: 0 auto;
-                max-width: 1200px;
-              }
-              @media (min-width: 768px) {
-                .tavus-stage .tavus-slot { height: 520px; }
-                .tavus-stage.prejoin .tavus-slot { height: 650px; }
-              }
-              @media (max-width: 767px) {
-                .tavus-slot { aspect-ratio: 16 / 9; }
-              }
-              .tavus-slot.no-room { height: 690px !important; }
-
-              .tavus-slot > iframe,
-              .tavus-slot video,
-              .tavus-slot [data-daily-video],
-              .tavus-slot .daily-video {
-                position: absolute !important;
-                inset: 0 !important;
-                width: 100% !important;
-                height: 100% !important;
-                border: 0 !important;
-                display: block;
-                object-fit: contain;
-                background: #000;
-              }
-              .tavus-slot .placeholder {
-                position: absolute; inset: 0;
-                display:flex; align-items:center; justify-content:center;
-                color: rgba(255,255,255,0.85); padding:24px; text-align:center;
-              }
-              .tavus-slot .center-msg { max-width: 520px; }
-            `}</style>
-          </>
-        )}
+          </div>
+        </div>
       </div>
+
+      {/* Forms + actions are shown until the room URL actually exists */}
+      {!roomUrl && (
+        <div className="alpha-form">
+          <div className="alpha-form-grid-3">
+            {/* Step 1 spans columns 1–2 */}
+            <div className="alpha-span-2">
+              <InterviewAccessForm
+                roleToken={roleToken}
+                onSubmitted={(payload) => {
+                  setSubmitted(payload);
+                  setVerified(false);
+                  setRoomUrl('');
+                  setTimeout(pingEmbedSize, 80);
+                }}
+              />
+            </div>
+
+            {/* Step 2 only renders once Step 1 is submitted */}
+            {submitted ? (
+              <OtpInline
+                email={submitted.email}
+                candidateId={submitted.candidate_id}
+                roleId={submitted.role_id}
+                onVerified={(info) => {
+                  setVerified(true);
+                  setSubmitted((s) => ({ ...(s || {}), ...info }));
+                  setTimeout(pingEmbedSize, 80);
+                }}
+                onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
+              />
+            ) : (
+              <div className="alpha-step2">
+                {/* Hidden until submitted; left here for layout stability if needed */}
+              </div>
+            )}
+          </div>
+
+          {/* Start Interview appears ONLY after verified; centered below the grid */}
+          {verified && (
+            <div className="start-block">
+              <button
+                type="button"
+                disabled={!canStart || starting}
+                onClick={startInterview}
+                className="btn-xl btn-outline-lilac btn-wide"
+              >
+                {starting ? 'Starting…' : 'Start Interview'}
+              </button>
+            </div>
+          )}
+          {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
+        </div>
+      )}
+
+      {/* Page-scoped CSS for the Tavus slot */}
+      <style>{`
+        html, body {
+          height: auto !important;
+          min-height: 100%;
+          overflow-y: auto !important;
+        }
+        .alpha-theme.alpha-page {
+          min-height: 100%;
+        }
+        body.alpha-has-header {
+          overflow-y: auto !important;
+        }
+        .tavus-stage { width: 100%; }
+        .tavus-slot {
+          position: relative;
+          width: 100%;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.85);
+          overflow: hidden;
+          margin: 0 auto;
+          max-width: 1200px;
+        }
+        @media (min-width: 768px) {
+          .tavus-stage .tavus-slot { height: 520px; }
+          .tavus-stage.prejoin .tavus-slot { height: 650px; }
+        }
+        @media (max-width: 767px) {
+          .tavus-slot { aspect-ratio: 16 / 9; }
+        }
+        .tavus-slot.no-room { height: 690px !important; }
+
+        .tavus-slot > iframe,
+        .tavus-slot video,
+        .tavus-slot [data-daily-video],
+        .tavus-slot .daily-video {
+          position: absolute !important;
+          inset: 0 !important;
+          width: 100% !important;
+          height: 100% !important;
+          border: 0 !important;
+          display: block;
+          object-fit: contain;
+          background: #000;
+        }
+        .tavus-slot .placeholder {
+          position: absolute; inset: 0;
+          display:flex; align-items:center; justify-content:center;
+          color: rgba(255,255,255,0.85); padding:24px; text-align:center;
+        }
+        .tavus-slot .center-msg { max-width: 520px; }
+      `}</style>
+    </div>
+  );
+
+  return (
+    <div className="alpha-theme alpha-page interview-access-page">
+      {showPreInterviewNotice && (
+        <div className="pre-interview-overlay">
+          <div className="alpha-card pre-interview-card">
+            <h2>Before you start your interview</h2>
+            <p>
+              To make sure your interview goes smoothly, please move to a quiet, distraction-free area. Our AI Agent
+              will pick up background conversations and noises, which can interfere with your answers and result in a less effective interview.
+            </p>
+            <label className="pre-interview-checkbox">
+              <input
+                type="checkbox"
+                checked={hasAcknowledgedQuiet}
+                onChange={(e) => setHasAcknowledgedQuiet(e.target.checked)}
+              />
+              <span>I understand and I am in a quiet place.</span>
+            </label>
+            <button
+              className="alpha-button"
+              disabled={!hasAcknowledgedQuiet}
+              onClick={handleConfirmPreInterview}
+            >
+              Confirm
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!showPreInterviewNotice && interviewContent}
     </div>
   );
 }
