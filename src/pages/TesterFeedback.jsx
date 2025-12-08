@@ -21,6 +21,7 @@ export default function TesterFeedback() {
   const [files, setFiles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+  const [emailError, setEmailError] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -49,6 +50,7 @@ export default function TesterFeedback() {
   const resetForm = () => {
     setName('');
     setEmail('');
+    setEmailError('');
     setBrowser('');
     setDeviceType('');
     setSelectedIssueIds([]);
@@ -66,9 +68,11 @@ export default function TesterFeedback() {
       return;
     }
     if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
       toast.error('Please enter a valid email address.', { duration: 1500 });
       return;
     }
+    setEmailError('');
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -123,11 +127,13 @@ export default function TesterFeedback() {
             <label className="alpha-label">Email <span className="required-asterisk">*</span></label>
             <input
               type="email"
-              className="alpha-input"
+              className={`alpha-input ${emailError ? 'input-error' : ''}`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
               required
             />
+            {emailError && <div className="input-error-text">{emailError}</div>}
             <div className="required-note">Required</div>
           </div>
 
