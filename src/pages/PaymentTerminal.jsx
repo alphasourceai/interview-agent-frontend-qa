@@ -5,17 +5,30 @@ import toast from 'react-hot-toast';
 
 const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
 const paymentsUrl = backendBase ? `${backendBase}/api/payments/create-intent` : '/api/payments/create-intent';
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
 export default function PaymentTerminal() {
   const stripe = useStripe();
   const elements = useElements();
 
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [billingAddress, setBillingAddress] = useState('');
+  const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [processing, setProcessing] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!name.trim() || !company.trim() || !billingAddress.trim() || !email.trim()) {
+      toast.error('Please complete all required fields before paying.', { duration: 2000 });
+      return;
+    }
+    if (!isValidEmail(email)) {
+      toast.error('Please enter a valid email address.', { duration: 1500 });
+      return;
+    }
     const amountNumber = Number(amount);
     if (!amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
       toast.error('Enter a valid amount greater than 0.', { duration: 2000 });
@@ -56,6 +69,10 @@ export default function PaymentTerminal() {
       }
 
       toast.success('Payment succeeded!', { duration: 1500 });
+      setName('');
+      setCompany('');
+      setBillingAddress('');
+      setEmail('');
       setAmount('');
       setDescription('');
       card.clear();
@@ -75,7 +92,55 @@ export default function PaymentTerminal() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="alpha-label">Amount</label>
+            <label className="alpha-label">Name <span className="required-asterisk">*</span></label>
+            <input
+              type="text"
+              className="alpha-input"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <div className="required-note">Required</div>
+          </div>
+
+          <div>
+            <label className="alpha-label">Company <span className="required-asterisk">*</span></label>
+            <input
+              type="text"
+              className="alpha-input"
+              value={company}
+              onChange={(e) => setCompany(e.target.value)}
+              required
+            />
+            <div className="required-note">Required</div>
+          </div>
+
+          <div>
+            <label className="alpha-label">Billing address / ZIP <span className="required-asterisk">*</span></label>
+            <input
+              type="text"
+              className="alpha-input"
+              value={billingAddress}
+              onChange={(e) => setBillingAddress(e.target.value)}
+              required
+            />
+            <div className="required-note">Required</div>
+          </div>
+
+          <div>
+            <label className="alpha-label">Email <span className="required-asterisk">*</span></label>
+            <input
+              type="email"
+              className="alpha-input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <div className="required-note">Required</div>
+          </div>
+
+          <div>
+            <label className="alpha-label">Amount <span className="required-asterisk">*</span></label>
             <input
               type="number"
               min="0"
@@ -86,6 +151,7 @@ export default function PaymentTerminal() {
               placeholder="e.g. 49.99"
               required
             />
+            <div className="required-note">Required</div>
           </div>
 
           <div>
