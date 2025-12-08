@@ -20,6 +20,20 @@ export default function PaymentTerminal() {
   const [description, setDescription] = useState('');
   const [processing, setProcessing] = useState(false);
 
+  const handleClear = () => {
+    setName('');
+    setCompany('');
+    setBillingStreet('');
+    setBillingZip('');
+    setEmail('');
+    setAmount('');
+    setDescription('');
+    const cardElement = elements?.getElement(CardElement);
+    if (cardElement) {
+      cardElement.clear();
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim() || !company.trim() || !billingStreet.trim() || !billingZip.trim() || !email.trim()) {
@@ -205,13 +219,23 @@ export default function PaymentTerminal() {
             </div>
           </div>
 
-          <button
-            type="submit"
-            className="btn-xl btn-outline-lilac btn-wide"
-            disabled={processing || !stripe}
-          >
-            {processing ? 'Processing…' : 'Pay Now'}
-          </button>
+          <div className="payment-actions">
+            <button
+              type="button"
+              className="btn-xl btn-outline-lilac btn-wide secondary"
+              onClick={handleClear}
+              disabled={processing}
+            >
+              Clear Form
+            </button>
+            <button
+              type="submit"
+              className="btn-xl btn-outline-lilac btn-wide"
+              disabled={processing || !stripe}
+            >
+              {processing ? 'Processing…' : 'Pay Now'}
+            </button>
+          </div>
         </form>
       </div>
     </div>

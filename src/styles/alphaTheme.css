@@ -361,3 +361,12 @@ dialog::backdrop {
 .payment-terminal-card .btn-wide {
   width: 100%;
 }
+.payment-terminal-card .payment-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.payment-terminal-card .payment-actions .secondary {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
