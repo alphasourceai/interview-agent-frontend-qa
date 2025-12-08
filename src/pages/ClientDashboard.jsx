@@ -1,6 +1,6 @@
 // src/pages/ClientDashboard.jsx
 import { useEffect, useMemo, useState, useRef } from 'react'
-import { apiGet, apiDownload, apiPost } from '../lib/api'
+import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
 import SignOutButton from '../components/SignOutButton.jsx'
 import '../styles/clientDashboard.css';
 
@@ -35,6 +35,7 @@ const th = {
 };
 const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlign: 'top' };
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
+const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
 
 function HeaderButton({ label, active, dir, onClick }) {
   return (
@@ -174,6 +175,23 @@ export default function ClientDashboard() {
     }, ttlMs);
   }
 
+  // Roles panel state (for manager/admin client members)
+  const [roles, setRoles] = useState([]);
+  const [newRoleTitle, setNewRoleTitle] = useState('');
+  const [interviewType, setInterviewType] = useState('BASIC');
+  const [jobFile, setJobFile] = useState(null);
+  const [roleBusy, setRoleBusy] = useState(false);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const fileInputRef = useRef(null);
+  const [fileKey, setFileKey] = useState(0);
+
+  // Members panel state
+  const [members, setMembers] = useState([]);
+  const [memberName, setMemberName] = useState('');
+  const [memberEmail, setMemberEmail] = useState('');
+  const [memberRole, setMemberRole] = useState('member');
+  const [membersLoading, setMembersLoading] = useState(false);
+
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
   function postEmbedSize() {
@@ -200,6 +218,9 @@ export default function ClientDashboard() {
     setTimeout(postEmbedSize, 50);
     setTimeout(postEmbedSize, 250);
   }
+
+  // Tab selector
+  const [activeTab, setActiveTab] = useState('candidates'); // candidates | roles | members
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -240,6 +261,7 @@ export default function ClientDashboard() {
     roleById[clientId] ||
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
     'member'
+  const canManage = currentRole === 'manager' || currentRole === 'admin';
 
   const pctText = (v) =>
     (typeof v === 'number' && isFinite(v)) || v === 0
@@ -321,6 +343,173 @@ export default function ClientDashboard() {
       setTimeout(postSizeSoon, 250);
     }
   }
+
+  // Fetch roles when needed
+  useEffect(() => {
+    if (!clientId || !canManage || activeTab !== 'roles') {
+      setRoles([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        setRolesLoading(true);
+        const qs = `?client_id=${encodeURIComponent(clientId)}`;
+        const resp = await apiGet('/roles' + qs);
+        if (!alive) return;
+        setRoles(resp?.roles || []);
+      } catch (e) {
+        if (!alive) return;
+        showToast(String(e?.message || 'Failed to load roles'), 'error');
+      } finally {
+        if (alive) setRolesLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [clientId, canManage, activeTab]);
+
+  // Fetch members when needed
+  useEffect(() => {
+    if (!clientId || !canManage || activeTab !== 'members') {
+      setMembers([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        setMembersLoading(true);
+        const qs = `?client_id=${encodeURIComponent(clientId)}`;
+        const resp = await apiGet('/client-members' + qs);
+        if (!alive) return;
+        setMembers(resp?.items || []);
+      } catch (e) {
+        if (!alive) return;
+        showToast(String(e?.message || 'Failed to load members'), 'error');
+      } finally {
+        if (alive) setMembersLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [clientId, canManage, activeTab]);
+
+  const uploadJDToBackend = async (roleId, file) => {
+    const form = new FormData();
+    form.append('file', file);
+    const qs = new URLSearchParams({ client_id: clientId, role_id: roleId }).toString();
+    return api.upload(`/roles-upload/upload-jd?${qs}`, form);
+  };
+
+  const safeCopy = async (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        showToast('Link copied', 'success');
+        return;
+      }
+      throw new Error('clipboard_api_unavailable');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.setAttribute('readonly', '');
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Link copied', 'success');
+      } catch (err) {
+        console.warn('Copy failed:', err);
+        showToast('Copy failed', 'error');
+      }
+    }
+  };
+
+  const createRole = async () => {
+    if (!clientId) return;
+    const title = newRoleTitle.trim();
+    if (!title) return;
+    if (!jobFile) {
+      showToast('Please choose a Job Description file (PDF or DOCX) before creating the role.', 'error');
+      return;
+    }
+    setRoleBusy(true);
+    try {
+      const payload = { client_id: clientId, title, interview_type: interviewType };
+      const resp = await apiPost('/roles', payload);
+      const role = resp?.role;
+      if (!role) { showToast('Role create failed', 'error'); return; }
+      try {
+        const out = await uploadJDToBackend(role.id, jobFile);
+        if (out?.parsed_text_preview) console.log('[JD preview]', out.parsed_text_preview);
+      } catch (e) {
+        console.error('uploadJDToBackend error', e);
+        showToast('Role created, but JD processing failed: ' + e.message, 'error');
+      }
+      // refresh
+      const qs = `?client_id=${encodeURIComponent(clientId)}`;
+      const resp2 = await apiGet('/roles' + qs);
+      setRoles(resp2?.roles || []);
+      setNewRoleTitle('');
+      setJobFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setFileKey((k) => k + 1);
+      postSizeSoon();
+      setTimeout(postSizeSoon, 300);
+      showToast('Role created', 'success');
+    } finally {
+      setRoleBusy(false);
+    }
+  };
+
+  const deleteRole = async (id) => {
+    try {
+      const url = `/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
+      await apiDelete(url);
+      setRoles((prev) => prev.filter((r) => r.id !== id));
+      postSizeSoon();
+      setTimeout(postSizeSoon, 300);
+      showToast('Role deleted', 'success');
+    } catch (err) {
+      const msg = err?.message || 'Could not delete role. Please refresh and try again.';
+      console.error('Role delete failed:', err);
+      showToast(msg, 'error');
+    }
+  };
+
+  const addMember = async () => {
+    if (!clientId) return;
+    const e = memberEmail.trim();
+    const n = memberName.trim();
+    if (!e || !n) return;
+    try {
+      const resp = await apiPost('/client-members', { client_id: clientId, email: e, name: n, role: memberRole });
+      if (resp?.item) {
+        setMembers([resp.item, ...members]);
+        setMemberEmail('');
+        setMemberName('');
+        setMemberRole('member');
+        postSizeSoon();
+        setTimeout(postSizeSoon, 300);
+        showToast('Member added', 'success');
+      }
+    } catch (err) {
+      showToast(err?.message || 'Could not add member.', 'error');
+    }
+  };
+
+  const removeMember = async (id) => {
+    try {
+      await apiDelete(`/client-members/${id}?client_id=${encodeURIComponent(clientId)}`);
+      setMembers((prev) => prev.filter((m) => m.id !== id));
+      postSizeSoon();
+      setTimeout(postSizeSoon, 300);
+      showToast('Member removed', 'success');
+    } catch (err) {
+      showToast(err?.message || 'Could not remove member.', 'error');
+    }
+  };
 
   // Load me + clients
   useEffect(() => {
@@ -524,49 +713,86 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {/* Filters: Role + Min Overall */}
-      <div className="filters">
-        <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
-        <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
-          <label htmlFor="roleFilter">Role</label>
-          <select
-            id="roleFilter"
-            value={roleFilter}
-            onChange={e => setRoleFilter(e.target.value)}
-            style={{ padding: 8 }}
+      {hasMembership && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setActiveTab('candidates')}
+            className="btn lilac"
+            style={{ ...btn, background: activeTab === 'candidates' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'candidates' ? '#fff' : '#111', borderColor: activeTab === 'candidates' ? '#AD8BF7' : '#e5e7eb' }}
           >
-            <option value="">All roles</option>
-            {availableRoles.map(r => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-        </div>
-
-        <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
-          <label htmlFor="minOverall">Min Overall Score</label>
-          <input
-            id="minOverall"
-            type="number"
-            min={0}
-            max={100}
-            step={1}
-            placeholder="e.g. 70"
-            value={minOverall}
-            onChange={e => setMinOverall(e.target.value)}
-            style={{ padding: 8, width: 90 }}
-          />
-          {minOverall !== '' && (
-            <button
-              type="button"
-              onClick={() => setMinOverall('')}
-              className="btn lilac"
-              style={{ ...btn, background:'#AD8BF7', color:'#fff', borderColor:'#AD8BF7' }}
-            >
-              Clear
-            </button>
+            Candidates
+          </button>
+          {canManage && (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('roles')}
+                className="btn lilac"
+                style={{ ...btn, background: activeTab === 'roles' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'roles' ? '#fff' : '#111', borderColor: activeTab === 'roles' ? '#AD8BF7' : '#e5e7eb' }}
+              >
+                Roles
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('members')}
+                className="btn lilac"
+                style={{ ...btn, background: activeTab === 'members' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'members' ? '#fff' : '#111', borderColor: activeTab === 'members' ? '#AD8BF7' : '#e5e7eb' }}
+              >
+                Members
+              </button>
+            </>
           )}
         </div>
-      </div>
+      )}
+
+      {activeTab === 'candidates' && (
+        <>
+          {/* Filters: Role + Min Overall */}
+          <div className="filters">
+            <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
+            <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
+              <label htmlFor="roleFilter">Role</label>
+              <select
+                id="roleFilter"
+                value={roleFilter}
+                onChange={e => setRoleFilter(e.target.value)}
+                style={{ padding: 8 }}
+              >
+                <option value="">All roles</option>
+                {availableRoles.map(r => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
+              <label htmlFor="minOverall">Min Overall Score</label>
+              <input
+                id="minOverall"
+                type="number"
+                min={0}
+                max={100}
+                step={1}
+                placeholder="e.g. 70"
+                value={minOverall}
+                onChange={e => setMinOverall(e.target.value)}
+                style={{ padding: 8, width: 90 }}
+              />
+              {minOverall !== '' && (
+                <button
+                  type="button"
+                  onClick={() => setMinOverall('')}
+                  className="btn lilac"
+                  style={{ ...btn, background:'#AD8BF7', color:'#fff', borderColor:'#AD8BF7' }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {!hasMembership && !loading && (
         <div
@@ -582,110 +808,262 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {loading && <div>Loading…</div>}
-      {!loading && displayRows.length === 0 && <div>No rows yet.</div>}
+      {activeTab === 'candidates' && (
+        <>
+          {loading && <div>Loading…</div>}
+          {!loading && displayRows.length === 0 && <div>No rows yet.</div>}
 
-      {!loading && displayRows.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{...th, width: 36}}></th>
-                <th style={th}>
-                  <HeaderButton
-                    label="Name"
-                    active={sortBy === 'name'}
-                    dir={sortDir}
-                    onClick={() => {
-                      setSortBy('name');
-                      setSortDir(d => (sortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
-                    }}
-                  />
-                </th>
-                <th style={th}>Email</th>
-                <th style={th}>
-                  <HeaderButton
-                    label="Role"
-                    active={sortBy === 'role'}
-                    dir={sortDir}
-                    onClick={() => {
-                      setSortBy('role');
-                      setSortDir(d => (sortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
-                    }}
-                  />
-                </th>
-                <th style={th}>Resume</th>
-                <th style={th}>Interview</th>
-                <th style={th}>Overall</th>
-                <th style={th}>
-                  <HeaderButton
-                    label="Created"
-                    active={sortBy === 'created'}
-                    dir={sortDir}
-                    onClick={() => {
-                      setSortBy('created');
-                      setSortDir(d => (sortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
-                    }}
-                  />
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map(r => {
-                const trKey = `${r.latest_interview_id || r.id}:transcript`
-                const pdfKey = `${r.latest_interview_id || r.id}:pdf`
-                const opened = !!expanded[r.id]
-                return (
-                  <FragmentRow
-                    key={r.id}
-                    r={r}
-                    opened={opened}
-                    toggleRow={toggleRow}
-                    pctText={pctText}
-                    fmtDate={fmtDate}
-                    openSigned={openSigned}
-                    opening={opening}
-                    generatePdfForRow={generatePdfForRow}
-                    trKey={trKey}
-                    pdfKey={pdfKey}
-                  />
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+          {!loading && displayRows.length > 0 && (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{...th, width: 36}}></th>
+                    <th style={th}>
+                      <HeaderButton
+                        label="Name"
+                        active={sortBy === 'name'}
+                        dir={sortDir}
+                        onClick={() => {
+                          setSortBy('name');
+                          setSortDir(d => (sortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                        }}
+                      />
+                    </th>
+                    <th style={th}>Email</th>
+                    <th style={th}>
+                      <HeaderButton
+                        label="Role"
+                        active={sortBy === 'role'}
+                        dir={sortDir}
+                        onClick={() => {
+                          setSortBy('role');
+                          setSortDir(d => (sortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                        }}
+                      />
+                    </th>
+                    <th style={th}>Resume</th>
+                    <th style={th}>Interview</th>
+                    <th style={th}>Overall</th>
+                    <th style={th}>
+                      <HeaderButton
+                        label="Created"
+                        active={sortBy === 'created'}
+                        dir={sortDir}
+                        onClick={() => {
+                          setSortBy('created');
+                          setSortDir(d => (sortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                        }}
+                      />
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleRows.map(r => {
+                    const trKey = `${r.latest_interview_id || r.id}:transcript`
+                    const pdfKey = `${r.latest_interview_id || r.id}:pdf`
+                    const opened = !!expanded[r.id]
+                    return (
+                      <FragmentRow
+                        key={r.id}
+                        r={r}
+                        opened={opened}
+                        toggleRow={toggleRow}
+                        pctText={pctText}
+                        fmtDate={fmtDate}
+                        openSigned={openSigned}
+                        opening={opening}
+                        generatePdfForRow={generatePdfForRow}
+                        trKey={trKey}
+                        pdfKey={pdfKey}
+                      />
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {!loading && displayRows.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+              {visibleCount < displayRows.length && (
+                <button
+                  type="button"
+                  className="btn lilac"
+                  onClick={() => {
+                    const next = Math.min(displayRows.length, visibleCount + INITIAL_COUNT);
+                    setVisibleCount(next);
+                    postSizeSoon();
+                    setTimeout(postSizeSoon, 250);
+                  }}
+                >
+                  Show more
+                </button>
+              )}
+              {visibleCount > INITIAL_COUNT && (
+                <button
+                  type="button"
+                  className="btn lilac"
+                  onClick={() => {
+                    setVisibleCount(INITIAL_COUNT);
+                    postSizeSoon();
+                    setTimeout(postSizeSoon, 250);
+                  }}
+                >
+                  Show less
+                </button>
+              )}
+            </div>
+          )}
+        </>
       )}
 
-      {!loading && displayRows.length > 0 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-          {visibleCount < displayRows.length && (
-            <button
-              type="button"
-              className="btn lilac"
-              onClick={() => {
-                const next = Math.min(displayRows.length, visibleCount + INITIAL_COUNT);
-                setVisibleCount(next);
-                postSizeSoon();
-                setTimeout(postSizeSoon, 250);
-              }}
-            >
-              Show more
-            </button>
-          )}
-          {visibleCount > INITIAL_COUNT && (
-            <button
-              type="button"
-              className="btn lilac"
-              onClick={() => {
-                setVisibleCount(INITIAL_COUNT);
-                postSizeSoon();
-                setTimeout(postSizeSoon, 250);
-              }}
-            >
-              Show less
-            </button>
-          )}
-        </div>
+      {activeTab === 'roles' && (
+        canManage ? (
+          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ marginTop: 0 }}>Roles for {currentName}</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              <input
+                className="alpha-input"
+                placeholder="Role title"
+                value={newRoleTitle}
+                onChange={e => setNewRoleTitle(e.target.value)}
+                style={{ minWidth: 180 }}
+              />
+              <select
+                className="alpha-input alpha-select"
+                value={interviewType}
+                onChange={e => setInterviewType(e.target.value)}
+              >
+                <option value="BASIC">BASIC</option>
+                <option value="DETAILED">DETAILED</option>
+                <option value="TECHNICAL">TECHNICAL</option>
+              </select>
+              <input
+                key={fileKey}
+                className="alpha-input file"
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={e => setJobFile(e.target.files?.[0] || null)}
+                aria-label="Job Description file (PDF or DOCX)"
+                ref={fileInputRef}
+                style={{ maxWidth: 240 }}
+              />
+              {jobFile && (
+                <button
+                  type="button"
+                  className="btn lilac"
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    setJobFile(null);
+                    setFileKey(k => k + 1);
+                  }}
+                >
+                  Clear file
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn lilac"
+                disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
+                onClick={createRole}
+              >
+                {roleBusy ? 'Creating…' : 'Create'}
+              </button>
+            </div>
+
+            {rolesLoading && <div>Loading roles…</div>}
+            {!rolesLoading && (
+              <div className="table like" style={{ marginTop: 8 }}>
+                <div className="t-head">
+                  <div>Role</div><div>Created</div><div>Type</div><div>KB</div><div>JD</div><div>Link</div><div>Delete</div>
+                </div>
+                <div className="t-body">
+                  {roles.map(r => {
+                    const hasKB = !!r.kb_document_id;
+                    const hasJD = !!r.job_description_url || !!r.description;
+                    return (
+                      <div key={r.id} className="t-row">
+                        <div>
+                          <div className="title">{r.title}</div>
+                          <div className="sub">Token: {r.slug_or_token}</div>
+                        </div>
+                        <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                        <div>{r.interview_type || '—'}</div>
+                        <div className="center">{hasKB ? '✓' : '—'}</div>
+                        <div className="center">{hasJD ? '✓' : '—'}</div>
+                        <div>
+                          <button onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
+                        </div>
+                        <div className="center">
+                          <button className="btn lilac" onClick={() => deleteRole(r.id)}>Delete</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+            You don’t have permission to manage roles for this client.
+          </div>
+        )
+      )}
+
+      {activeTab === 'members' && (
+        canManage ? (
+          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+            <h2 style={{ marginTop: 0 }}>Client Members for {currentName}</h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              <input
+                className="alpha-input"
+                placeholder="Member name"
+                value={memberName}
+                onChange={e => setMemberName(e.target.value)}
+                style={{ minWidth: 180 }}
+              />
+              <input
+                className="alpha-input"
+                placeholder="Member email"
+                value={memberEmail}
+                onChange={e => setMemberEmail(e.target.value)}
+                style={{ minWidth: 200 }}
+              />
+              <select
+                className="alpha-input alpha-select"
+                value={memberRole}
+                onChange={e => setMemberRole(e.target.value)}
+              >
+                <option value="member">Member</option>
+                <option value="manager">Manager</option>
+              </select>
+              <button type="button" className="btn lilac" disabled={!clientId} onClick={addMember}>Add</button>
+            </div>
+
+            {membersLoading && <div>Loading members…</div>}
+            {!membersLoading && (
+              <div className="list list--rows" id="members-list">
+                {members.map(m => (
+                  <div key={m.id} className="list-row" style={{ alignItems: 'center' }}>
+                    <div className="grow">
+                      <div className="title">{m.name}</div>
+                      <div className="sub">{m.email} • {m.role || 'member'}</div>
+                    </div>
+                    <button className="btn lilac" onClick={() => removeMember(m.id)}>Remove</button>
+                  </div>
+                ))}
+                {members.length === 0 && <div className="t-empty muted">No members yet</div>}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+            You don’t have permission to manage members for this client.
+          </div>
+        )
       )}
 
       {/* Toast */}
