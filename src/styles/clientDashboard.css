@@ -126,6 +126,46 @@
 /* Utility */
 .client-dash .muted { color: #6b7280; }
 
+/* Tab buttons */
+.client-dash-tab {
+  appearance: none;
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.24));
+  padding: 10px 16px; /* ~20% larger than previous */
+  border-radius: 10px;
+  background: rgba(255,255,255,0.06);
+  color: var(--alpha-text, #EBFEFF);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.1;
+  transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+.client-dash-tab:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: var(--alpha-primary, #AD8BF7);
+}
+.client-dash-tab--active {
+  background: var(--alpha-primary, #AD8BF7);
+  border-color: var(--alpha-primary, #AD8BF7);
+  color: #fff;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  transform: translateY(-1px);
+}
+.client-dash-tab:focus-visible {
+  outline: 2px solid var(--alpha-primary, #AD8BF7);
+  outline-offset: 2px;
+}
+
+/* Card wrapper for Roles/Members panels */
+.client-dash-card {
+  background: linear-gradient(180deg, rgba(19, 26, 64, 0.94), rgba(13, 18, 48, 0.94));
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.12));
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  color: var(--alpha-text, #EBFEFF);
+}
+
 /* ------- parity tweaks (buttons, header sorts, video font) ------- */
 
 /* Ensure consistent button text sizing (e.g., "Video") */

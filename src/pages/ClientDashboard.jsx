@@ -357,7 +357,9 @@ export default function ClientDashboard() {
         const qs = `?client_id=${encodeURIComponent(clientId)}`;
         const resp = await apiGet('/roles' + qs);
         if (!alive) return;
-        setRoles(resp?.roles || []);
+        const items = resp?.roles || [];
+        items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+        setRoles(items);
       } catch (e) {
         if (!alive) return;
         showToast(String(e?.message || 'Failed to load roles'), 'error');
@@ -450,7 +452,9 @@ export default function ClientDashboard() {
       // refresh
       const qs = `?client_id=${encodeURIComponent(clientId)}`;
       const resp2 = await apiGet('/roles' + qs);
-      setRoles(resp2?.roles || []);
+      const items = resp2?.roles || [];
+      items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      setRoles(items);
       setNewRoleTitle('');
       setJobFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -718,8 +722,7 @@ export default function ClientDashboard() {
           <button
             type="button"
             onClick={() => setActiveTab('candidates')}
-            className="btn lilac"
-            style={{ ...btn, background: activeTab === 'candidates' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'candidates' ? '#fff' : '#111', borderColor: activeTab === 'candidates' ? '#AD8BF7' : '#e5e7eb' }}
+            className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
           >
             Candidates
           </button>
@@ -728,16 +731,14 @@ export default function ClientDashboard() {
               <button
                 type="button"
                 onClick={() => setActiveTab('roles')}
-                className="btn lilac"
-                style={{ ...btn, background: activeTab === 'roles' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'roles' ? '#fff' : '#111', borderColor: activeTab === 'roles' ? '#AD8BF7' : '#e5e7eb' }}
+                className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
               >
                 Roles
               </button>
               <button
                 type="button"
                 onClick={() => setActiveTab('members')}
-                className="btn lilac"
-                style={{ ...btn, background: activeTab === 'members' ? '#AD8BF7' : '#f9fafb', color: activeTab === 'members' ? '#fff' : '#111', borderColor: activeTab === 'members' ? '#AD8BF7' : '#e5e7eb' }}
+                className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
               >
                 Members
               </button>
@@ -920,7 +921,7 @@ export default function ClientDashboard() {
 
       {activeTab === 'roles' && (
         canManage ? (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+          <div className="client-dash-card">
             <h2 style={{ marginTop: 0 }}>Roles for {currentName}</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
               <input
@@ -1007,7 +1008,7 @@ export default function ClientDashboard() {
             )}
           </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+          <div className="client-dash-card">
             You don’t have permission to manage roles for this client.
           </div>
         )
@@ -1015,7 +1016,7 @@ export default function ClientDashboard() {
 
       {activeTab === 'members' && (
         canManage ? (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+          <div className="client-dash-card">
             <h2 style={{ marginTop: 0 }}>Client Members for {currentName}</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
               <input
@@ -1060,7 +1061,7 @@ export default function ClientDashboard() {
             )}
           </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 12, padding: 16, boxShadow: '0 6px 24px rgba(0,0,0,0.06)' }}>
+          <div className="client-dash-card">
             You don’t have permission to manage members for this client.
           </div>
         )
