@@ -13,7 +13,8 @@ export default function PaymentTerminal() {
 
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [billingAddress, setBillingAddress] = useState('');
+  const [billingStreet, setBillingStreet] = useState('');
+  const [billingZip, setBillingZip] = useState('');
   const [email, setEmail] = useState('');
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -21,7 +22,7 @@ export default function PaymentTerminal() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !company.trim() || !billingAddress.trim() || !email.trim()) {
+    if (!name.trim() || !company.trim() || !billingStreet.trim() || !billingZip.trim() || !email.trim()) {
       toast.error('Please complete all required fields before paying.', { duration: 2000 });
       return;
     }
@@ -71,7 +72,8 @@ export default function PaymentTerminal() {
       toast.success('Payment succeeded!', { duration: 1500 });
       setName('');
       setCompany('');
-      setBillingAddress('');
+      setBillingStreet('');
+      setBillingZip('');
       setEmail('');
       setAmount('');
       setDescription('');
@@ -116,12 +118,24 @@ export default function PaymentTerminal() {
           </div>
 
           <div>
-            <label className="alpha-label">Billing address / ZIP <span className="required-asterisk">*</span></label>
+            <label className="alpha-label">Billing Street Address <span className="required-asterisk">*</span></label>
             <input
               type="text"
               className="alpha-input"
-              value={billingAddress}
-              onChange={(e) => setBillingAddress(e.target.value)}
+              value={billingStreet}
+              onChange={(e) => setBillingStreet(e.target.value)}
+              required
+            />
+            <div className="required-note">Required</div>
+          </div>
+
+          <div>
+            <label className="alpha-label">Billing ZIP Code <span className="required-asterisk">*</span></label>
+            <input
+              type="text"
+              className="alpha-input"
+              value={billingZip}
+              onChange={(e) => setBillingZip(e.target.value)}
               required
             />
             <div className="required-note">Required</div>
