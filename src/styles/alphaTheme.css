@@ -343,11 +343,14 @@ dialog::backdrop {
   padding: 24px 28px;
   border-radius: 16px;
 }
-.payment-terminal-card .card-element-wrap {
-  padding: 12px;
+.payment-terminal-card .card-element-wrapper {
+  padding: 12px 14px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.04);
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 .payment-terminal-card form > div {
   margin-bottom: 10px;

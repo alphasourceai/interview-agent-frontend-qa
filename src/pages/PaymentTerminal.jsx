@@ -21,7 +21,10 @@ export default function PaymentTerminal() {
       toast.error('Enter a valid amount greater than 0.', { duration: 2000 });
       return;
     }
-    if (!stripe || !elements) return;
+    if (!stripe || !elements) {
+      toast.error('Payments are not ready yet. Please wait a moment.', { duration: 2000 });
+      return;
+    }
 
     const card = elements.getElement(CardElement);
     if (!card) {
@@ -98,8 +101,19 @@ export default function PaymentTerminal() {
 
           <div>
             <label className="alpha-label">Card details</label>
-            <div className="card-element-wrap">
-              <CardElement options={{ hidePostalCode: true }} />
+            <div className="card-element-wrapper">
+              <CardElement
+                options={{
+                  hidePostalCode: true,
+                  style: {
+                    base: {
+                      fontSize: '16px',
+                      color: '#ffffff',
+                      '::placeholder': { color: '#a0aec0' }
+                    }
+                  }
+                }}
+              />
             </div>
           </div>
 

@@ -28,7 +28,16 @@ import ProtectedRoute from './components/ProtectedRoute.jsx'
 import { supabase } from './lib/supabaseClient'
 import { useEffect } from 'react'
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+const publishableKey =
+  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
+  import.meta.env.STRIPE_PUBLISHABLE_KEY ||
+  '';
+
+if (!publishableKey) {
+  console.warn('Stripe publishable key missing. Payment terminal will not function.');
+}
+
+const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
 
 // --- Sentry (frontend) ---
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN
