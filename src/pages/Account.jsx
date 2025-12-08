@@ -143,7 +143,6 @@ function Account() {
           <select style={select} value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
             <option value="member">member</option>
             <option value="manager">manager</option>
-            <option value="admin">admin</option>
           </select>
           <button style={btn} onClick={invite}>Invite</button>
         </div>

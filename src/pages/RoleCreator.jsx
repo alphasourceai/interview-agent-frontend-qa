@@ -20,6 +20,7 @@ export default function RoleCreator() {
 
   const [loadingClients, setLoadingClients] = useState(true)
   const [err, setErr] = useState('')
+  const [roleByClient, setRoleByClient] = useState({})
 
   useEffect(() => {
     let alive = true
@@ -36,6 +37,8 @@ export default function RoleCreator() {
           setMessage('No client memberships found for this account.')
           return
         }
+        const roleMap = Object.fromEntries((me.memberships || []).map(m => [m.client_id, m.role || 'member']))
+        setRoleByClient(roleMap)
         const { clients: list } = await api.getMyClients(getToken)
         if (!alive) return
         setClients(Array.isArray(list) ? list : [])
@@ -55,6 +58,11 @@ export default function RoleCreator() {
 
   async function onSubmit(e) {
     e.preventDefault()
+    const role = roleByClient[clientId] || 'member'
+    if (role !== 'manager' && role !== 'admin') {
+      setMessage('You do not have permission to create roles for this client.')
+      return
+    }
     setSubmitting(true)
     setMessage('')
     try {

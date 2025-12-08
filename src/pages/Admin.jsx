@@ -73,7 +73,7 @@ export default function Admin() {
   const [members, setMembers] = useState([]);
   const [memberEmail, setMemberEmail] = useState('');
   const [memberName, setMemberName] = useState('');
-  const [memberRole, setMemberRole] = useState('member'); // member | manager | admin
+  const [memberRole, setMemberRole] = useState('member'); // member | manager
   const [confirmClient, setConfirmClient] = useState({ open: false, id: null });
   const [confirmRole, setConfirmRole] = useState({ open: false, id: null });
   const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
@@ -809,7 +809,6 @@ export default function Admin() {
               <select className="alpha-input alpha-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
                 <option value="member">Member</option>
                 <option value="manager">Manager</option>
-                <option value="admin">Admin</option>
               </select>
               <button disabled={!selectedClientId} onClick={addMember}>Add</button>
             </div>
