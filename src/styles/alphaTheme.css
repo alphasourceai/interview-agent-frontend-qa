@@ -370,3 +370,29 @@ dialog::backdrop {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.25);
 }
+.feedback-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.feedback-check-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.feedback-check-title {
+  font-weight: 600;
+}
+.feedback-check-desc {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.feedback-files {
+  margin-top: 6px;
+  padding-left: 16px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+.feedback-file-item {
+  list-style: disc;
+}

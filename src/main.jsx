@@ -16,6 +16,7 @@ const VerifyOtp = React.lazy(() => import('./pages/VerifyOtp.jsx'))
 const InterviewAccessPage = React.lazy(() => import('./pages/InterviewAccessPage.jsx'))
 const Admin = React.lazy(() => import('./pages/Admin.jsx'))
 const PaymentTerminal = React.lazy(() => import('./pages/PaymentTerminal.jsx'))
+const TesterFeedback = React.lazy(() => import('./pages/TesterFeedback.jsx'))
 
 const ClientDashboard = React.lazy(() => import('./pages/ClientDashboard.jsx'))
 const RoleCreator = React.lazy(() => import('./pages/RoleCreator.jsx'))
@@ -160,6 +161,7 @@ const router = createBrowserRouter([
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
   { path: '/admin', element: <Admin />, errorElement },
   { path: '/payment-terminal', element: <PaymentTerminal />, errorElement },
+  { path: '/tester-feedback', element: <TesterFeedback />, errorElement },
 
   // legacy single-page + role views
   { path: '/dashboard', element: <ProtectedRoute><ClientDashboard /></ProtectedRoute>, errorElement },
