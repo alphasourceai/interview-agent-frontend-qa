@@ -51,7 +51,15 @@ export default function PaymentTerminal() {
       const resp = await fetch(paymentsUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: amountNumber, description })
+        body: JSON.stringify({
+          amount: amountNumber,
+          description,
+          name,
+          company,
+          billingStreet,
+          billingZip,
+          email
+        })
       });
       const data = await resp.json();
       if (!resp.ok || !data?.clientSecret) {
