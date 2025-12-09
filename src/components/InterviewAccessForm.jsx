@@ -178,7 +178,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           <div className="text-green-300 text-sm">Candidate created. OTP emailed.</div>
         ) : (
           <>
-            <div className="client-dash-file-wrapper">
+            <div className="client-dash-file-wrapper interview-resume-wrapper">
               <CustomFilePicker
                 accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onFileSelected={onResumeSelected}

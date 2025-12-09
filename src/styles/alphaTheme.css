@@ -449,6 +449,17 @@ dialog::backdrop {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.interview-resume-wrapper .client-dash-file-picker {
+  max-width: 272px;
+  width: 100%;
+}
+.interview-resume-wrapper .client-dash-dropzone {
+  max-width: 272px;
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  padding-inline: 8px;
+}
 .client-dash-file-hidden {
   position: absolute;
   width: 1px;
