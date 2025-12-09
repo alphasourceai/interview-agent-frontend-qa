@@ -203,8 +203,12 @@
   grid-template-columns: 1fr 1.5fr;
   gap: var(--alpha-gap);
 }
+.interview-access-grid{
+  grid-template-columns: 1fr 1fr 272px;
+}
 @media (max-width: 768px){
   .alpha-form-grid{ grid-template-columns: 1fr; }
+  .interview-access-grid{ grid-template-columns: 1fr; }
 }
 .alpha-col-span-2{ grid-column: 1 / -1; }
 
@@ -216,6 +220,11 @@
 
 /* small filename text under the resume button */
 .alpha-form .file-note{ margin-top:4px; font-size:12px; opacity:.8; }
+.interview-submit-wrapper{
+  width: 272px;
+  display: flex;
+  justify-content: flex-end;
+}
 
 /* Centered block for Start Interview + bottom padding */
 .start-block {

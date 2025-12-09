@@ -106,8 +106,8 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
   const isLocked = submitted;
 
   return (
-    // INTERNAL 2-column grid (1fr | 1.5fr). This whole form sits across cols 1–2
-    <form onSubmit={onSubmit} className="alpha-form-grid gap-y-4">
+    // INTERNAL 3-column grid (1fr | 1fr | 272px). This whole form sits across cols 1–3
+    <form onSubmit={onSubmit} className="alpha-form-grid interview-access-grid gap-y-4">
       {/* First / Last (row 1) */}
       <div>
         <label className="alpha-label">First name <span className="required-asterisk">*</span></label>
@@ -194,7 +194,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
       </div>
 
       {/* Submit (right column, row 3) */}
-      <div className="flex justify-end">
+      <div className="interview-submit-wrapper">
         {isLocked ? (
           <div className="text-green-300 text-sm self-center">Form submitted.</div>
         ) : (
