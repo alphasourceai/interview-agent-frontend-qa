@@ -146,12 +146,12 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           onChange={onChange}
           onBlur={() => setEmailError(isValidEmail(form.email) ? '' : (form.email ? 'Please enter a valid email address.' : ''))}
           required
+          placeholder="e.g. name@example.com"
           className={`alpha-input w-full ${emailError ? 'input-error' : ''}`}
           disabled={isLocked}
         />
-        <div className="required-note">Required</div>
-        <div className="required-note">e.g. name@example.com</div>
         {emailError && <div className="input-error-text">{emailError}</div>}
+        <div className="required-note">Required</div>
       </div>
       <div>
         <label className="alpha-label">Phone <span className="required-asterisk">*</span></label>
@@ -169,7 +169,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           onBlur={() => setPhoneError(form.phone ? (isValidPhone(form.phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.') : '')}
         />
         {phoneError && <div className="input-error-text">{phoneError}</div>}
-        <div className="required-note">Allowed formats: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.</div>
+        <div className="required-note">Required</div>
       </div>
 
       {/* Upload Resume (left column, row 3) */}
