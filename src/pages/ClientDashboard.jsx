@@ -1,6 +1,7 @@
 // src/pages/ClientDashboard.jsx
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
+import { IconTrash } from '@tabler/icons-react'
 import SignOutButton from '../components/SignOutButton.jsx'
 import '../styles/clientDashboard.css';
 
@@ -745,7 +746,7 @@ export default function ClientDashboard() {
       )}
 
       {activeTab === 'candidates' && (
-        <>
+        <div className="client-dash-card">
           {/* Filters: Role + Min Overall */}
           <div className="filters">
             <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
@@ -789,7 +790,7 @@ export default function ClientDashboard() {
               )}
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {!hasMembership && !loading && (
@@ -1000,7 +1001,9 @@ export default function ClientDashboard() {
                           <button className="btn lilac" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
                         </div>
                         <div className="center">
-                          <button className="btn lilac" onClick={() => deleteRole(r.id)}>Delete</button>
+                          <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
+                            <IconTrash size={20} />
+                          </button>
                         </div>
                       </div>
                     );
@@ -1066,7 +1069,9 @@ export default function ClientDashboard() {
                       <div className="muted">{m.email}</div>
                       <div>{m.role || 'member'}</div>
                       <div className="center">
-                        <button className="btn lilac" onClick={() => removeMember(m.id)}>Remove</button>
+                        <button className="btn-icon" onClick={() => removeMember(m.id)} title="Remove member">
+                          <IconTrash size={20} />
+                        </button>
                       </div>
                     </div>
                   ))}
