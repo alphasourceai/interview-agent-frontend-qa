@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
 import SignOutButton from '../components/SignOutButton.jsx'
+import CustomFilePicker from '../components/CustomFilePicker'
 import '../styles/clientDashboard.css';
 
 // --- Dashboard enhancements: sorting, filtering, tooltips (no summaries) ---
@@ -934,14 +935,13 @@ export default function ClientDashboard() {
                 <option value="TECHNICAL">TECHNICAL</option>
               </select>
               <div className="client-dash-file-wrapper">
-                <input
+                <CustomFilePicker
                   key={fileKey}
-                  className="alpha-input file client-dash-input client-dash-file-input"
-                  type="file"
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={e => setJobFile(e.target.files?.[0] || null)}
-                  aria-label="Job Description file (PDF or DOCX)"
-                  ref={fileInputRef}
+                  accept=".pdf,.doc,.docx,application/pdf"
+                  onFileSelected={handleRoleFileFromPicker}
+                  label="Drag JD file here or click to browse"
+                  className="client-dash-input client-dash-file-input"
+                  inputRef={fileInputRef}
                 />
               </div>
               {jobFile && (
@@ -1247,3 +1247,6 @@ function Meter({ label, value }) {
     </div>
   )
 }
+  const handleRoleFileFromPicker = (file) => {
+    setJobFile(file || null);
+  };

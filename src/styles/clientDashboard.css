@@ -287,6 +287,46 @@
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.3);
 }
+.client-dash-file-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.client-dash-file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 16px;
+  background: var(--alpha-input-bg, rgba(255,255,255,0.04));
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.18));
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--alpha-text, #EBFEFF);
+  font-weight: 600;
+}
+.client-dash-file-picker:hover,
+.client-dash-file-picker.is-hovered {
+  border-color: rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.08);
+}
+.client-dash-file-picker-icon {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.client-dash-file-picker-label {
+  flex: 1;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Pill buttons (reuse tab/logout visual) */
 .client-dash-pill {
