@@ -1,7 +1,6 @@
 // src/pages/ClientDashboard.jsx
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
-import { IconTrash } from '@tabler/icons-react'
 import SignOutButton from '../components/SignOutButton.jsx'
 import '../styles/clientDashboard.css';
 
@@ -745,6 +744,20 @@ export default function ClientDashboard() {
         </div>
       )}
 
+      {!hasMembership && !loading && (
+        <div
+          style={{
+            background: '#fff3cd',
+            border: '1px solid #ffeeba',
+            padding: 12,
+            borderRadius: 8,
+            marginTop: 8
+          }}
+        >
+          You are signed in but not a member of any client yet.
+        </div>
+      )}
+
       {activeTab === 'candidates' && (
         <div className="client-dash-card">
           {/* Filters: Role + Min Overall */}
@@ -790,25 +803,7 @@ export default function ClientDashboard() {
               )}
             </div>
           </div>
-        </div>
-      )}
 
-      {!hasMembership && !loading && (
-        <div
-          style={{
-            background: '#fff3cd',
-            border: '1px solid #ffeeba',
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 8
-          }}
-        >
-          You are signed in but not a member of any client yet.
-        </div>
-      )}
-
-      {activeTab === 'candidates' && (
-        <>
           {loading && <div>Loading…</div>}
           {!loading && displayRows.length === 0 && <div>No rows yet.</div>}
 
@@ -914,7 +909,7 @@ export default function ClientDashboard() {
               )}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {activeTab === 'roles' && (
@@ -1002,7 +997,12 @@ export default function ClientDashboard() {
                         </div>
                         <div className="center">
                           <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
-                            <IconTrash size={20} />
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                              <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
                           </button>
                         </div>
                       </div>
@@ -1070,7 +1070,12 @@ export default function ClientDashboard() {
                       <div>{m.role || 'member'}</div>
                       <div className="center">
                         <button className="btn-icon" onClick={() => removeMember(m.id)} title="Remove member">
-                          <IconTrash size={20} />
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                            <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                            <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                          </svg>
                         </button>
                       </div>
                     </div>
