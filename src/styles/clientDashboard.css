@@ -181,6 +181,7 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 12px;
+  align-items: center;
 }
 .client-dash-row .alpha-input {
   min-width: 160px;
@@ -250,10 +251,18 @@
 .client-dash-card .alpha-select,
 .client-dash-card .btn.lilac,
 .client-dash-card .btn-icon {
+  height: 52px;
   min-height: 52px;
   line-height: 1.2;
   display: inline-flex;
   align-items: center;
+}
+.client-dash-card .alpha-input,
+.client-dash-card .alpha-select {
+  padding: 0 14px;
+}
+.client-dash-card input[type="file"].client-dash-input {
+  padding: 0 14px;
 }
 .client-dash-card .btn-icon {
   background: transparent;
@@ -261,10 +270,6 @@
   color: #fff;
   width: 52px;
   justify-content: center;
-}
-.client-dash-card .alpha-input,
-.client-dash-card .alpha-select {
-  padding: 12px 14px;
 }
 .client-dash-card .btn-icon:hover {
   background: rgba(255,255,255,0.08);
@@ -274,7 +279,9 @@
 /* Pill buttons (reuse tab/logout visual) */
 .client-dash-pill {
   border-radius: 999px !important;
-  padding: 12px 16px !important;
+  padding: 0 16px !important;
+  height: 52px;
+  min-height: 52px;
   font-weight: 700 !important;
 }
 .client-dash-pill.btn.lilac {
