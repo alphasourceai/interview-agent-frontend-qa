@@ -344,30 +344,31 @@ export default function ClientDashboard() {
     }
   }
 
-  // Fetch roles when needed
-  useEffect(() => {
-    if (!clientId || !canManage || activeTab !== 'roles') {
+  const fetchRolesForClient = async (clientIdArg) => {
+    const targetId = clientIdArg || clientId;
+    if (!targetId || !canManage) {
       setRoles([]);
       return;
     }
-    let alive = true;
-    (async () => {
-      try {
-        setRolesLoading(true);
-        const qs = `?client_id=${encodeURIComponent(clientId)}`;
-        const resp = await apiGet('/roles' + qs);
-        if (!alive) return;
-        const items = resp?.roles || [];
-        items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-        setRoles(items);
-      } catch (e) {
-        if (!alive) return;
-        showToast(String(e?.message || 'Failed to load roles'), 'error');
-      } finally {
-        if (alive) setRolesLoading(false);
-      }
-    })();
-    return () => { alive = false; };
+    setRolesLoading(true);
+    try {
+      const qs = `?client_id=${encodeURIComponent(targetId)}`;
+      const resp = await apiGet('/admin/roles' + qs);
+      const items = resp?.items || [];
+      items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      setRoles(items);
+    } catch (e) {
+      showToast(String(e?.message || 'Failed to load roles'), 'error');
+    } finally {
+      setRolesLoading(false);
+    }
+  };
+
+  // Fetch roles when needed
+  useEffect(() => {
+    if (activeTab !== 'roles') return;
+    fetchRolesForClient(clientId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, canManage, activeTab]);
 
   // Fetch members when needed
@@ -450,11 +451,7 @@ export default function ClientDashboard() {
         showToast('Role created, but JD processing failed: ' + e.message, 'error');
       }
       // refresh
-      const qs = `?client_id=${encodeURIComponent(clientId)}`;
-      const resp2 = await apiGet('/roles' + qs);
-      const items = resp2?.roles || [];
-      items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-      setRoles(items);
+      await fetchRolesForClient(clientId);
       setNewRoleTitle('');
       setJobFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
