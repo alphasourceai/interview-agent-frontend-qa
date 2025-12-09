@@ -933,15 +933,17 @@ export default function ClientDashboard() {
                 <option value="DETAILED">DETAILED</option>
                 <option value="TECHNICAL">TECHNICAL</option>
               </select>
-              <input
-                key={fileKey}
-                className="alpha-input file client-dash-input"
-                type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                onChange={e => setJobFile(e.target.files?.[0] || null)}
-                aria-label="Job Description file (PDF or DOCX)"
-                ref={fileInputRef}
-              />
+              <div className="client-dash-file-wrapper">
+                <input
+                  key={fileKey}
+                  className="alpha-input file client-dash-input"
+                  type="file"
+                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={e => setJobFile(e.target.files?.[0] || null)}
+                  aria-label="Job Description file (PDF or DOCX)"
+                  ref={fileInputRef}
+                />
+              </div>
               {jobFile && (
                 <button
                   type="button"
