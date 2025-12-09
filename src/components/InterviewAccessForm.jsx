@@ -149,8 +149,9 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           className={`alpha-input w-full ${emailError ? 'input-error' : ''}`}
           disabled={isLocked}
         />
-        {emailError && <div className="input-error-text">{emailError}</div>}
         <div className="required-note">Required</div>
+        <div className="required-note">e.g. name@example.com</div>
+        {emailError && <div className="input-error-text">{emailError}</div>}
       </div>
       <div>
         <label className="alpha-label">Phone <span className="required-asterisk">*</span></label>
