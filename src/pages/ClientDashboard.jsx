@@ -936,7 +936,7 @@ export default function ClientDashboard() {
               <div className="client-dash-file-wrapper">
                 <input
                   key={fileKey}
-                  className="alpha-input file client-dash-input"
+                  className="alpha-input file client-dash-input client-dash-file-input"
                   type="file"
                   accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                   onChange={e => setJobFile(e.target.files?.[0] || null)}
