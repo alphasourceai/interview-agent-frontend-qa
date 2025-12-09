@@ -3,8 +3,10 @@
 
 import React, { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
+import CustomFilePicker from './CustomFilePicker';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})$/.test(String(value || '').trim());
 
 function joinUrl(base, path) {
   if (!base) return path;
@@ -29,6 +31,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -37,7 +40,9 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
     setForm((prev) => ({ ...prev, [name]: files ? files[0] : value }));
   };
 
-  const onPickResume = () => fileInputRef.current?.click();
+  const onResumeSelected = (file) => {
+    setForm((prev) => ({ ...prev, resume: file || null }));
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +53,13 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
       return;
     }
     setEmailError('');
+
+    if (!isValidPhone(form.phone)) {
+      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.');
+      toast.error('Enter a valid phone number.', { duration: 1500 });
+      return;
+    }
+    setPhoneError('');
 
     if (!roleToken) {
       setError('Missing role link. Please use the correct interview URL.');
@@ -147,37 +159,34 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           name="phone"
           value={form.phone}
           onChange={onChange}
-          placeholder="Digits only"
+          placeholder="e.g. (555) 123-4567 or 555-123-4567"
           required
-          inputMode="numeric"
-          pattern="[0-9]{7,15}"
-          title="Enter 7–15 digits"
+          inputMode="tel"
           autoComplete="tel"
           className="alpha-input w-full"
           disabled={isLocked}
+          onBlur={() => setPhoneError(form.phone ? (isValidPhone(form.phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.') : '')}
         />
-        <div className="required-note">Required</div>
+        {phoneError && <div className="input-error-text">{phoneError}</div>}
+        <div className="required-note">Allowed formats: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.</div>
       </div>
 
       {/* Upload Resume (left column, row 3) */}
       <div>
-        <label className="alpha-label">Resume <span className="required-asterisk">*</span></label>
         {isLocked ? (
           <div className="text-green-300 text-sm">Candidate created. OTP emailed.</div>
         ) : (
           <>
-            <button type="button" onClick={onPickResume} className="btn-lg">
-              + Add Resume
-            </button>
+            <div className="client-dash-file-wrapper">
+              <CustomFilePicker
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onFileSelected={onResumeSelected}
+                label="Drag resume here or click to browse"
+                className="client-dash-dropzone client-dash-input client-dash-file-input"
+                inputRef={fileInputRef}
+              />
+            </div>
             {form.resume && <div className="mt-1 text-xs opacity-80">{form.resume.name}</div>}
-            <input
-              ref={fileInputRef}
-              type="file"
-              name="resume"
-              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              onChange={onChange}
-              className="hidden"
-            />
           </>
         )}
         <div className="required-note">Required</div>

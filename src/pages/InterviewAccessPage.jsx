@@ -374,56 +374,56 @@ useEffect(() => {
 
       {/* Forms + actions are shown until the room URL actually exists */}
       {!roomUrl && (
-        <div className="alpha-form">
-          <div className="alpha-form-grid-3">
-            {/* Step 1 spans columns 1–2 */}
-            <div className="alpha-span-2">
-              <InterviewAccessForm
-                roleToken={roleToken}
-                onSubmitted={(payload) => {
-                  setSubmitted(payload);
-                  setVerified(false);
-                  setRoomUrl('');
-                  setTimeout(pingEmbedSize, 80);
-                }}
-              />
-            </div>
-
-            {/* Step 2 only renders once Step 1 is submitted */}
-            {submitted ? (
-              <OtpInline
-                email={submitted.email}
-                candidateId={submitted.candidate_id}
-                roleId={submitted.role_id}
-                onVerified={(info) => {
-                  setVerified(true);
-                  setSubmitted((s) => ({ ...(s || {}), ...info }));
-                  setTimeout(pingEmbedSize, 80);
-                }}
-                onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
-              />
-            ) : (
-              <div className="alpha-step2">
-                {/* Hidden until submitted; left here for layout stability if needed */}
-              </div>
-            )}
+      <div className="alpha-form">
+        <div className="alpha-form-grid-3">
+          {/* Step 1 spans columns 1–2 */}
+          <div className="alpha-span-2">
+            <InterviewAccessForm
+              roleToken={roleToken}
+              onSubmitted={(payload) => {
+                setSubmitted(payload);
+                setVerified(false);
+                setRoomUrl('');
+                setTimeout(pingEmbedSize, 80);
+              }}
+            />
           </div>
 
-          {/* Start Interview appears ONLY after verified; centered below the grid */}
-          {verified && (
-            <div className="start-block">
-              <button
-                type="button"
-                disabled={!canStart || starting}
-                onClick={startInterview}
-                className="btn-xl btn-outline-lilac btn-wide"
-              >
-                {starting ? 'Starting…' : 'Start Interview'}
-              </button>
+          {/* Step 2 only renders once Step 1 is submitted */}
+          {submitted ? (
+            <OtpInline
+              email={submitted.email}
+              candidateId={submitted.candidate_id}
+              roleId={submitted.role_id}
+              onVerified={(info) => {
+                setVerified(true);
+                setSubmitted((s) => ({ ...(s || {}), ...info }));
+                setTimeout(pingEmbedSize, 80);
+              }}
+              onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
+            />
+          ) : (
+            <div className="alpha-step2">
+              {/* Hidden until submitted; left here for layout stability if needed */}
             </div>
           )}
-          {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
         </div>
+
+        {/* Start Interview appears ONLY after verified; centered below the grid */}
+        {verified && (
+          <div className="start-block">
+            <button
+              type="button"
+              disabled={!canStart || starting}
+              onClick={startInterview}
+              className="btn-xl btn-outline-lilac btn-wide"
+            >
+              {starting ? 'Starting…' : 'Start Interview'}
+            </button>
+          </div>
+        )}
+        {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
+      </div>
       )}
 
       {/* Page-scoped CSS for the Tavus slot */}
