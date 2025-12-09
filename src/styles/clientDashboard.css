@@ -262,9 +262,29 @@
   width: 52px;
   justify-content: center;
 }
+.client-dash-card .alpha-input,
+.client-dash-card .alpha-select {
+  padding: 12px 14px;
+}
 .client-dash-card .btn-icon:hover {
   background: rgba(255,255,255,0.08);
   border-color: rgba(255,255,255,0.3);
+}
+
+/* Pill buttons (reuse tab/logout visual) */
+.client-dash-pill {
+  border-radius: 999px !important;
+  padding: 12px 16px !important;
+  font-weight: 700 !important;
+}
+.client-dash-pill.btn.lilac {
+  background: var(--alpha-primary, #AD8BF7);
+  border-color: var(--alpha-primary, #AD8BF7);
+  color: #fff;
+}
+.client-dash-pill.btn.lilac:hover {
+  background: var(--alpha-primary-strong, #854DFF);
+  border-color: var(--alpha-primary-strong, #854DFF);
 }
 
 /* ------- parity tweaks (buttons, header sorts, video font) ------- */
@@ -287,8 +307,8 @@
 .client-dash th button {
   appearance: none;
   border: 1px solid var(--alpha-primary, #AD8BF7) !important;
-  padding: 6px 10px !important;
-  border-radius: 6px !important;
+  padding: 10px 14px !important;
+  border-radius: 999px !important;
   background: var(--alpha-primary, #AD8BF7) !important;
   color: #fff !important;
   cursor: pointer;
@@ -296,7 +316,7 @@
   display: inline-flex;
   gap: 6px;
   align-items: center;
-  font-weight: 600;
+  font-weight: 700;
 }
 .client-dash th button:hover {
   background: var(--alpha-primary-strong, #854DFF) !important;

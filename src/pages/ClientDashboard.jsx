@@ -41,13 +41,13 @@ function HeaderButton({ label, active, dir, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="btn lilac"
+      className="btn lilac client-dash-pill client-dash-sort"
       style={{
         ...btn,
-        background: active ? '#AD8BF7' : '#f9fafb',
-        color: active ? '#fff' : '#111',
-        borderColor: active ? '#AD8BF7' : '#e5e7eb',
-        padding: '4px 8px'
+        background: active ? '#AD8BF7' : undefined,
+        color: active ? '#fff' : undefined,
+        borderColor: active ? '#AD8BF7' : undefined,
+        padding: undefined
       }}
       title={`Sort by ${label}`}
       aria-pressed={active}
@@ -795,8 +795,7 @@ export default function ClientDashboard() {
                 <button
                   type="button"
                   onClick={() => setMinOverall('')}
-                  className="btn lilac"
-                  style={{ ...btn, background:'#AD8BF7', color:'#fff', borderColor:'#AD8BF7' }}
+                  className="btn lilac client-dash-pill"
                 >
                   Clear
                 </button>
@@ -920,13 +919,13 @@ export default function ClientDashboard() {
             </div>
             <div className="client-dash-row">
               <input
-                className="alpha-input"
+                className="alpha-input client-dash-input"
                 placeholder="Role title"
                 value={newRoleTitle}
                 onChange={e => setNewRoleTitle(e.target.value)}
               />
               <select
-                className="alpha-input alpha-select"
+                className="alpha-input alpha-select client-dash-input"
                 value={interviewType}
                 onChange={e => setInterviewType(e.target.value)}
               >
@@ -936,7 +935,7 @@ export default function ClientDashboard() {
               </select>
               <input
                 key={fileKey}
-                className="alpha-input file"
+                className="alpha-input file client-dash-input"
                 type="file"
                 accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 onChange={e => setJobFile(e.target.files?.[0] || null)}
@@ -958,7 +957,7 @@ export default function ClientDashboard() {
               )}
               <button
                 type="button"
-                className="btn lilac"
+                className="btn lilac client-dash-pill"
                 disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
                 onClick={createRole}
               >
@@ -993,7 +992,7 @@ export default function ClientDashboard() {
                         <div className="center">{hasKB ? '✓' : '—'}</div>
                         <div className="center">{hasJD ? '✓' : '—'}</div>
                         <div>
-                          <button className="btn lilac" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
+                          <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
                         </div>
                         <div className="center">
                           <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
@@ -1028,26 +1027,26 @@ export default function ClientDashboard() {
             </div>
             <div className="client-dash-row">
               <input
-                className="alpha-input"
+                className="alpha-input client-dash-input"
                 placeholder="Member name"
                 value={memberName}
                 onChange={e => setMemberName(e.target.value)}
               />
               <input
-                className="alpha-input"
+                className="alpha-input client-dash-input"
                 placeholder="Member email"
                 value={memberEmail}
                 onChange={e => setMemberEmail(e.target.value)}
               />
               <select
-                className="alpha-input alpha-select"
+                className="alpha-input alpha-select client-dash-input"
                 value={memberRole}
                 onChange={e => setMemberRole(e.target.value)}
               >
                 <option value="member">Member</option>
                 <option value="manager">Manager</option>
               </select>
-              <button type="button" className="btn lilac" disabled={!clientId} onClick={addMember}>Add</button>
+              <button type="button" className="btn lilac client-dash-pill" disabled={!clientId} onClick={addMember}>Add</button>
             </div>
 
             {membersLoading && <div className="client-dash-muted">Loading members…</div>}
