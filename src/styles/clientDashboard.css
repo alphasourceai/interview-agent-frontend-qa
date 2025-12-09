@@ -158,12 +158,91 @@
 
 /* Card wrapper for Roles/Members panels */
 .client-dash-card {
-  background: linear-gradient(180deg, rgba(19, 26, 64, 0.94), rgba(13, 18, 48, 0.94));
-  border: 1px solid var(--alpha-border, rgba(255,255,255,0.12));
+  background: linear-gradient(180deg, rgba(16, 21, 46, 0.95), rgba(12, 16, 36, 0.95));
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.16));
   border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+  padding: 16px 18px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.32);
   color: var(--alpha-text, #EBFEFF);
+}
+.client-dash-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.client-dash-section-head h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--alpha-text, #EBFEFF);
+}
+.client-dash-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.client-dash-row .alpha-input {
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+.client-dash-row button {
+  flex: 0 0 auto;
+}
+
+/* Table-like list mirroring admin layout */
+.client-dash-table {
+  margin-top: 4px;
+}
+.client-dash-table .t-head,
+.client-dash-table .t-row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 0.9fr 0.5fr 0.5fr 0.9fr 0.8fr;
+  gap: 8px;
+  align-items: center;
+}
+.client-dash-table.members .t-head,
+.client-dash-table.members .t-row {
+  grid-template-columns: 2fr 1.6fr 0.8fr 0.7fr;
+}
+.client-dash-table .t-head {
+  font-weight: 700;
+  color: var(--alpha-text, #EBFEFF);
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px 8px 0 0;
+}
+.client-dash-table .t-body {
+  display: flex;
+  flex-direction: column;
+}
+.client-dash-table .t-row {
+  padding: 10px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  color: var(--alpha-text, #EBFEFF);
+}
+.client-dash-table .t-row:last-child {
+  border-bottom: none;
+}
+.client-dash-table .t-row .title {
+  font-weight: 700;
+  color: #fff;
+}
+.client-dash-table .t-row .sub {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+.client-dash-table .center {
+  text-align: center;
+}
+.client-dash-table .t-empty {
+  padding: 12px 8px;
+  color: rgba(255,255,255,0.7);
+}
+.client-dash-muted {
+  color: rgba(255,255,255,0.7);
+  margin-top: 4px;
 }
 
 /* ------- parity tweaks (buttons, header sorts, video font) ------- */

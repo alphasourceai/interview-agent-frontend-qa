@@ -919,14 +919,15 @@ export default function ClientDashboard() {
       {activeTab === 'roles' && (
         canManage ? (
           <div className="client-dash-card">
-            <h2 style={{ marginTop: 0 }}>Roles for {currentName}</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <div className="client-dash-section-head">
+              <h2>Roles for {currentName}</h2>
+            </div>
+            <div className="client-dash-row">
               <input
                 className="alpha-input"
                 placeholder="Role title"
                 value={newRoleTitle}
                 onChange={e => setNewRoleTitle(e.target.value)}
-                style={{ minWidth: 180 }}
               />
               <select
                 className="alpha-input alpha-select"
@@ -945,7 +946,6 @@ export default function ClientDashboard() {
                 onChange={e => setJobFile(e.target.files?.[0] || null)}
                 aria-label="Job Description file (PDF or DOCX)"
                 ref={fileInputRef}
-                style={{ maxWidth: 240 }}
               />
               {jobFile && (
                 <button
@@ -970,11 +970,17 @@ export default function ClientDashboard() {
               </button>
             </div>
 
-            {rolesLoading && <div>Loading roles…</div>}
+            {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
             {!rolesLoading && (
-              <div className="table like" style={{ marginTop: 8 }}>
+              <div className="client-dash-table">
                 <div className="t-head">
-                  <div>Role</div><div>Created</div><div>Type</div><div>KB</div><div>JD</div><div>Link</div><div>Delete</div>
+                  <div>Role</div>
+                  <div>Created</div>
+                  <div>Type</div>
+                  <div>KB</div>
+                  <div>JD</div>
+                  <div>Link</div>
+                  <div>Delete</div>
                 </div>
                 <div className="t-body">
                   {roles.map(r => {
@@ -991,7 +997,7 @@ export default function ClientDashboard() {
                         <div className="center">{hasKB ? '✓' : '—'}</div>
                         <div className="center">{hasJD ? '✓' : '—'}</div>
                         <div>
-                          <button onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
+                          <button className="btn lilac" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
                         </div>
                         <div className="center">
                           <button className="btn lilac" onClick={() => deleteRole(r.id)}>Delete</button>
@@ -1014,21 +1020,21 @@ export default function ClientDashboard() {
       {activeTab === 'members' && (
         canManage ? (
           <div className="client-dash-card">
-            <h2 style={{ marginTop: 0 }}>Client Members for {currentName}</h2>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            <div className="client-dash-section-head">
+              <h2>Client Members for {currentName}</h2>
+            </div>
+            <div className="client-dash-row">
               <input
                 className="alpha-input"
                 placeholder="Member name"
                 value={memberName}
                 onChange={e => setMemberName(e.target.value)}
-                style={{ minWidth: 180 }}
               />
               <input
                 className="alpha-input"
                 placeholder="Member email"
                 value={memberEmail}
                 onChange={e => setMemberEmail(e.target.value)}
-                style={{ minWidth: 200 }}
               />
               <select
                 className="alpha-input alpha-select"
@@ -1041,19 +1047,31 @@ export default function ClientDashboard() {
               <button type="button" className="btn lilac" disabled={!clientId} onClick={addMember}>Add</button>
             </div>
 
-            {membersLoading && <div>Loading members…</div>}
+            {membersLoading && <div className="client-dash-muted">Loading members…</div>}
             {!membersLoading && (
-              <div className="list list--rows" id="members-list">
-                {members.map(m => (
-                  <div key={m.id} className="list-row" style={{ alignItems: 'center' }}>
-                    <div className="grow">
-                      <div className="title">{m.name}</div>
-                      <div className="sub">{m.email} • {m.role || 'member'}</div>
+              <div className="client-dash-table members">
+                <div className="t-head">
+                  <div>Name</div>
+                  <div>Email</div>
+                  <div>Role</div>
+                  <div>Remove</div>
+                </div>
+                <div className="t-body">
+                  {members.map(m => (
+                    <div key={m.id} className="t-row">
+                      <div className="grow">
+                        <div className="title">{m.name}</div>
+                        <div className="sub">{m.email}</div>
+                      </div>
+                      <div className="muted">{m.email}</div>
+                      <div>{m.role || 'member'}</div>
+                      <div className="center">
+                        <button className="btn lilac" onClick={() => removeMember(m.id)}>Remove</button>
+                      </div>
                     </div>
-                    <button className="btn lilac" onClick={() => removeMember(m.id)}>Remove</button>
-                  </div>
-                ))}
-                {members.length === 0 && <div className="t-empty muted">No members yet</div>}
+                  ))}
+                  {members.length === 0 && <div className="t-empty muted">No members yet</div>}
+                </div>
               </div>
             )}
           </div>
