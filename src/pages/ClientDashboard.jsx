@@ -221,7 +221,7 @@ export default function ClientDashboard() {
   }
 
   // Tab selector
-  const [activeTab, setActiveTab] = useState('candidates'); // candidates | roles | members
+  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -263,6 +263,13 @@ export default function ClientDashboard() {
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
     'member'
   const canManage = currentRole === 'manager' || currentRole === 'admin';
+
+  useEffect(() => {
+    if (activeTab === 'roles') return;
+    if (!canManage && activeTab === 'members') {
+      setActiveTab('candidates');
+    }
+  }, [canManage, activeTab]);
 
   const pctText = (v) =>
     (typeof v === 'number' && isFinite(v)) || v === 0
@@ -719,28 +726,26 @@ export default function ClientDashboard() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <button
             type="button"
+            onClick={() => setActiveTab('roles')}
+            className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
+          >
+            Roles
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('candidates')}
             className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
           >
             Candidates
           </button>
           {canManage && (
-            <>
-              <button
-                type="button"
-                onClick={() => setActiveTab('roles')}
-                className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
-              >
-                Roles
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('members')}
-                className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
-              >
-                Members
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setActiveTab('members')}
+              className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
+            >
+              Members
+            </button>
           )}
         </div>
       )}
@@ -913,11 +918,11 @@ export default function ClientDashboard() {
       )}
 
       {activeTab === 'roles' && (
-        canManage ? (
-          <div className="client-dash-card">
-            <div className="client-dash-section-head">
-              <h2>Roles for {currentName}</h2>
-            </div>
+        <div className="client-dash-card">
+          <div className="client-dash-section-head">
+            <h2>Roles for {currentName}</h2>
+          </div>
+          {canManage && (
             <div className="client-dash-row">
               <input
                 className="alpha-input client-dash-input"
@@ -966,36 +971,38 @@ export default function ClientDashboard() {
                 {roleBusy ? 'Creating…' : 'Create'}
               </button>
             </div>
+          )}
 
-            {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
-            {!rolesLoading && (
-              <div className="client-dash-table">
-                <div className="t-head">
-                  <div>Role</div>
-                  <div>Created</div>
-                  <div>Type</div>
-                  <div>KB</div>
-                  <div>JD</div>
-                  <div>Link</div>
-                  <div>Delete</div>
-                </div>
-                <div className="t-body">
-                  {roles.map(r => {
-                    const hasKB = !!r.kb_document_id;
-                    const hasJD = !!r.job_description_url || !!r.description;
-                    return (
-                      <div key={r.id} className="t-row">
-                        <div>
-                          <div className="title">{r.title}</div>
-                          <div className="sub">Token: {r.slug_or_token}</div>
-                        </div>
-                        <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                        <div>{r.interview_type || '—'}</div>
-                        <div className="center">{hasKB ? '✓' : '—'}</div>
-                        <div className="center">{hasJD ? '✓' : '—'}</div>
-                        <div>
-                          <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
-                        </div>
+          {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
+          {!rolesLoading && (
+            <div className="client-dash-table">
+              <div className="t-head">
+                <div>Role</div>
+                <div>Created</div>
+                <div>Type</div>
+                <div>KB</div>
+                <div>JD</div>
+                <div>Link</div>
+                {canManage && <div>Delete</div>}
+              </div>
+              <div className="t-body">
+                {roles.map(r => {
+                  const hasKB = !!r.kb_document_id;
+                  const hasJD = !!r.job_description_url || !!r.description;
+                  return (
+                    <div key={r.id} className="t-row">
+                      <div>
+                        <div className="title">{r.title}</div>
+                        <div className="sub">Token: {r.slug_or_token}</div>
+                      </div>
+                      <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                      <div>{r.interview_type || '—'}</div>
+                      <div className="center">{hasKB ? '✓' : '—'}</div>
+                      <div className="center">{hasJD ? '✓' : '—'}</div>
+                      <div>
+                        <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
+                      </div>
+                      {canManage && (
                         <div className="center">
                           <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1006,19 +1013,15 @@ export default function ClientDashboard() {
                             </svg>
                           </button>
                         </div>
-                      </div>
-                    );
-                  })}
-                  {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
-                </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
               </div>
-            )}
-          </div>
-        ) : (
-          <div className="client-dash-card">
-            You don’t have permission to manage roles for this client.
-          </div>
-        )
+            </div>
+          )}
+        </div>
       )}
 
       {activeTab === 'members' && (
