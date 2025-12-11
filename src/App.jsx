@@ -8,12 +8,14 @@ import ClientDashboard from './pages/ClientDashboard';
 import RoleCreator from './pages/RoleCreator';
 import RoleReports from './pages/RoleReports';
 import RoleCandidates from './pages/RoleCandidates';
+import AcceptInvite from './pages/AcceptInvite';
 
 function App() {
   return (
     <Routes>
       {/* Public */}
       <Route path="/signin" element={<SignIn />} />    {/* ⬅ add */}
+      <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route path="/interview-access/:role_token" element={<InterviewAccessPage />} />
       <Route path="/verify-otp" element={<VerifyOtp />} />
 

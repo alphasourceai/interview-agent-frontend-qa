@@ -81,7 +81,15 @@ function Account() {
       setInviteName(""); setInviteEmail(""); setInviteRole("member");
       await refresh();
       toast.success("Invitation sent", { duration: 1000 });
-    } catch (e) { setError(e.message || "Invite failed"); toast.error(e.message || "Invite failed", { duration: 2000 }); }
+    } catch (e) {
+      const code = e?.response?.data?.error;
+      if (code === "email_in_use") {
+        toast.error("That email is already in use for another account. Please use a different email or sign in as that user.", { duration: 2000 });
+      } else {
+        setError(e.message || "Invite failed");
+        toast.error(e.message || "Invite failed", { duration: 2000 });
+      }
+    }
   }
 
   async function revoke(user_id) {

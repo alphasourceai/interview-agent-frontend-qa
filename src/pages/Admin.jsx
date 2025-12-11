@@ -362,18 +362,27 @@ export default function Admin() {
     const admin_email = newClientAdminEmail.trim();
     const admin_role = newClientAdminRole;
     if (!name) return;
-    const resp = await apiPost('/admin/clients', { name, admin_name, admin_email, admin_role });
-    const item = resp?.item;
-    if (item) {
-      await refreshClients();
-      setNewClientName('');
-      setNewClientAdminName('');
-      setNewClientAdminEmail('');
-      setNewClientAdminRole('manager');
-      setSelectedClientId(item.id);
-      if (resp?.seeded_member) setMembers([resp.seeded_member, ...members]);
-      postEmbedSize();
-      setTimeout(postEmbedSize, 300);
+    try {
+      const resp = await apiPost('/admin/clients', { name, admin_name, admin_email, admin_role });
+      const item = resp?.item;
+      if (item) {
+        await refreshClients();
+        setNewClientName('');
+        setNewClientAdminName('');
+        setNewClientAdminEmail('');
+        setNewClientAdminRole('manager');
+        setSelectedClientId(item.id);
+        if (resp?.seeded_member) setMembers([resp.seeded_member, ...members]);
+        postEmbedSize();
+        setTimeout(postEmbedSize, 300);
+      }
+    } catch (err) {
+      const code = err?.response?.data?.error;
+      if (code === 'email_in_use') {
+        toast.error('That email is already in use for another account. Please use a different email or sign in as that user.', { duration: 2000 });
+      } else {
+        toast.error(err?.message || 'Could not create client', { duration: 2000 });
+      }
     }
   };
 
@@ -518,15 +527,24 @@ export default function Admin() {
     const e = memberEmail.trim();
     const n = memberName.trim();
     if (!e || !n) return;
-    const resp = await apiPost('/admin/client-members', { client_id: selectedClientId, email: e, name: n, role: memberRole });
-    if (resp?.item) {
-      setMembers([resp.item, ...members]);
-      setMemberEmail('');
-      setMemberName('');
-      setMemberRole('member');
-      postEmbedSize();
-      setTimeout(postEmbedSize, 300);
-      toast.success('Invite sent and member added', { duration: 1000 });
+    try {
+      const resp = await apiPost('/admin/client-members', { client_id: selectedClientId, email: e, name: n, role: memberRole });
+      if (resp?.item) {
+        setMembers([resp.item, ...members]);
+        setMemberEmail('');
+        setMemberName('');
+        setMemberRole('member');
+        postEmbedSize();
+        setTimeout(postEmbedSize, 300);
+        toast.success('Invite sent and member added', { duration: 1000 });
+      }
+    } catch (err) {
+      const code = err?.response?.data?.error;
+      if (code === 'email_in_use') {
+        toast.error('That email is already in use for another account. Please use a different email or sign in as that user.', { duration: 2000 });
+      } else {
+        toast.error(err?.message || 'Could not add member.', { duration: 2000 });
+      }
     }
   };
 

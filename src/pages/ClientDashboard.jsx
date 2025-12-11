@@ -520,7 +520,12 @@ export default function ClientDashboard() {
         showToast('Member added', 'success');
       }
     } catch (err) {
-      showToast(err?.message || 'Could not add member.', 'error');
+      const code = err?.response?.data?.error;
+      if (code === 'email_in_use') {
+        showToast('That email is already in use for another account. Please use a different email or sign in as that user.', 'error');
+      } else {
+        showToast(err?.message || 'Could not add member.', 'error');
+      }
     }
   };
 
