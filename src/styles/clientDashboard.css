@@ -450,6 +450,52 @@
   border-top-color: rgba(0,0,0,0.55);
 }
 
+/* Tester NDA overlay */
+.tester-nda-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 12vh 24px 24px;
+  background: rgba(10, 21, 71, 0.85);
+  z-index: 9999;
+}
+.tester-nda-card {
+  max-width: 680px;
+  width: 100%;
+  background: #0F1E5D;
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 32px rgba(0,0,0,0.45);
+}
+.tester-nda-card h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+.tester-nda-card p {
+  margin-bottom: 12px;
+  line-height: 1.45;
+}
+.tester-nda-card ul {
+  margin: 0 0 12px 18px;
+  padding: 0;
+  line-height: 1.45;
+}
+.tester-nda-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+  font-size: 0.95rem;
+}
+.tester-nda-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 /* --- Embedded-only (Wix) overflow guards for dashboard -------------------- */
 html.embedded .client-dash,
 html.embedded .client-dash .detail-card,

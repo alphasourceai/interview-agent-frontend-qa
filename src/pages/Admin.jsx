@@ -59,6 +59,7 @@ export default function Admin() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientAdminName, setNewClientAdminName] = useState('');
   const [newClientAdminEmail, setNewClientAdminEmail] = useState('');
+  const [newClientAdminRole, setNewClientAdminRole] = useState('manager');
 
   // roles
   const [roles, setRoles] = useState([]);
@@ -359,14 +360,16 @@ export default function Admin() {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
     const admin_email = newClientAdminEmail.trim();
+    const admin_role = newClientAdminRole;
     if (!name) return;
-    const resp = await apiPost('/admin/clients', { name, admin_name, admin_email });
+    const resp = await apiPost('/admin/clients', { name, admin_name, admin_email, admin_role });
     const item = resp?.item;
     if (item) {
       await refreshClients();
       setNewClientName('');
       setNewClientAdminName('');
       setNewClientAdminEmail('');
+      setNewClientAdminRole('manager');
       setSelectedClientId(item.id);
       if (resp?.seeded_member) setMembers([resp.seeded_member, ...members]);
       postEmbedSize();
@@ -659,6 +662,10 @@ export default function Admin() {
               <input className="alpha-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
               <input className="alpha-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
               <input className="alpha-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
+              <select className="alpha-input alpha-select" value={newClientAdminRole} onChange={e => setNewClientAdminRole(e.target.value)}>
+                <option value="manager">Manager (standard)</option>
+                <option value="tester">Tester (beta with NDA splash)</option>
+              </select>
               <button onClick={createClient}>Create</button>
             </div>
 
@@ -809,6 +816,7 @@ export default function Admin() {
               <select className="alpha-input alpha-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
                 <option value="member">Member</option>
                 <option value="manager">Manager</option>
+                <option value="tester">Tester</option>
               </select>
               <button disabled={!selectedClientId} onClick={addMember}>Add</button>
             </div>

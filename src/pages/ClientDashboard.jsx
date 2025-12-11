@@ -262,7 +262,23 @@ export default function ClientDashboard() {
     roleById[clientId] ||
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
     'member'
-  const canManage = currentRole === 'manager' || currentRole === 'admin';
+  const [testerChecked, setTesterChecked] = useState(false);
+  const currentMembership = useMemo(
+    () => (me?.memberships || []).find((m) => m.client_id === clientId) || null,
+    [me?.memberships, clientId]
+  );
+  const canManage = ['manager', 'admin', 'tester'].includes((currentRole || '').toLowerCase());
+  const isTester = (currentRole || '').toLowerCase() === 'tester';
+  const testerAcknowledged = Boolean(currentMembership?.tester_acknowledged_at);
+  const [showTesterNda, setShowTesterNda] = useState(false);
+
+  useEffect(() => {
+    if (isTester && !testerAcknowledged) {
+      setShowTesterNda(true);
+    } else {
+      setShowTesterNda(false);
+    }
+  }, [isTester, testerAcknowledged, clientId]);
 
   useEffect(() => {
     if (activeTab === 'roles') return;
@@ -718,6 +734,43 @@ export default function ClientDashboard() {
           </select>
           <div style={{ color:'#6b7280' }}>
             Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+          </div>
+        </div>
+      )}
+
+      {showTesterNda && (
+        <div className="tester-nda-overlay">
+          <div className="tester-nda-card">
+            <h2>Welcome to alphaScreen Interview Agent!</h2>
+            <p>
+              Thank you for helping us test and refine this new platform — your feedback is incredibly valuable, and we appreciate you being part of this early group.
+            </p>
+            <p>
+              As a reminder, the features, designs, and functionality you’ll see during testing are confidential and still in active development. We kindly ask that you do not share screenshots, recordings, or details outside your organization or beyond those directly participating in the test.
+            </p>
+            <p>By continuing, you acknowledge that:</p>
+            <ul>
+              <li>You understand this is a private beta version of the alphaScreen Interview Agent.</li>
+              <li>All information, visuals, and interactions in this tool are confidential and should remain within your testing group.</li>
+              <li>You agree not to copy, distribute, or disclose any part of the system without written permission.</li>
+            </ul>
+            <p>
+              Thank you again for your partnership — your insights will help us shape alphaScreen into an outstanding experience for all users.
+            </p>
+            <p>Click ‘I Agree’ and ‘Submit’ to continue.</p>
+            <label className="tester-nda-checkbox">
+              <input
+                type="checkbox"
+                checked={testerChecked}
+                onChange={(e) => setTesterChecked(e.target.checked)}
+              />
+              <span>I have read and agree to the terms above.</span>
+            </label>
+            <div className="tester-nda-actions">
+              <button className="btn lilac client-dash-pill" disabled={!testerChecked} onClick={submitTesterAck}>
+                I Agree and Submit
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1252,4 +1305,15 @@ function Meter({ label, value }) {
 }
   const handleRoleFileFromPicker = (file) => {
     setJobFile(file || null);
+  };
+
+  const submitTesterAck = async () => {
+    if (!clientId) return;
+    try {
+      await apiPost('/client-members/tester-ack', { client_id: clientId });
+      setShowTesterNda(false);
+      showToast('Agreement recorded', 'success');
+    } catch (e) {
+      showToast(e?.message || 'Could not record agreement', 'error');
+    }
   };
