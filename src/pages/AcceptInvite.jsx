@@ -19,6 +19,10 @@ export default function AcceptInvite() {
       const hash = window.location.hash || '';
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
+      const hasTokensInHash = /access_token|refresh_token|type=/.test(hash);
+      if (!code && !hasTokensInHash) {
+        toast.error('Invalid or expired invite link.', { duration: 3000 });
+      }
       // If we have a code param, try exchanging it (helps when redirectTo uses ?code=)
       if (code) {
         try { await supabase.auth.exchangeCodeForSession(code); } catch (_) {}

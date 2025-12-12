@@ -258,6 +258,7 @@ export default function ClientDashboard() {
     [clients]
   )
   const currentName = nameById[clientId] || clientId
+  const resolvedClientId = clientId || clients[0]?.client_id || null;
   const currentRole =
     roleById[clientId] ||
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
@@ -522,7 +523,7 @@ export default function ClientDashboard() {
     } catch (err) {
       const code = err?.response?.data?.error;
       if (code === 'email_in_use') {
-        showToast('That email is already in use for another account. Please use a different email or sign in as that user.', 'error');
+        showToast('Email address already exists', 'error');
       } else {
         showToast(err?.message || 'Could not add member.', 'error');
       }
@@ -1313,12 +1314,20 @@ function Meter({ label, value }) {
   };
 
   const submitTesterAck = async () => {
-    if (!clientId) return;
+    if (!resolvedClientId) return;
     try {
-      await apiPost('/client-members/tester-ack', { client_id: clientId });
+      await apiPost('/client-members/tester-ack', { client_id: resolvedClientId });
+      setMe((prev) => {
+        if (!prev) return prev;
+        const updatedMemberships = (prev.memberships || []).map((m) =>
+          m.client_id === resolvedClientId ? { ...m, tester_acknowledged_at: new Date().toISOString() } : m
+        );
+        return { ...prev, memberships: updatedMemberships };
+      });
       setShowTesterNda(false);
       showToast('Agreement recorded', 'success');
     } catch (e) {
-      showToast(e?.message || 'Could not record agreement', 'error');
+      console.error('[tester-ack] failed', { request_id: e?.response?.data?.request_id, error: e?.message || e });
+      showToast('Unable to save agreement. Please try again.', 'error');
     }
   };
