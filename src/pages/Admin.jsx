@@ -378,7 +378,7 @@ export default function Admin() {
       }
     } catch (err) {
       const code = err?.response?.data?.error;
-      if (code === 'email_in_use') {
+      if (code === 'email_in_use' || code === 'client_admin_email_in_use') {
         toast.error('That email is already in use for another account. Please use a different email or sign in as that user.', { duration: 2000 });
       } else {
         toast.error(err?.message || 'Could not create client', { duration: 2000 });

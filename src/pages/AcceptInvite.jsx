@@ -51,22 +51,29 @@ export default function AcceptInvite() {
       }
       toast.success('Password set! Loading your dashboard…', { duration: 1200 });
       // Determine destination
-      let dest = '/dashboard';
+      let hasMembership = false;
+      let isAdmin = false;
       try {
         const me = await apiGet('/auth/me');
-        if (me?.memberships?.length === 0) {
-          // try admin probe
-          try {
-            await apiGet('/admin/clients');
-            dest = '/admin';
-          } catch (_) {
-            dest = '/dashboard';
-          }
-        }
+        hasMembership = Array.isArray(me?.memberships) && me.memberships.length > 0;
       } catch (_) {
-        dest = '/dashboard';
+        hasMembership = false;
       }
-      navigate(dest, { replace: true });
+      if (hasMembership) {
+        window.location.href = 'https://www.alphasourceai.com/account';
+        return;
+      }
+      try {
+        await apiGet('/admin/clients');
+        isAdmin = true;
+      } catch (_) {
+        isAdmin = false;
+      }
+      if (isAdmin) {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (e) {
       setErr(e?.message || 'Something went wrong.');
     } finally {
