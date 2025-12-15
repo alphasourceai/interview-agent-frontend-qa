@@ -1,5 +1,5 @@
 // src/main.jsx
-import React, { useMemo } from 'react'
+import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { createBrowserRouter, RouterProvider, Navigate, useRouteError } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
@@ -12,6 +12,7 @@ import './styles/alphaTheme.css'
 
 // Route components (lazy to prevent TDZ/circular init during first render)
 const SignIn = React.lazy(() => import('./pages/SignIn.jsx'))
+const PwReset = React.lazy(() => import('./pages/PwReset.jsx'))
 const VerifyOtp = React.lazy(() => import('./pages/VerifyOtp.jsx'))
 const InterviewAccessPage = React.lazy(() => import('./pages/InterviewAccessPage.jsx'))
 const Admin = React.lazy(() => import('./pages/Admin.jsx'))
@@ -156,6 +157,7 @@ const router = createBrowserRouter([
 
   // public
   { path: '/signin', element: <SignIn />, errorElement },
+  { path: '/pwreset', element: <PwReset />, errorElement },
   { path: '/verify-otp', element: <VerifyOtp />, errorElement },
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
@@ -173,48 +175,9 @@ const router = createBrowserRouter([
   { path: '*', element: <Navigate to="/dashboard" replace />, errorElement },
 ])
 
-function isPwresetMode() {
-  try {
-    return new URL(window.location.href).searchParams.get('pwreset') === '1';
-  } catch (_) {
-    return false;
-  }
-}
-
-const PWRESET_MODE = isPwresetMode();
-
-function clearSupabaseAuthStorage() {
-  try {
-    if (typeof localStorage === 'undefined') return;
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (k.includes('sb-') && k.includes('-auth-token')) keys.push(k);
-      if (k.startsWith('supabase.auth.token')) keys.push(k);
-    }
-    keys.forEach(k => {
-      try { localStorage.removeItem(k); } catch (_) {}
-    });
-    if (keys.length) console.debug('[app pwreset]', { step: 'clearSupabaseAuthStorage', keys });
-  } catch (e) {
-    console.warn('[app pwreset] clear storage failed', e);
-  }
-}
-
-if (PWRESET_MODE) {
-  console.debug('[app pwreset]', { step: 'init', pathname: window.location.pathname, search: window.location.search });
-  clearSupabaseAuthStorage();
-  supabase.auth.signOut().catch((e) => console.warn('[app pwreset] signOut at init failed', e));
-}
-
 function SessionRecoveryWrapper({ children }) {
   useEffect(() => {
     async function recoverSession() {
-      if (PWRESET_MODE) {
-        console.debug('[app pwreset]', { step: 'sessionRecovery.skip', reason: 'pwreset_mode' });
-        return;
-      }
       try {
         const { data, error } = await supabase.auth.getSession()
         if (error || !data?.session) {

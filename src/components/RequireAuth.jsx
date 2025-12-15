@@ -6,9 +6,6 @@ export default function RequireAuth() {
   const [ready, setReady] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const loc = useLocation();
-  const pwresetMode = (() => {
-    try { return new URLSearchParams(loc.search || '').get('pwreset') === '1'; } catch (_) { return false; }
-  })();
 
   useEffect(() => {
     let mounted = true;
@@ -28,10 +25,11 @@ export default function RequireAuth() {
   }, []);
 
   if (!ready) return null;
-  console.debug('[require-auth]', { pathname: loc.pathname, search: loc.search, pwresetMode, ready, hasSession });
-  if (!hasSession && !pwresetMode) {
+  if (!hasSession) {
+    console.debug('[require-auth]', { pathname: loc.pathname, search: loc.search, hasSession, decision: 'redirect' });
     const next = encodeURIComponent(loc.pathname + loc.search);
     return <Navigate to={`/signin?next=${next}`} replace />;
   }
+  console.debug('[require-auth]', { pathname: loc.pathname, search: loc.search, hasSession, decision: 'allow' });
   return <Outlet />;
 }
