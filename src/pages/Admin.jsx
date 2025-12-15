@@ -364,9 +364,16 @@ export default function Admin() {
 
   // ---------- Clients ----------
   const getNiceErrorMessage = (err, status) => {
-    const code = err?.response?.data?.error || err?.response?.data?.code;
-    if (status === 409 || code === 'email_in_use') return 'Email address already exists';
-    const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error;
+    const s = status ?? err?.status ?? err?.response?.status;
+    const code = err?.data?.error || err?.data?.code || err?.response?.data?.error || err?.response?.data?.code;
+    if (s === 409 || code === 'email_in_use') return 'Email address already exists';
+    const detail =
+      err?.data?.detail ||
+      err?.data?.message ||
+      err?.data?.error ||
+      err?.response?.data?.detail ||
+      err?.response?.data?.message ||
+      err?.response?.data?.error;
     return detail || 'Something went wrong';
   };
 
@@ -391,7 +398,7 @@ export default function Admin() {
         setTimeout(postEmbedSize, 300);
       }
     } catch (err) {
-      const msg = getNiceErrorMessage(err, err?.response?.status);
+      const msg = getNiceErrorMessage(err, err?.status);
       toast.error(msg, { duration: 2000 });
     }
   };
@@ -549,7 +556,7 @@ export default function Admin() {
         toast.success('Invite sent and member added', { duration: 1000 });
       }
     } catch (err) {
-      const msg = getNiceErrorMessage(err, err?.response?.status);
+      const msg = getNiceErrorMessage(err, err?.status);
       toast.error(msg, { duration: 2000 });
     }
   };
@@ -578,7 +585,7 @@ export default function Admin() {
         toast.error('Failed to send password reset email', { duration: 2000 });
       }
     } catch (err) {
-      const rid = err?.response?.data?.request_id;
+      const rid = err?.data?.request_id || err?.response?.data?.request_id;
       if (rid) console.error('[send-password-reset] request_id', rid);
       toast.error('Failed to send password reset email', { duration: 2000 });
     }

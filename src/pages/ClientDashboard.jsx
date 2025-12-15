@@ -562,11 +562,12 @@ export default function ClientDashboard() {
         showToast('Member added', 'success');
       }
     } catch (err) {
-      const code = err?.response?.data?.error;
-      if (err?.response?.status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
+      const status = err?.status || err?.response?.status;
+      const code = err?.data?.error || err?.response?.data?.error;
+      if (status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
         showToast('Email address already exists', 'error');
       } else {
-        const detail = err?.response?.data?.detail || err?.response?.data?.message;
+        const detail = err?.data?.detail || err?.data?.message || err?.response?.data?.detail || err?.response?.data?.message;
         showToast(detail || err?.message || 'Could not add member.', 'error');
       }
     }
