@@ -19,6 +19,13 @@ export default function SignIn() {
   const [resetReady, setResetReady] = useState(false);
   const [resetProcessing, setResetProcessing] = useState(false);
   const [resetError, setResetError] = useState('');
+  const requestId = useMemo(() => {
+    try {
+      return crypto.randomUUID();
+    } catch (_) {
+      return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    }
+  }, []);
 
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
@@ -77,6 +84,41 @@ export default function SignIn() {
     return { nextPath: next };
   }, []);
 
+  function forceSignOutForPwReset() {
+    try {
+      console.debug('[signin pwreset]', { request_id: requestId, step: 'forceSignOut.start' });
+      // Clear Supabase auth tokens from localStorage to avoid auto-restore
+      if (typeof localStorage !== 'undefined') {
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k) continue;
+          if (k.includes('sb-') && k.includes('-auth-token')) keys.push(k);
+          if (k.startsWith('supabase.auth.token')) keys.push(k);
+        }
+        keys.forEach((k) => {
+          try { localStorage.removeItem(k); } catch (_) {}
+        });
+        if (keys.length) console.debug('[signin pwreset]', { request_id: requestId, step: 'forceSignOut.clearedKeys', keys });
+      }
+    } catch (e) {
+      console.warn('[signin pwreset] storage clear failed', { request_id: requestId, error: e?.message || e });
+    }
+    return supabase.auth.getSession()
+      .then(async ({ data }) => {
+        const hadSession = !!data?.session;
+        if (hadSession) {
+          console.debug('[signin pwreset]', { request_id: requestId, step: 'forceSignOut.signOut', hadSession: true });
+          await supabase.auth.signOut();
+        } else {
+          console.debug('[signin pwreset]', { request_id: requestId, step: 'forceSignOut.noSession' });
+        }
+      })
+      .catch((e) => {
+        console.warn('[signin pwreset] signOut check failed', { request_id: requestId, error: e?.message || e });
+      });
+  }
+
   // Detect Supabase recovery redirect (?pwreset=1 or hash with recovery)
   useEffect(() => {
     let alive = true;
@@ -91,37 +133,47 @@ export default function SignIn() {
     const hasPwreset = url.searchParams.get('pwreset') === '1';
     const hasRecoveryParams = !!(code || token_hash || hasTokens || (typeParam === 'recovery'));
 
-    if (hasPwreset || hasRecoveryParams) {
+    const mode = hasPwreset || hasRecoveryParams ? 'pwreset' : 'signin';
+    console.debug('[signin detect]', { request_id: requestId, mode, hasPwreset, hasRecoveryParams, code: !!code, token_hash: !!token_hash, hasTokens, typeParam });
+
+    if (mode === 'pwreset') {
       setShowReset(true);
       (async () => {
+        await forceSignOutForPwReset();
         setResetProcessing(true);
         setResetError('');
         try {
           if (code) {
+            console.debug('[signin pwreset]', { request_id: requestId, step: 'exchangeCodeForSession' });
             await supabase.auth.exchangeCodeForSession(code);
           } else if (hasTokens) {
+            console.debug('[signin pwreset]', { request_id: requestId, step: 'setSession.hashTokens' });
             await supabase.auth.setSession({ access_token, refresh_token });
           } else if (token_hash) {
+            console.debug('[signin pwreset]', { request_id: requestId, step: 'verifyOtp.token_hash', type: typeParam || 'recovery' });
             await supabase.auth.verifyOtp({ type: typeParam || 'recovery', token_hash });
           }
           const { data } = await supabase.auth.getSession();
           if (!alive) return;
           if (data?.session) {
+            console.debug('[signin pwreset]', { request_id: requestId, step: 'session.ready' });
             setResetReady(true);
           } else {
+            console.debug('[signin pwreset]', { request_id: requestId, step: 'session.missing' });
             setResetError('Invalid or expired link. Please request a new password reset.');
           }
         } catch (e) {
           if (!alive) return;
-          console.error('[signin pwreset] session init failed', e);
+          console.error('[signin pwreset] session init failed', { request_id: requestId, error: e?.message || e });
           setResetError('Invalid or expired link. Please request a new password reset.');
         } finally {
           if (alive) setResetProcessing(false);
         }
       })();
     }
+
     return () => { alive = false; };
-  }, []);
+  }, [requestId]);
 
   // Notify parent (Wix) to resize when layout changes
   useEffect(() => {
@@ -208,7 +260,11 @@ export default function SignIn() {
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPass1 });
-    if (error) return toast.error('Could not update password: ' + error.message, { duration: 2000 });
+    if (error) {
+      console.error('[signin pwreset] updateUser failed', { request_id: requestId, error: error.message });
+      return toast.error('Could not update password: ' + error.message, { duration: 2000 });
+    }
+    console.debug('[signin pwreset]', { request_id: requestId, step: 'passwordUpdated' });
     toast.success('Password updated. Loading your dashboard…', { duration: 1200 });
 
     try {
