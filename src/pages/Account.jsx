@@ -83,7 +83,7 @@ function Account() {
       toast.success("Invitation sent", { duration: 1000 });
     } catch (e) {
       const code = e?.response?.data?.error;
-      if (code === "email_in_use") {
+      if (e?.response?.status === 409 || code === "email_in_use" || code === "client_admin_email_in_use") {
         toast.error("Email address already exists", { duration: 2000 });
       } else {
         setError(e.message || "Invite failed");

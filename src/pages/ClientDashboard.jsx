@@ -522,7 +522,7 @@ export default function ClientDashboard() {
       }
     } catch (err) {
       const code = err?.response?.data?.error;
-      if (code === 'email_in_use') {
+      if (err?.response?.status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
         showToast('Email address already exists', 'error');
       } else {
         showToast(err?.message || 'Could not add member.', 'error');
