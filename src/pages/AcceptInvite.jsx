@@ -19,16 +19,29 @@ export default function AcceptInvite() {
       const hash = window.location.hash || '';
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
-      const hasTokensInHash = /access_token|refresh_token|type=/.test(hash);
+      const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
+      const access_token = hashParams.get('access_token');
+      const refresh_token = hashParams.get('refresh_token');
+      const hasTokensInHash = !!(access_token && refresh_token);
       if (!code && !hasTokensInHash) {
-        toast.error('Invalid or expired invite link.', { duration: 3000 });
+        toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
       }
-      // If we have a code param, try exchanging it (helps when redirectTo uses ?code=)
+      // If we have a code param, try exchanging it (PKCE)
       if (code) {
-        try { await supabase.auth.exchangeCodeForSession(code); } catch (_) {}
+        try { await supabase.auth.exchangeCodeForSession(code); } catch (e) { console.error('exchangeCodeForSession failed', e); }
       }
-      // Supabase normally restores session from the hash for invite links automatically
+      // If tokens are present in hash, set session directly
+      if (!code && hasTokensInHash) {
+        try {
+          await supabase.auth.setSession({ access_token, refresh_token });
+        } catch (e) {
+          console.error('setSession failed', e);
+        }
+      }
       const { data } = await supabase.auth.getSession();
+      if (!data?.session) {
+        toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
+      }
       setHasSession(!!data?.session);
     }
     ensureSession();

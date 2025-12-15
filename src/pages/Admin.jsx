@@ -38,6 +38,13 @@ const IconTrash = ({ size = 24 }) => (
   </svg>
 );
 
+const IconKey = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M14.5 10a3.5 3.5 0 1 0-3.15 2.17l1.65 1.65v2.18h2v-2h2v-2h-2l-1.6-1.6A3.5 3.5 0 0 0 14.5 10Z" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M12 10h.01" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -562,6 +569,22 @@ export default function Admin() {
     }
   };
 
+  const sendPasswordReset = async (email) => {
+    if (!email) return;
+    try {
+      const resp = await apiPost('/admin/send-password-reset', { email });
+      if (resp?.ok) {
+        toast.success('Password reset email sent', { duration: 1500 });
+      } else {
+        toast.error('Failed to send password reset email', { duration: 2000 });
+      }
+    } catch (err) {
+      const rid = err?.response?.data?.request_id;
+      if (rid) console.error('[send-password-reset] request_id', rid);
+      toast.error('Failed to send password reset email', { duration: 2000 });
+    }
+  };
+
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
 
   if (loading) {
@@ -863,7 +886,14 @@ export default function Admin() {
                       <div className="title">{m.name}</div>
                       <div className="sub">{m.email} • {m.role || 'member'}</div>
                     </div>
-                    <button onClick={() => setConfirmMember({ open: true, id: m.id })}>Remove</button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn-icon" onClick={() => sendPasswordReset(m.email)} title="Send password reset">
+                        <IconKey size={20} />
+                      </button>
+                      <button className="btn-icon" onClick={() => setConfirmMember({ open: true, id: m.id })} title="Remove member">
+                        <IconTrash size={20} />
+                      </button>
+                    </div>
                   </div>
                 ))}
                 {members.length === 0 && <div className="muted">No members for this client</div>}

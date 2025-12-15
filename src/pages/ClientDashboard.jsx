@@ -747,7 +747,7 @@ export default function ClientDashboard() {
       {showTesterNda && (
         <div className="tester-nda-overlay">
           <div className="tester-nda-card">
-            <h2>Welcome to alphaScreen Interview Agent!</h2>
+            <h2>Welcome to alphaScreen Interview Agent! Pre-Release Trial</h2>
             <p>
               Thank you for helping us test and refine this new platform — your feedback is incredibly valuable, and we appreciate you being part of this early group.
             </p>
