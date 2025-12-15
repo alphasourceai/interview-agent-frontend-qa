@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { apiGet } from '../lib/api';
 import toast from 'react-hot-toast';
+import '../styles/clientTheme.css';
 
 const accountUrl = 'https://www.alphasourceai.com/account';
 
@@ -141,27 +142,41 @@ export default function PwReset() {
         <div className="auth-head">
           <h2>Set Password</h2>
         </div>
-        {processing && <div>Preparing your reset link…</div>}
+
+        {processing && <div style={{ marginBottom: 12 }}>Preparing your reset link…</div>}
+
         {error && (
           <div className="input-error-text" style={{ marginBottom: 12 }}>
             {error}
-            <div style={{ marginTop: 8 }}>
-              <button className="btn" type="button" onClick={goSignin}>Go to sign in</button>
-            </div>
           </div>
         )}
+
         {readyForPassword && !error && (
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gap: 12 }}>
+          <form onSubmit={handleSubmit}>
             <label>New password</label>
             <input className="alpha-input" type="password" value={pw1} onChange={(e) => setPw1(e.target.value)} required />
+
             <label>Confirm new password</label>
             <input className="alpha-input" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} required />
-            <button type="submit" className="btn">Update Password</button>
+
+            <button type="submit">Update Password</button>
           </form>
         )}
+
         {!processing && !readyForPassword && !error && (
           <div>Waiting for recovery session…</div>
         )}
+
+        <div style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={goSignin}
+            className="btn-ghost"
+            style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
+          >
+            Back to Client Sign In
+          </button>
+        </div>
       </div>
     </div>
   );
