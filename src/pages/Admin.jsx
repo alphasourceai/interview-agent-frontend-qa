@@ -364,7 +364,8 @@ export default function Admin() {
 
   // ---------- Clients ----------
   const getNiceErrorMessage = (err, status) => {
-    if (status === 409) return 'Email address already exists';
+    const code = err?.response?.data?.error || err?.response?.data?.code;
+    if (status === 409 || code === 'email_in_use') return 'Email address already exists';
     const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error;
     return detail || 'Something went wrong';
   };

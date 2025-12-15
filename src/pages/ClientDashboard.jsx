@@ -258,7 +258,6 @@ export default function ClientDashboard() {
     [clients]
   )
   const currentName = nameById[clientId] || clientId
-  const resolvedClientId = clientId || clients[0]?.client_id || null;
   const currentRole =
     roleById[clientId] ||
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
@@ -427,6 +426,48 @@ export default function ClientDashboard() {
     return api.upload(`/roles-upload/upload-jd?${qs}`, form);
   };
 
+  const handleRoleFileFromPicker = (file) => {
+    setJobFile(file || null);
+  };
+
+  const resolveClientIdForTesterAck = () => {
+    if (clientId) return clientId;
+    if (me?.default_client_id) return me.default_client_id;
+    const membershipId = (me?.memberships || [])[0]?.client_id || null;
+    if (membershipId) return membershipId;
+    if (clients.length) return clients[0]?.client_id || null;
+    return null;
+  };
+
+  const submitTesterAck = async () => {
+    const resolvedClientId = resolveClientIdForTesterAck();
+    if (!resolvedClientId) {
+      showToast('No client selected', 'error');
+      return;
+    }
+    try {
+      await apiPost('/client-members/tester-ack', { client_id: resolvedClientId });
+      setMe((prev) => {
+        if (!prev) return prev;
+        const updatedMemberships = (prev.memberships || []).map((m) =>
+          m.client_id === resolvedClientId ? { ...m, tester_acknowledged_at: new Date().toISOString() } : m
+        );
+        return { ...prev, memberships: updatedMemberships };
+      });
+      setShowTesterNda(false);
+      showToast('Agreement recorded', 'success');
+    } catch (e) {
+      const rid = e?.response?.data?.request_id;
+      if (rid) console.error('[tester-ack] request_id', rid);
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        showToast('You do not have access to acknowledge for this client.', 'error');
+      } else {
+        showToast('Unable to save agreement. Please try again.', 'error');
+      }
+    }
+  };
+
   const safeCopy = async (text) => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
@@ -558,6 +599,7 @@ export default function ClientDashboard() {
         const list = myClients?.items || []
         setClients(list)
         const first =
+          meResp?.default_client_id ||
           list[0]?.client_id ||
           meResp.memberships?.[0]?.client_id ||
           ''
@@ -1310,33 +1352,3 @@ function Meter({ label, value }) {
     </div>
   )
 }
-  const handleRoleFileFromPicker = (file) => {
-    setJobFile(file || null);
-  };
-
-  const submitTesterAck = async () => {
-    const resolvedClientId =
-      clientId ||
-      clients.find((c) => c.client_id)?.client_id ||
-      (me?.memberships || [])[0]?.client_id ||
-      null;
-    if (!resolvedClientId) {
-      showToast('No client selected', 'error');
-      return;
-    }
-    try {
-      await apiPost('/client-members/tester-ack', { client_id: resolvedClientId });
-      setMe((prev) => {
-        if (!prev) return prev;
-        const updatedMemberships = (prev.memberships || []).map((m) =>
-          m.client_id === resolvedClientId ? { ...m, tester_acknowledged_at: new Date().toISOString() } : m
-        );
-        return { ...prev, memberships: updatedMemberships };
-      });
-      setShowTesterNda(false);
-      showToast('Agreement recorded', 'success');
-    } catch (e) {
-      console.error('[tester-ack] failed', { request_id: e?.response?.data?.request_id, error: e?.message || e });
-      showToast('Unable to save agreement. Please try again.', 'error');
-    }
-  };

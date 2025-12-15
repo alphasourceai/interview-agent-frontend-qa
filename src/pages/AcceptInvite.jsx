@@ -16,6 +16,7 @@ export default function AcceptInvite() {
   const [invalidLink, setInvalidLink] = useState(false);
 
   useEffect(() => {
+    let alive = true;
     async function ensureSession() {
       const hash = window.location.hash || '';
       const params = new URLSearchParams(window.location.search);
@@ -24,41 +25,68 @@ export default function AcceptInvite() {
       const access_token = hashParams.get('access_token');
       const refresh_token = hashParams.get('refresh_token');
       const token_hash = params.get('token_hash') || hashParams.get('token_hash');
-      const typeParam = params.get('type') || hashParams.get('type');
+      const typeParam = params.get('type') || hashParams.get('type') || 'recovery';
       const hasTokensInHash = !!(access_token && refresh_token);
-      if (!code && !hasTokensInHash && !token_hash) {
-        toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
+      const hasParams = !!(code || hasTokensInHash || token_hash);
+
+      if (!hasParams) {
+        toast.error('Invalid or expired link.', { duration: 3500 });
         setInvalidLink(true);
+        return;
       }
-      // If we have a code param, try exchanging it (PKCE)
-      if (code) {
-        try { await supabase.auth.exchangeCodeForSession(code); } catch (e) { console.error('exchangeCodeForSession failed', e); }
-      }
-      // If tokens are present in hash, set session directly
-      if (!code && hasTokensInHash) {
-        try {
+
+      try {
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+        } else if (hasTokensInHash) {
           await supabase.auth.setSession({ access_token, refresh_token });
-        } catch (e) {
-          console.error('setSession failed', e);
-        }
-      }
-      // token_hash + type (invite/recovery) flow
-      if (!code && !hasTokensInHash && token_hash && typeParam) {
-        try {
+        } else if (token_hash) {
           await supabase.auth.verifyOtp({ type: typeParam, token_hash });
-        } catch (e) {
-          console.error('verifyOtp failed', e);
         }
+      } catch (e) {
+        console.error('accept-invite session init failed', e);
       }
+
       const { data } = await supabase.auth.getSession();
+      if (!alive) return;
       if (!data?.session) {
-        toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
+        toast.error('Invalid or expired link.', { duration: 3500 });
         setInvalidLink(true);
+        return;
       }
       setHasSession(!!data?.session);
     }
     ensureSession();
+    return () => { alive = false; };
   }, []);
+
+  const routeAfterAuth = async () => {
+    let hasMembership = false;
+    let isAdmin = false;
+    try {
+      const me = await apiGet('/auth/me');
+      hasMembership = Array.isArray(me?.memberships) && me.memberships.length > 0;
+    } catch (_) {
+      hasMembership = false;
+    }
+    if (!hasMembership) {
+      try {
+        await apiGet('/admin/clients');
+        isAdmin = true;
+      } catch (_) {
+        isAdmin = false;
+      }
+    }
+    if (hasMembership) {
+      window.location.href = 'https://www.alphasourceai.com/account';
+      return;
+    }
+    if (isAdmin) {
+      window.location.href = `${import.meta.env.VITE_FRONTEND_BASE || 'https://ia-frontend-prod.onrender.com'}/admin`;
+    } else {
+      window.location.href = 'https://www.alphasourceai.com/account';
+    }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -80,30 +108,7 @@ export default function AcceptInvite() {
         return;
       }
       toast.success('Password set! Loading your dashboard…', { duration: 1200 });
-      // Determine destination
-      let hasMembership = false;
-      let isAdmin = false;
-      try {
-        const me = await apiGet('/auth/me');
-        hasMembership = Array.isArray(me?.memberships) && me.memberships.length > 0;
-      } catch (_) {
-        hasMembership = false;
-      }
-      if (hasMembership) {
-        window.location.href = 'https://www.alphasourceai.com/account';
-        return;
-      }
-      try {
-        await apiGet('/admin/clients');
-        isAdmin = true;
-      } catch (_) {
-        isAdmin = false;
-      }
-      if (isAdmin) {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      await routeAfterAuth();
     } catch (e) {
       setErr(e?.message || 'Something went wrong.');
     } finally {
@@ -117,8 +122,16 @@ export default function AcceptInvite() {
         <h1 style={{ marginBottom: 12 }}>Welcome to alphaScreen</h1>
         <p style={{ marginBottom: 16, opacity: 0.85 }}>Set your password to activate your account.</p>
         {invalidLink && (
-          <div className="input-error-text" style={{ marginBottom: 12 }}>
-            We could not detect your invite session. Please open the link from your email or request a new password reset.
+          <div className="input-error-text" style={{ marginBottom: 12, display: 'grid', gap: 6 }}>
+            <span>Invalid or expired link.</span>
+            <button
+              type="button"
+              onClick={() => navigate('/signin')}
+              className="btn"
+              style={{ alignSelf: 'flex-start' }}
+            >
+              Go to sign in
+            </button>
           </div>
         )}
         <form onSubmit={submit} className="alpha-form-grid" style={{ gap: 12 }}>
