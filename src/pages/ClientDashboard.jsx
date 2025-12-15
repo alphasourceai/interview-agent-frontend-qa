@@ -525,7 +525,8 @@ export default function ClientDashboard() {
       if (err?.response?.status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
         showToast('Email address already exists', 'error');
       } else {
-        showToast(err?.message || 'Could not add member.', 'error');
+        const detail = err?.response?.data?.detail || err?.response?.data?.message;
+        showToast(detail || err?.message || 'Could not add member.', 'error');
       }
     }
   };
@@ -747,7 +748,7 @@ export default function ClientDashboard() {
       {showTesterNda && (
         <div className="tester-nda-overlay">
           <div className="tester-nda-card">
-            <h2>Welcome to alphaScreen Interview Agent! Pre-Release Trial</h2>
+            <h2>Welcome to alphaScreen Interview Agent Pre-Release Trial!</h2>
             <p>
               Thank you for helping us test and refine this new platform — your feedback is incredibly valuable, and we appreciate you being part of this early group.
             </p>
@@ -1314,7 +1315,15 @@ function Meter({ label, value }) {
   };
 
   const submitTesterAck = async () => {
-    if (!resolvedClientId) return;
+    const resolvedClientId =
+      clientId ||
+      clients.find((c) => c.client_id)?.client_id ||
+      (me?.memberships || [])[0]?.client_id ||
+      null;
+    if (!resolvedClientId) {
+      showToast('No client selected', 'error');
+      return;
+    }
     try {
       await apiPost('/client-members/tester-ack', { client_id: resolvedClientId });
       setMe((prev) => {

@@ -13,6 +13,7 @@ export default function AcceptInvite() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [hasSession, setHasSession] = useState(false);
+  const [invalidLink, setInvalidLink] = useState(false);
 
   useEffect(() => {
     async function ensureSession() {
@@ -22,9 +23,12 @@ export default function AcceptInvite() {
       const hashParams = new URLSearchParams(hash.replace(/^#/, ''));
       const access_token = hashParams.get('access_token');
       const refresh_token = hashParams.get('refresh_token');
+      const token_hash = params.get('token_hash') || hashParams.get('token_hash');
+      const typeParam = params.get('type') || hashParams.get('type');
       const hasTokensInHash = !!(access_token && refresh_token);
-      if (!code && !hasTokensInHash) {
+      if (!code && !hasTokensInHash && !token_hash) {
         toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
+        setInvalidLink(true);
       }
       // If we have a code param, try exchanging it (PKCE)
       if (code) {
@@ -38,9 +42,18 @@ export default function AcceptInvite() {
           console.error('setSession failed', e);
         }
       }
+      // token_hash + type (invite/recovery) flow
+      if (!code && !hasTokensInHash && token_hash && typeParam) {
+        try {
+          await supabase.auth.verifyOtp({ type: typeParam, token_hash });
+        } catch (e) {
+          console.error('verifyOtp failed', e);
+        }
+      }
       const { data } = await supabase.auth.getSession();
       if (!data?.session) {
         toast.error('Invalid or expired link. Please request a new password reset.', { duration: 3500 });
+        setInvalidLink(true);
       }
       setHasSession(!!data?.session);
     }
@@ -103,9 +116,9 @@ export default function AcceptInvite() {
       <div className="alpha-card auth-card">
         <h1 style={{ marginBottom: 12 }}>Welcome to alphaScreen</h1>
         <p style={{ marginBottom: 16, opacity: 0.85 }}>Set your password to activate your account.</p>
-        {!hasSession && (
+        {invalidLink && (
           <div className="input-error-text" style={{ marginBottom: 12 }}>
-            We could not detect your invite session. Please open the link from your email.
+            We could not detect your invite session. Please open the link from your email or request a new password reset.
           </div>
         )}
         <form onSubmit={submit} className="alpha-form-grid" style={{ gap: 12 }}>

@@ -363,6 +363,12 @@ export default function Admin() {
   };
 
   // ---------- Clients ----------
+  const getNiceErrorMessage = (err, status) => {
+    if (status === 409) return 'Email address already exists';
+    const detail = err?.response?.data?.detail || err?.response?.data?.message || err?.response?.data?.error;
+    return detail || 'Something went wrong';
+  };
+
   const createClient = async () => {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
@@ -384,12 +390,8 @@ export default function Admin() {
         setTimeout(postEmbedSize, 300);
       }
     } catch (err) {
-      const code = err?.response?.data?.error;
-      if (err?.response?.status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
-        toast.error('Email address already exists', { duration: 2000 });
-      } else {
-        toast.error(err?.message || 'Could not create client', { duration: 2000 });
-      }
+      const msg = getNiceErrorMessage(err, err?.response?.status);
+      toast.error(msg, { duration: 2000 });
     }
   };
 
@@ -546,12 +548,8 @@ export default function Admin() {
         toast.success('Invite sent and member added', { duration: 1000 });
       }
     } catch (err) {
-      const code = err?.response?.data?.error;
-      if (err?.response?.status === 409 || code === 'email_in_use' || code === 'client_admin_email_in_use') {
-        toast.error('Email address already exists', { duration: 2000 });
-      } else {
-        toast.error(err?.message || 'Could not add member.', { duration: 2000 });
-      }
+      const msg = getNiceErrorMessage(err, err?.response?.status);
+      toast.error(msg, { duration: 2000 });
     }
   };
 
