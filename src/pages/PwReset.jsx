@@ -27,19 +27,25 @@ export default function PwReset() {
     const refresh_token = hashParams.get('refresh_token');
     const hasTokens = !!(access_token && refresh_token);
 
-    console.debug('[pwreset]', { request_id: requestId, step: 'init', code: !!code, token_hash: !!token_hash, typeParam, hasTokens });
+    console.debug('[pwreset]', { request_id: requestId, step: 'init', href: window.location.href, code: !!code, token_hash: !!token_hash, typeParam, hasTokens });
 
     async function handleRecovery() {
       try {
         if (code) {
           console.debug('[pwreset]', { request_id: requestId, step: 'exchangeCodeForSession' });
-          await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          console.debug('[pwreset]', { request_id: requestId, step: 'exchangeCodeForSession.result', hasSession: !!data?.session, error: error?.message || null });
+          if (error) throw error;
         } else if (hasTokens) {
           console.debug('[pwreset]', { request_id: requestId, step: 'setSession.hashTokens' });
-          await supabase.auth.setSession({ access_token, refresh_token });
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          console.debug('[pwreset]', { request_id: requestId, step: 'setSession.result', hasSession: !!data?.session, error: error?.message || null });
+          if (error) throw error;
         } else if (token_hash) {
           console.debug('[pwreset]', { request_id: requestId, step: 'verifyOtp', type: typeParam || 'recovery' });
-          await supabase.auth.verifyOtp({ type: typeParam || 'recovery', token_hash });
+          const { data, error } = await supabase.auth.verifyOtp({ type: typeParam || 'recovery', token_hash });
+          console.debug('[pwreset]', { request_id: requestId, step: 'verifyOtp.result', hasSession: !!data?.session, error: error?.message || null });
+          if (error) throw error;
         }
         const { data } = await supabase.auth.getSession();
         if (!alive) return;
@@ -59,7 +65,6 @@ export default function PwReset() {
       }
     }
 
-    // Also listen for PASSWORD_RECOVERY events
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (!alive) return;
       if (event === 'PASSWORD_RECOVERY') {
@@ -89,15 +94,13 @@ export default function PwReset() {
     try {
       console.debug('[pwreset]', { request_id: requestId, step: 'updateUser.start' });
       const { error: updErr } = await supabase.auth.updateUser({ password: pw1 });
+      console.debug('[pwreset]', { request_id: requestId, step: 'updateUser.result', error: updErr?.message || null });
       if (updErr) {
-        console.error('[pwreset] updateUser failed', { request_id: requestId, error: updErr.message });
         toast.error(updErr.message || 'Could not update password.');
         return;
       }
       toast.success('Password updated. Redirecting…', { duration: 1200 });
-      console.debug('[pwreset]', { request_id: requestId, step: 'updateUser.success' });
 
-      // Determine destination before signing out
       let isAdmin = false;
       let hasMembership = false;
       try {
@@ -114,10 +117,7 @@ export default function PwReset() {
 
       await supabase.auth.signOut();
       const cleanUrl = new URL(window.location.href);
-      cleanUrl.searchParams.delete('pwreset');
-      cleanUrl.searchParams.delete('code');
-      cleanUrl.searchParams.delete('token_hash');
-      cleanUrl.searchParams.delete('type');
+      ['pwreset', 'code', 'token_hash', 'type'].forEach((k) => cleanUrl.searchParams.delete(k));
       window.history.replaceState({}, '', cleanUrl.toString().split('#')[0]);
 
       if (isAdmin) {
