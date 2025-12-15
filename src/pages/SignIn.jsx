@@ -1,6 +1,7 @@
 // src/pages/SignIn.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { apiGet } from '../lib/api';
 import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
 
@@ -15,6 +16,9 @@ export default function SignIn() {
   const [newPass1, setNewPass1] = useState('');
   const [newPass2, setNewPass2] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [resetReady, setResetReady] = useState(false);
+  const [resetProcessing, setResetProcessing] = useState(false);
+  const [resetError, setResetError] = useState('');
 
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
@@ -75,12 +79,48 @@ export default function SignIn() {
 
   // Detect Supabase recovery redirect (?pwreset=1 or hash with recovery)
   useEffect(() => {
+    let alive = true;
     const url = new URL(window.location.href);
-    const needsReset =
-      url.searchParams.get('pwreset') === '1' ||
-      window.location.hash.includes('type=recovery') ||
-      window.location.hash.includes('recovery');
-    if (needsReset) setShowReset(true);
+    const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
+    const code = url.searchParams.get('code');
+    const token_hash = url.searchParams.get('token_hash') || hashParams.get('token_hash');
+    const typeParam = url.searchParams.get('type') || hashParams.get('type');
+    const access_token = hashParams.get('access_token');
+    const refresh_token = hashParams.get('refresh_token');
+    const hasTokens = !!(access_token && refresh_token);
+    const hasPwreset = url.searchParams.get('pwreset') === '1';
+    const hasRecoveryParams = !!(code || token_hash || hasTokens || (typeParam === 'recovery'));
+
+    if (hasPwreset || hasRecoveryParams) {
+      setShowReset(true);
+      (async () => {
+        setResetProcessing(true);
+        setResetError('');
+        try {
+          if (code) {
+            await supabase.auth.exchangeCodeForSession(code);
+          } else if (hasTokens) {
+            await supabase.auth.setSession({ access_token, refresh_token });
+          } else if (token_hash) {
+            await supabase.auth.verifyOtp({ type: typeParam || 'recovery', token_hash });
+          }
+          const { data } = await supabase.auth.getSession();
+          if (!alive) return;
+          if (data?.session) {
+            setResetReady(true);
+          } else {
+            setResetError('Invalid or expired link. Please request a new password reset.');
+          }
+        } catch (e) {
+          if (!alive) return;
+          console.error('[signin pwreset] session init failed', e);
+          setResetError('Invalid or expired link. Please request a new password reset.');
+        } finally {
+          if (alive) setResetProcessing(false);
+        }
+      })();
+    }
+    return () => { alive = false; };
   }, []);
 
   // Notify parent (Wix) to resize when layout changes
@@ -169,14 +209,46 @@ export default function SignIn() {
     }
     const { error } = await supabase.auth.updateUser({ password: newPass1 });
     if (error) return toast.error('Could not update password: ' + error.message, { duration: 2000 });
-    toast.success('Password updated. You can sign in now.', { duration: 1500 });
+    toast.success('Password updated. Loading your dashboard…', { duration: 1200 });
+
+    try {
+      let isAdmin = false;
+      let hasMembership = false;
+      try {
+        const me = await apiGet('/auth/me');
+        hasMembership = Array.isArray(me?.memberships) && me.memberships.length > 0;
+      } catch (_) {}
+      if (!hasMembership) {
+        try {
+          await apiGet('/admin/clients');
+          isAdmin = true;
+        } catch (_) {
+          isAdmin = false;
+        }
+      }
+      if (isAdmin) {
+        window.location.replace('/admin');
+      } else {
+        window.location.replace('https://www.alphasourceai.com/account');
+      }
+    } catch (navErr) {
+      console.error('[signin pwreset] navigation failed', navErr);
+      toast.error('Password updated, but navigation failed. Please sign in again.', { duration: 2000 });
+      await supabase.auth.signOut();
+      window.location.replace('/signin');
+    }
+  }
+
+  function exitReset() {
     setShowReset(false);
-    setNewPass1(''); setNewPass2('');
-    setTimeout(() => postEmbedSizeBurst(), 40);
+    setResetReady(false);
+    setResetError('');
     const url = new URL(window.location.href);
     url.searchParams.delete('pwreset');
-    window.history.replaceState({}, '', url.toString());
-    await supabase.auth.signOut();
+    url.searchParams.delete('code');
+    url.searchParams.delete('token_hash');
+    url.searchParams.delete('type');
+    window.history.replaceState({}, '', url.toString().split('#')[0]);
     window.location.replace('/signin');
   }
 
@@ -187,23 +259,44 @@ export default function SignIn() {
           <div className="auth-head">
             <h2>Reset Password</h2>
           </div>
-          <form onSubmit={submitReset}>
-            <label>New password</label>
-            <input className="alpha-input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
-            <label>Confirm new password</label>
-            <input className="alpha-input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
-            <button type="submit">Update Password</button>
-            <div style={{ marginTop: 8 }}>
-              <button
-                type="button"
-                className="btn-ghost"
-                onClick={() => { setShowReset(false); window.location.replace('/signin'); }}
-                style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
-              >
-                Back to sign in
-              </button>
+          {resetProcessing && (
+            <div style={{ marginBottom: 12 }}>Preparing your reset link…</div>
+          )}
+          {resetError && (
+            <div className="input-error-text" style={{ marginBottom: 12 }}>
+              {resetError}
             </div>
-          </form>
+          )}
+          {resetReady && !resetError && (
+            <form onSubmit={submitReset}>
+              <label>New password</label>
+              <input className="alpha-input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} required />
+              <label>Confirm new password</label>
+              <input className="alpha-input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} required />
+              <button type="submit">Update Password</button>
+            </form>
+          )}
+          {!resetProcessing && !resetReady && (
+            <button
+              type="button"
+              className="btn"
+              onClick={submitReset}
+              disabled
+              style={{ opacity: 0.6 }}
+            >
+              Awaiting valid reset link…
+            </button>
+          )}
+          <div style={{ marginTop: 12 }}>
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={exitReset}
+              style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
+            >
+              Back to sign in
+            </button>
+          </div>
         </div>
       </div>
     );
