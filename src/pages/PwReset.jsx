@@ -168,14 +168,13 @@ export default function PwReset() {
         )}
 
         <div style={{ marginTop: 10 }}>
-          <button
-            type="button"
-            onClick={goSignin}
+          <a
+            href="https://www.alphasourceai.com/account"
             className="btn-ghost"
             style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
           >
             Back to Client Sign In
-          </button>
+          </a>
         </div>
       </div>
     </div>
