@@ -907,345 +907,342 @@ export default function ClientDashboard() {
         <div className="dash-scroll">
           {activeTab === 'candidates' && (
             <div className="client-dash-card">
-          {/* Filters: Role + Min Overall */}
-          <div className="filters">
-            <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
-            <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
-              <label htmlFor="roleFilter">Role</label>
-              <select
-                id="roleFilter"
-                value={roleFilter}
-                onChange={e => setRoleFilter(e.target.value)}
-                style={{ padding: 8 }}
-              >
-                <option value="">All roles</option>
-                {availableRoles.map(r => (
-                  <option key={r} value={r}>{r}</option>
-                ))}
-              </select>
-            </div>
+              {/* Filters: Role + Min Overall */}
+              <div className="filters">
+                <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
+                <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
+                  <label htmlFor="roleFilter">Role</label>
+                  <select
+                    id="roleFilter"
+                    value={roleFilter}
+                    onChange={e => setRoleFilter(e.target.value)}
+                    style={{ padding: 8 }}
+                  >
+                    <option value="">All roles</option>
+                    {availableRoles.map(r => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                </div>
 
-            <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
-              <label htmlFor="minOverall">Min Overall Score</label>
-              <input
-                id="minOverall"
-                type="number"
-                min={0}
-                max={100}
-                step={1}
-                placeholder="e.g. 70"
-                value={minOverall}
-                onChange={e => setMinOverall(e.target.value)}
-                style={{ padding: 8, width: 90 }}
-              />
-              {minOverall !== '' && (
-                <button
-                  type="button"
-                  onClick={() => setMinOverall('')}
-                  className="btn lilac client-dash-pill"
-                >
-                  Clear
-                </button>
+                <div style={{ display:'flex', alignItems:'center', gap: 6 }}>
+                  <label htmlFor="minOverall">Min Overall Score</label>
+                  <input
+                    id="minOverall"
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    placeholder="e.g. 70"
+                    value={minOverall}
+                    onChange={e => setMinOverall(e.target.value)}
+                    style={{ padding: 8, width: 90 }}
+                  />
+                  {minOverall !== '' && (
+                    <button
+                      type="button"
+                      onClick={() => setMinOverall('')}
+                      className="btn lilac client-dash-pill"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {loading && <div>Loading…</div>}
+              {!loading && displayRows.length === 0 && <div>No rows yet.</div>}
+
+              {!loading && displayRows.length > 0 && (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr>
+                        <th style={{...th, width: 36}}></th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Name"
+                            active={sortBy === 'name'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('name');
+                              setSortDir(d => (sortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </th>
+                        <th style={th}>Email</th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Role"
+                            active={sortBy === 'role'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('role');
+                              setSortDir(d => (sortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </th>
+                        <th style={th}>Resume</th>
+                        <th style={th}>Interview</th>
+                        <th style={th}>Overall</th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Created"
+                            active={sortBy === 'created'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('created');
+                              setSortDir(d => (sortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleRows.map(r => {
+                        const trKey = `${r.latest_interview_id || r.id}:transcript`
+                        const pdfKey = `${r.latest_interview_id || r.id}:pdf`
+                        const opened = !!expanded[r.id]
+                        return (
+                          <FragmentRow
+                            key={r.id}
+                            r={r}
+                            opened={opened}
+                            toggleRow={toggleRow}
+                            pctText={pctText}
+                            fmtDate={fmtDate}
+                            openSigned={openSigned}
+                            opening={opening}
+                            generatePdfForRow={generatePdfForRow}
+                            trKey={trKey}
+                            pdfKey={pdfKey}
+                          />
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
-            </div>
-          </div>
 
-          {loading && <div>Loading…</div>}
-          {!loading && displayRows.length === 0 && <div>No rows yet.</div>}
-
-          {!loading && displayRows.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{...th, width: 36}}></th>
-                    <th style={th}>
-                      <HeaderButton
-                        label="Name"
-                        active={sortBy === 'name'}
-                        dir={sortDir}
-                        onClick={() => {
-                          setSortBy('name');
-                          setSortDir(d => (sortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
-                        }}
-                      />
-                    </th>
-                    <th style={th}>Email</th>
-                    <th style={th}>
-                      <HeaderButton
-                        label="Role"
-                        active={sortBy === 'role'}
-                        dir={sortDir}
-                        onClick={() => {
-                          setSortBy('role');
-                          setSortDir(d => (sortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
-                        }}
-                      />
-                    </th>
-                    <th style={th}>Resume</th>
-                    <th style={th}>Interview</th>
-                    <th style={th}>Overall</th>
-                    <th style={th}>
-                      <HeaderButton
-                        label="Created"
-                        active={sortBy === 'created'}
-                        dir={sortDir}
-                        onClick={() => {
-                          setSortBy('created');
-                          setSortDir(d => (sortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
-                        }}
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleRows.map(r => {
-                    const trKey = `${r.latest_interview_id || r.id}:transcript`
-                    const pdfKey = `${r.latest_interview_id || r.id}:pdf`
-                    const opened = !!expanded[r.id]
-                    return (
-                      <FragmentRow
-                        key={r.id}
-                        r={r}
-                        opened={opened}
-                        toggleRow={toggleRow}
-                        pctText={pctText}
-                        fmtDate={fmtDate}
-                        openSigned={openSigned}
-                        opening={opening}
-                        generatePdfForRow={generatePdfForRow}
-                        trKey={trKey}
-                        pdfKey={pdfKey}
-                      />
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {!loading && displayRows.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-              {visibleCount < displayRows.length && (
-                <button
-                  type="button"
-                  className="btn lilac"
-                  onClick={() => {
-                    const next = Math.min(displayRows.length, visibleCount + INITIAL_COUNT);
-                    setVisibleCount(next);
-                    postSizeSoon();
-                    setTimeout(postSizeSoon, 250);
-                  }}
-                >
-                  Show more
-                </button>
+              {!loading && displayRows.length > 0 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
+                  {visibleCount < displayRows.length && (
+                    <button
+                      type="button"
+                      className="btn lilac"
+                      onClick={() => {
+                        const next = Math.min(displayRows.length, visibleCount + INITIAL_COUNT);
+                        setVisibleCount(next);
+                        postSizeSoon();
+                        setTimeout(postSizeSoon, 250);
+                      }}
+                    >
+                      Show more
+                    </button>
+                  )}
+                  {visibleCount > INITIAL_COUNT && (
+                    <button
+                      type="button"
+                      className="btn lilac"
+                      onClick={() => {
+                        setVisibleCount(INITIAL_COUNT);
+                        postSizeSoon();
+                        setTimeout(postSizeSoon, 250);
+                      }}
+                    >
+                      Show less
+                    </button>
+                  )}
+                </div>
               )}
-              {visibleCount > INITIAL_COUNT && (
-                <button
-                  type="button"
-                  className="btn lilac"
-                  onClick={() => {
-                    setVisibleCount(INITIAL_COUNT);
-                    postSizeSoon();
-                    setTimeout(postSizeSoon, 250);
-                  }}
-                >
-                  Show less
-                </button>
-              )}
-            </div>
-          )}
-        </div>
             </div>
           )}
 
           {activeTab === 'roles' && (
             <div className="client-dash-card">
-          <div className="client-dash-section-head">
-            <h2>Roles for {currentName}</h2>
-          </div>
-          {canManage && (
-            <div className="client-dash-row">
-              <input
-                className="alpha-input client-dash-input"
-                placeholder="Role title"
-                value={newRoleTitle}
-                onChange={e => setNewRoleTitle(e.target.value)}
-              />
-              <select
-                className="alpha-input alpha-select client-dash-input"
-                value={interviewType}
-                onChange={e => setInterviewType(e.target.value)}
-              >
-                <option value="BASIC">BASIC</option>
-                <option value="DETAILED">DETAILED</option>
-                <option value="TECHNICAL">TECHNICAL</option>
-              </select>
-              <div className="client-dash-file-wrapper">
-                <CustomFilePicker
-                  key={fileKey}
-                  accept=".pdf,.doc,.docx,application/pdf"
-                  onFileSelected={handleRoleFileFromPicker}
-                  label="Drag JD file here or click to browse"
-                  className="client-dash-input client-dash-file-input"
-                  inputRef={fileInputRef}
-                />
+              <div className="client-dash-section-head">
+                <h2>Roles for {currentName}</h2>
               </div>
-              {jobFile && (
-                <button
-                  type="button"
-                  className="btn lilac"
-                  onClick={() => {
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                    setJobFile(null);
-                    setFileKey(k => k + 1);
-                  }}
-                >
-                  Clear file
-                </button>
+              {canManage && (
+                <div className="client-dash-row">
+                  <input
+                    className="alpha-input client-dash-input"
+                    placeholder="Role title"
+                    value={newRoleTitle}
+                    onChange={e => setNewRoleTitle(e.target.value)}
+                  />
+                  <select
+                    className="alpha-input alpha-select client-dash-input"
+                    value={interviewType}
+                    onChange={e => setInterviewType(e.target.value)}
+                  >
+                    <option value="BASIC">BASIC</option>
+                    <option value="DETAILED">DETAILED</option>
+                    <option value="TECHNICAL">TECHNICAL</option>
+                  </select>
+                  <div className="client-dash-file-wrapper">
+                    <CustomFilePicker
+                      key={fileKey}
+                      accept=".pdf,.doc,.docx,application/pdf"
+                      onFileSelected={handleRoleFileFromPicker}
+                      label="Drag JD file here or click to browse"
+                      className="client-dash-input client-dash-file-input"
+                      inputRef={fileInputRef}
+                    />
+                  </div>
+                  {jobFile && (
+                    <button
+                      type="button"
+                      className="btn lilac"
+                      onClick={() => {
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        setJobFile(null);
+                        setFileKey(k => k + 1);
+                      }}
+                    >
+                      Clear file
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
+                    onClick={createRole}
+                  >
+                    {roleBusy ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
               )}
-              <button
-                type="button"
-                className="btn lilac client-dash-pill"
-                disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
-                onClick={createRole}
-              >
-                {roleBusy ? 'Creating…' : 'Create'}
-              </button>
-            </div>
-          )}
 
-          {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
-          {!rolesLoading && (
-            <div className="client-dash-table">
-              <div className="t-head">
-                <div>Role</div>
-                <div>Created</div>
-                <div>Type</div>
-                <div>KB</div>
-                <div>JD</div>
-                <div>Link</div>
-                {canManage && <div>Delete</div>}
-              </div>
-              <div className="t-body">
-                {roles.map(r => {
-                  const hasKB = !!r.kb_document_id;
-                  const hasJD = !!r.job_description_url || !!r.description;
-                  return (
-                    <div key={r.id} className="t-row">
-                      <div>
-                        <div className="title">{r.title}</div>
-                        <div className="sub">Token: {r.slug_or_token}</div>
-                      </div>
-                      <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                      <div>{r.interview_type || '—'}</div>
-                      <div className="center">{hasKB ? '✓' : '—'}</div>
-                      <div className="center">{hasJD ? '✓' : '—'}</div>
-                      <div>
-                        <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
-                      </div>
-                      {canManage && (
-                        <div className="center">
-                          <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
-                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
-                              <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                          </button>
+              {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
+              {!rolesLoading && (
+                <div className="client-dash-table">
+                  <div className="t-head">
+                    <div>Role</div>
+                    <div>Created</div>
+                    <div>Type</div>
+                    <div>KB</div>
+                    <div>JD</div>
+                    <div>Link</div>
+                    {canManage && <div>Delete</div>}
+                  </div>
+                  <div className="t-body">
+                    {roles.map(r => {
+                      const hasKB = !!r.kb_document_id;
+                      const hasJD = !!r.job_description_url || !!r.description;
+                      return (
+                        <div key={r.id} className="t-row">
+                          <div>
+                            <div className="title">{r.title}</div>
+                            <div className="sub">Token: {r.slug_or_token}</div>
+                          </div>
+                          <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                          <div>{r.interview_type || '—'}</div>
+                          <div className="center">{hasKB ? '✓' : '—'}</div>
+                          <div className="center">{hasJD ? '✓' : '—'}</div>
+                          <div>
+                            <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
+                          </div>
+                          {canManage && (
+                            <div className="center">
+                              <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                                  <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                                  <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
-              </div>
-            </div>
-          )}
-        </div>
+                      );
+                    })}
+                    {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'members' && (
             canManage ? (
               <div className="client-dash-card">
-            <div className="client-dash-section-head">
-              <h2>Client Members for {currentName}</h2>
-            </div>
-            <div className="client-dash-row">
-              <input
-                className="alpha-input client-dash-input"
-                placeholder="Member name"
-                value={memberName}
-                onChange={e => setMemberName(e.target.value)}
-              />
-              <input
-                className="alpha-input client-dash-input"
-                placeholder="Member email"
-                value={memberEmail}
-                onChange={e => setMemberEmail(e.target.value)}
-              />
-              <select
-                className="alpha-input alpha-select client-dash-input"
-                value={memberRole}
-                onChange={e => setMemberRole(e.target.value)}
-              >
-                <option value="member">Member</option>
-                <option value="manager">Manager</option>
-              </select>
-              <button type="button" className="btn lilac client-dash-pill" disabled={!clientId} onClick={addMember}>Add</button>
-            </div>
+                <div className="client-dash-section-head">
+                  <h2>Client Members for {currentName}</h2>
+                </div>
+                <div className="client-dash-row">
+                  <input
+                    className="alpha-input client-dash-input"
+                    placeholder="Member name"
+                    value={memberName}
+                    onChange={e => setMemberName(e.target.value)}
+                  />
+                  <input
+                    className="alpha-input client-dash-input"
+                    placeholder="Member email"
+                    value={memberEmail}
+                    onChange={e => setMemberEmail(e.target.value)}
+                  />
+                  <select
+                    className="alpha-input alpha-select client-dash-input"
+                    value={memberRole}
+                    onChange={e => setMemberRole(e.target.value)}
+                  >
+                    <option value="member">Member</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                  <button type="button" className="btn lilac client-dash-pill" disabled={!clientId} onClick={addMember}>Add</button>
+                </div>
 
-            {membersLoading && <div className="client-dash-muted">Loading members…</div>}
-            {!membersLoading && (
-              <div className="client-dash-table members">
-                <div className="t-head">
-                  <div>Name</div>
-                  <div>Email</div>
-                  <div>Role</div>
-                  <div>Remove</div>
-                </div>
-                <div className="t-body">
-                  {members.map(m => {
-                    const isSelf = (m.user_id && me?.user?.id && m.user_id === me.user.id) || (m.id && me?.user?.id && m.id === me.user.id);
-                    return (
-                      <div key={m.id} className="t-row">
-                        <div className="grow">
-                          <div className="title">{m.name}</div>
-                          <div className="sub">{m.email}</div>
-                        </div>
-                        <div className="muted">{m.email}</div>
-                        <div>{m.role || 'member'}</div>
-                        <div className="center">
-                          <button
-                            className="btn-icon"
-                            onClick={() => !isSelf && removeMember(m.id)}
-                            title={isSelf ? 'You cannot remove yourself' : 'Remove member'}
-                            disabled={isSelf}
-                            style={isSelf ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
-                          >
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                              <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
-                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
-                              <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {members.length === 0 && <div className="t-empty muted">No members yet</div>}
-                </div>
-              </div>
-            )}
-          </div>
+                {membersLoading && <div className="client-dash-muted">Loading members…</div>}
+                {!membersLoading && (
+                  <div className="client-dash-table members">
+                    <div className="t-head">
+                      <div>Name</div>
+                      <div>Email</div>
+                      <div>Role</div>
+                      <div>Remove</div>
+                    </div>
+                    <div className="t-body">
+                      {members.map(m => {
+                        const isSelf = (m.user_id && me?.user?.id && m.user_id === me.user.id) || (m.id && me?.user?.id && m.id === me.user.id);
+                        return (
+                          <div key={m.id} className="t-row">
+                            <div className="grow">
+                              <div className="title">{m.name}</div>
+                              <div className="sub">{m.email}</div>
+                            </div>
+                            <div className="muted">{m.email}</div>
+                            <div>{m.role || 'member'}</div>
+                            <div className="center">
+                              <button
+                                className="btn-icon"
+                                onClick={() => !isSelf && removeMember(m.id)}
+                                title={isSelf ? 'You cannot remove yourself' : 'Remove member'}
+                                disabled={isSelf}
+                                style={isSelf ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                              >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                  <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                                  <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                                  <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                                  <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {members.length === 0 && <div className="t-empty muted">No members yet</div>}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="client-dash-card">
-            You don’t have permission to manage members for this client.
-          </div>
+                You don’t have permission to manage members for this client.
+              </div>
             )
           )}
         </div>
