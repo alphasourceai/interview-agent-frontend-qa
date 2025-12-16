@@ -810,9 +810,9 @@ export default function ClientDashboard() {
               <label htmlFor="clientSel">Client</label>
               <select
                 id="clientSel"
+                className="alpha-input alpha-select client-dash-input"
                 value={clientId}
                 onChange={e => setClientId(e.target.value)}
-                style={{ padding: 8 }}
               >
                 {clients.map(c => (
                   <option key={c.client_id} value={c.client_id}>

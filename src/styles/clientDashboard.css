@@ -184,8 +184,9 @@
   align-items: center;
 }
 .client-dash-row .alpha-input {
-  min-width: 160px;
-  flex: 1 1 160px;
+  min-width: 200px;
+  flex: 1 1 200px;
+  max-width: 520px;
 }
 .client-dash-row button {
   flex: 0 0 auto;

@@ -190,12 +190,38 @@ html, body, #root{
 }
 
 /* inputs (base) */
-.alpha-theme input, .alpha-theme select, .alpha-theme textarea{
-  background:rgba(255,255,255,0.08); color:var(--alpha-text); border:1px solid var(--alpha-border);
-  border-radius:10px; padding:8px 10px;
+.alpha-theme input,
+.alpha-theme select,
+.alpha-theme textarea{
+  background:rgba(255,255,255,0.08);
+  color:var(--alpha-text);
+  border:1px solid var(--alpha-border);
+  border-radius:10px;
+  padding:8px 10px;
 }
-.alpha-theme input::placeholder, .alpha-theme textarea::placeholder{ color:var(--alpha-muted); }
+.alpha-theme input::placeholder,
+.alpha-theme textarea::placeholder{ color:var(--alpha-muted); }
 
+.alpha-theme select{
+  appearance:none;
+  -webkit-appearance:none;
+  -moz-appearance:none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--alpha-text) 50%),
+    linear-gradient(135deg, var(--alpha-text) 50%, transparent 50%),
+    linear-gradient(to right, transparent, transparent);
+  background-position:
+    calc(100% - 18px) calc(50% - 2px),
+    calc(100% - 12px) calc(50% - 2px),
+    100% 0;
+  background-size: 6px 6px, 6px 6px, 2.5em 100%;
+  background-repeat: no-repeat;
+  padding-right: 36px;
+}
+.alpha-theme select:focus-visible{
+  outline: 2px solid var(--alpha-primary);
+  outline-offset: 2px;
+}
 .alpha-theme select option{ color:#111; }
 
 .dash-page{
