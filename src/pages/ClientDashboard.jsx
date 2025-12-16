@@ -370,19 +370,50 @@ export default function ClientDashboard() {
 
   const fetchRolesForClient = async (clientIdArg) => {
     const targetId = clientIdArg || clientId;
+    const userId = me?.user?.id || me?.id || null;
     if (!targetId || !canManage) {
+      console.debug('[roles] fetch skipped', {
+        clientId: targetId,
+        userId,
+        canManage,
+        reason: !targetId ? 'no_client' : 'no_permission'
+      });
       setRoles([]);
       return;
     }
+    const endpoint = `/roles?client_id=${encodeURIComponent(targetId)}`;
+    console.debug('[roles] fetch start', { clientId: targetId, userId, endpoint });
     setRolesLoading(true);
     try {
-      const qs = `?client_id=${encodeURIComponent(targetId)}`;
-      const resp = await apiGet('/admin/roles' + qs);
-      const items = resp?.items || [];
-      items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-      setRoles(items);
+      const resp = await apiGet(endpoint);
+      const items = Array.isArray(resp?.roles) ? resp.roles : (resp?.items || []);
+      console.debug('[roles] fetch success', {
+        clientId: targetId,
+        count: items.length,
+        keys: Object.keys(resp || {})
+      });
+      const sorted = [...items].sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      );
+      setRoles(sorted);
     } catch (e) {
-      showToast(String(e?.message || 'Failed to load roles'), 'error');
+      const status = e?.status || e?.response?.status;
+      const detail =
+        e?.data?.detail ||
+        e?.response?.data?.detail ||
+        e?.data?.message ||
+        e?.message ||
+        'Failed to load roles';
+      console.error('[roles] fetch error', {
+        clientId: targetId,
+        userId,
+        endpoint,
+        status,
+        detail,
+        keys: e?.data ? Object.keys(e.data || {}) : []
+      });
+      setRoles([]);
+      showToast(detail || 'Failed to load roles', 'error');
     } finally {
       setRolesLoading(false);
     }
