@@ -145,6 +145,12 @@
   --alpha-gap:14px;
 }
 
+html, body, #root{
+  height:100%;
+  min-height:100vh;
+  overflow:hidden;
+}
+
 .alpha-theme, .alpha-theme body{
   background:var(--alpha-bg);
   color:var(--alpha-text);
@@ -191,6 +197,67 @@
 .alpha-theme input::placeholder, .alpha-theme textarea::placeholder{ color:var(--alpha-muted); }
 
 .alpha-theme select option{ color:#111; }
+
+.dash-page{
+  min-height:100vh;
+  height:100vh;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.dash-inner{
+  display:flex;
+  flex-direction:column;
+  height:100%;
+  min-height:100%;
+  overflow:hidden;
+  flex:1;
+}
+.dash-center{
+  width:100%;
+  max-width:1200px;
+  margin:0 auto;
+  padding:24px;
+  box-sizing:border-box;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+}
+.dash-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+.dash-scroll{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  overflow-y:auto;
+  min-height:0;
+  padding-bottom:12px;
+}
+.card-scroll{
+  max-height:calc(100vh - 260px);
+  overflow-y:auto;
+}
+.dash-tabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.auth-page{
+  min-height:100vh;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  padding:24px;
+  box-sizing:border-box;
+}
 
 /* ===== Removed legacy .alpha-hero (translucent overlay) per your direction ===== */
 

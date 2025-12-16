@@ -202,9 +202,17 @@
   gap: 8px;
   align-items: center;
 }
+.client-dash-table.three-cols .t-head,
+.client-dash-table.three-cols .t-row {
+  grid-template-columns: 2fr 1.2fr 0.7fr;
+}
 .client-dash-table.members .t-head,
 .client-dash-table.members .t-row {
   grid-template-columns: 2fr 1.6fr 0.8fr 0.7fr;
+}
+.client-dash-table.members.members-extended .t-head,
+.client-dash-table.members.members-extended .t-row {
+  grid-template-columns: 2fr 1.4fr 0.9fr 0.7fr 0.7fr;
 }
 .client-dash-table .t-head {
   font-weight: 700;
@@ -496,12 +504,7 @@
   justify-content: flex-end;
 }
 
-/* --- Embedded-only (Wix) overflow guards for dashboard -------------------- */
-html.embedded .client-dash,
-html.embedded .client-dash .detail-card,
-html.embedded .client-dash .row-actions,
-html.embedded .client-dash .table-wrap,
-html.embedded .client-dash .table-container {
-  overflow: visible !important;
-  max-height: none !important;
+/* Embedded-only (Wix) overflow guards: keep page non-scrolling */
+html.embedded .client-dash {
+  overflow: hidden;
 }

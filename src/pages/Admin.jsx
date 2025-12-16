@@ -8,25 +8,10 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
 import '../styles/adminTheme.css';
+import '../styles/clientDashboard.css';
 
 // Detect if running inside an iframe (Wix embed)
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
-
-// Add a marker class to <html> so CSS can disable inner scrollbars when embedded
-if (typeof document !== 'undefined' && EMBEDDED) {
-  try {
-    document.documentElement.classList.add('embedded');
-    // Add CSS override to disable scrollbars and auto height when embedded
-    const style = document.createElement('style');
-    style.innerHTML = `
-      html.embedded, html.embedded body {
-        overflow: visible !important;
-        height: auto !important;
-      }
-    `;
-    document.head.appendChild(style);
-  } catch {}
-}
 
 /* bright white trash icon */
 const IconTrash = ({ size = 24 }) => (
@@ -87,11 +72,7 @@ export default function Admin() {
   const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
   const [emailError, setEmailError] = useState('');
 
-  // collapsibles — default collapsed unless user has toggled them on before
-  const readToggle = (key) => (localStorage.getItem(key) === '1' ? true : false);
-  const [showClients, setShowClients] = useState(readToggle('adm_show_clients'));
-  const [showRoles, setShowRoles] = useState(readToggle('adm_show_roles'));
-  const [showMembers, setShowMembers] = useState(readToggle('adm_show_members'));
+  const [activeTab, setActiveTab] = useState('clients'); // clients | roles | members
 
   // --- Embedded (Wix) auto-resize helper ---
   // Posts the current document height to the parent (Wix) so the iframe resizes.
@@ -140,11 +121,7 @@ export default function Admin() {
     // also post again after a longer delay to ensure shrinkage is handled
     const t2 = setTimeout(postEmbedSize, 320);
     return () => { clearTimeout(t); clearTimeout(t2); };
-  }, [loading, isAdmin, clients.length, roles.length, members.length, showClients, showRoles, showMembers, selectedClientId]);
-
-  useEffect(() => localStorage.setItem('adm_show_clients', showClients ? '1' : '0'), [showClients]);
-  useEffect(() => localStorage.setItem('adm_show_roles', showRoles ? '1' : '0'), [showRoles]);
-  useEffect(() => localStorage.setItem('adm_show_members', showMembers ? '1' : '0'), [showMembers]);
+  }, [loading, isAdmin, clients.length, roles.length, members.length, selectedClientId]);
 
   // --- 60-minute inactivity auto-logout ---
   useEffect(() => {
@@ -189,6 +166,10 @@ export default function Admin() {
   }, []);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
+  const currentClientName = useMemo(
+    () => clients.find((c) => c.id === selectedClientId)?.name || '',
+    [clients, selectedClientId]
+  );
 
   // Detect Supabase recovery redirect
   useEffect(() => {
@@ -320,7 +301,7 @@ export default function Admin() {
     setEmailError('');
     const origin = window.location.origin;
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/admin?pwreset=1`
+      redirectTo: `${origin}/pwreset`
     });
     if (error) {
       toast.error('Could not start reset: ' + error.message, { duration: 2000 });
@@ -594,14 +575,14 @@ export default function Admin() {
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
 
   if (loading) {
-    return <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}><div className="alpha-card"><h2>Loading…</h2></div></div>;
+    return <div className="auth-page alpha-theme admin-page"><div className="alpha-card" style={{ width: '100%', maxWidth: 520 }}><h2>Loading…</h2></div></div>;
   }
 
   // ---------- Reset UI ----------
   if (showReset) {
     return (
-      <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
-        <div className="alpha-card alpha-form">
+      <div className="auth-page alpha-theme admin-page">
+        <div className="alpha-card alpha-form" style={{ width: '100%', maxWidth: 520 }}>
           <h2>Reset Password</h2>
           <form onSubmit={submitReset}>
             <label>New password</label>
@@ -623,8 +604,8 @@ export default function Admin() {
   // ---------- Auth screens ----------
   if (!loading && !session) {
     return (
-      <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
-        <div className="alpha-card auth-wrap admin-auth">
+      <div className="auth-page alpha-theme admin-page">
+        <div className="alpha-card auth-wrap admin-auth" style={{ width: '100%', maxWidth: 520 }}>
           <div className="auth-head">
             <h2>Admin Sign In</h2>
           </div>
@@ -661,8 +642,8 @@ export default function Admin() {
 
   if (!loading && !isAdmin) {
     return (
-      <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
-        <div className="alpha-card">
+      <div className="auth-page alpha-theme admin-page">
+        <div className="alpha-card" style={{ width: '100%', maxWidth: 520 }}>
           <h2>Access denied</h2>
           <p>Your account is not an admin.</p>
           <button className="signout-btn" onClick={handleSignOut}>Sign Out</button>
@@ -674,235 +655,239 @@ export default function Admin() {
   // ---------- Admin app ----------
   return (
     <>
-      <div className="alpha-container admin-page" style={EMBEDDED ? { overflow: 'visible' } : undefined}>
-        {/* Header with logo (left), title, and account (right) */}
-        <div className="alpha-header alpha-header--dash">
-          <div className="alpha-header-left">
-            <h1>Admin Dashboard</h1>
-          </div>
-          <div className="alpha-actions">
-            <span>{me?.user?.email || me?.email}</span>
-            <button onClick={handleSignOut}>Sign Out</button>
-          </div>
-        </div>
-
-        {/* current client selector under header */}
-        <div className="alpha-card alpha-card--bar">
-          <div className="row">
-            <label className="mr-2">Current client</label>
-            <select className="alpha-input alpha-select" value={selectedClientId} onChange={e => setSelectedClientId(e.target.value)}>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="alpha-grid">
-          {/* Clients */}
-          <div className="alpha-card">
-            <div style={{ height: 12 }} />
-            <div className="section-head">
-              <h2 className="section-title">Clients</h2>
+      <div className="dash-page alpha-theme client-dash admin-page">
+        <div className="dash-center dash-inner">
+          <div className="dash-head">
+            <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
+            <div className="dash-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span>{me?.user?.email || me?.email}</span>
+              <button className="btn lilac client-dash-pill" onClick={handleSignOut}>Sign Out</button>
             </div>
+          </div>
 
-            {/* create row */}
-            <div className="row">
-              <input className="alpha-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
-              <input className="alpha-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
-              <input className="alpha-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
-              <select className="alpha-input alpha-select" value={newClientAdminRole} onChange={e => setNewClientAdminRole(e.target.value)}>
-                <option value="manager">Manager (standard)</option>
-                <option value="tester">Tester (beta with NDA splash)</option>
-              </select>
-              <button onClick={createClient}>Create</button>
-            </div>
-
-            {/* toggle UNDER inputs */}
-            <div className="toggle-row">
-              <button
-                type="button"
-                className="toggle"
-                aria-pressed={showClients}
-                onClick={() => {
-                  setShowClients(v => !v);
-                  postEmbedSize();
-                  setTimeout(postEmbedSize, 300);
-                }}
+          <div className="client-dash-card" style={{ marginBottom: 8 }}>
+            <div className="client-dash-row" style={{ marginBottom: 0 }}>
+              <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
+              <select
+                id="admin-client-sel"
+                className="alpha-input alpha-select client-dash-input"
+                value={selectedClientId}
+                onChange={e => setSelectedClientId(e.target.value)}
               >
-                {showClients ? 'Hide clients' : 'Show clients'}
-              </button>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+              <div style={{ color: '#9CA3AF' }}>
+                Viewing <strong>{currentClientName || selectedClientId}</strong>
+              </div>
             </div>
+          </div>
 
-            {showClients && (
-              <div className="list list--rows" id="clients-list">
-                {clients.map(c => (
-                  <div key={c.id} className="list-row">
-                    <div className="grow">
-                      <div className="title">{c.name}</div>
-                      <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
+          <div className="dash-tabs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('clients')}
+              className={`client-dash-tab ${activeTab === 'clients' ? 'client-dash-tab--active' : ''}`}
+            >
+              Clients
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('roles')}
+              className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
+            >
+              Roles
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('members')}
+              className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
+            >
+              Members
+            </button>
+          </div>
+
+          <div className="dash-scroll">
+            {activeTab === 'clients' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Clients</h2>
+                </div>
+                <div className="client-dash-row">
+                  <input className="alpha-input client-dash-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
+                  <input className="alpha-input client-dash-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
+                  <input className="alpha-input client-dash-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
+                  <select className="alpha-input alpha-select client-dash-input" value={newClientAdminRole} onChange={e => setNewClientAdminRole(e.target.value)}>
+                    <option value="manager">Manager (standard)</option>
+                    <option value="tester">Tester (beta with NDA splash)</option>
+                  </select>
+                  <button className="btn lilac client-dash-pill" onClick={createClient}>Create</button>
+                </div>
+                <div className="card-scroll">
+                  <div className="client-dash-table three-cols">
+                    <div className="t-head">
+                      <div>Name</div>
+                      <div>Created</div>
+                      <div>Remove</div>
                     </div>
-                    <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
-                      <IconTrash size={24} />
+                    <div className="t-body">
+                      {clients.map(c => (
+                        <div key={c.id} className="t-row">
+                          <div className="grow">
+                            <div className="title">{c.name}</div>
+                            <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
+                          </div>
+                          <div className="muted">{new Date(c.created_at).toLocaleDateString()}</div>
+                          <div className="center">
+                            <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
+                              <IconTrash size={24} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {clients.length === 0 && <div className="t-empty muted">No clients yet</div>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'roles' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Roles</h2>
+                </div>
+                <div className="client-dash-row">
+                  <input className="alpha-input client-dash-input" placeholder="Role title" value={newRoleTitle} onChange={e => setNewRoleTitle(e.target.value)} />
+                  <select className="alpha-input alpha-select client-dash-input" value={interviewType} onChange={e => setInterviewType(e.target.value)}>
+                    <option value="BASIC">BASIC</option>
+                    <option value="DETAILED">DETAILED</option>
+                    <option value="TECHNICAL">TECHNICAL</option>
+                  </select>
+                  <div className="client-dash-file-wrapper" style={{ flex: '1 1 240px' }}>
+                    <input
+                      key={fileKey}
+                      className="alpha-input client-dash-input"
+                      type="file"
+                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onChange={e => setJobFile(e.target.files?.[0] || null)}
+                      aria-label="Job Description file (PDF or DOCX)"
+                      ref={fileInputRef}
+                    />
+                  </div>
+                  {jobFile && (
+                    <button
+                      type="button"
+                      className="btn lilac client-dash-pill"
+                      onClick={() => {
+                        if (fileInputRef.current) fileInputRef.current.value = '';
+                        setJobFile(null);
+                        setFileKey(k => k + 1);
+                      }}
+                    >
+                      Clear file
                     </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Roles */}
-          <div className="alpha-card">
-            <div style={{ height: 12 }} />
-            <div className="section-head">
-              <h2 className="section-title">Roles</h2>
-            </div>
-
-            <div className="row">
-              <input className="alpha-input" placeholder="Role title" value={newRoleTitle} onChange={e => setNewRoleTitle(e.target.value)} />
-              <select className="alpha-input alpha-select" value={interviewType} onChange={e => setInterviewType(e.target.value)}>
-                <option value="BASIC">BASIC</option>
-                <option value="DETAILED">DETAILED</option>
-                <option value="TECHNICAL">TECHNICAL</option>
-              </select>
-
-              {/* file picker + clear */}
-              <div className="file-stack">
-                <input
-                  key={fileKey}
-                  className="alpha-input file"
-                  type="file"
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onChange={e => setJobFile(e.target.files?.[0] || null)}
-                  aria-label="Job Description file (PDF or DOCX)"
-                  ref={fileInputRef}
-                />
-                {jobFile && (
+                  )}
                   <button
-                    className="btn-icon file-clear"
-                    onClick={() => {
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                      setJobFile(null);
-                      setFileKey(k => k + 1); // fully reset the input element
-                    }}
-                    title="Remove file"
+                    className="btn lilac client-dash-pill"
+                    disabled={!selectedClientId || roleBusy || !newRoleTitle.trim() || !jobFile}
+                    onClick={createRole}
+                    title={!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role'}
                   >
-                    <IconTrash size={24} />
+                    {roleBusy ? 'Creating…' : 'Create'}
                   </button>
-                )}
-              </div>
-
-              <button
-                disabled={!selectedClientId || roleBusy || !newRoleTitle.trim() || !jobFile}
-                onClick={createRole}
-                title={!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role'}
-              >
-                {roleBusy ? 'Creating…' : 'Create'}
-              </button>
-            </div>
-
-            {/* toggle UNDER inputs */}
-            <div className="toggle-row">
-              <button
-                type="button"
-                className="toggle"
-                aria-pressed={showRoles}
-                onClick={() => {
-                  setShowRoles(v => !v);
-                  postEmbedSize();
-                  setTimeout(postEmbedSize, 300);
-                }}
-              >
-                {showRoles ? 'Hide roles' : 'Show roles'}
-              </button>
-            </div>
-
-            {showRoles && (
-              <div className="table like" id="roles-table">
-                <div className="t-head">
-                  <div>Role</div><div>Created</div><div>KB</div><div>JD</div><div>Link</div><div>Delete</div>
                 </div>
-                <div className="t-body">
-                  {roles.map(r => {
-                    const hasKB = !!r.kb_document_id;
-                    const hasJD = !!r.job_description_url || !!r.description;
-                    return (
-                      <div key={r.id} className="t-row">
-                        <div>
-                          <div className="title">{r.title}</div>
-                          <div className="sub">Type: {r.interview_type || '—'} • Token: {r.slug_or_token}</div>
-                        </div>
-                        <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
-                        <div className="center">{hasKB ? '✓' : '—'}</div>
-                        <div className="center">{hasJD ? '✓' : '—'}</div>
-                        <div>
-                          <button onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
-                        </div>
-                        <div className="center">
-                          <button className="btn-icon" onClick={() => setConfirmRole({ open: true, id: r.id })} title="Delete role">
-                            <IconTrash size={24} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                <div className="card-scroll">
+                  <div className="client-dash-table">
+                    <div className="t-head">
+                      <div>Role</div>
+                      <div>Created</div>
+                      <div>Type</div>
+                      <div>KB</div>
+                      <div>JD</div>
+                      <div>Link</div>
+                      <div>Delete</div>
+                    </div>
+                    <div className="t-body">
+                      {roles.map(r => {
+                        const hasKB = !!r.kb_document_id;
+                        const hasJD = !!r.job_description_url || !!r.description;
+                        return (
+                          <div key={r.id} className="t-row">
+                            <div>
+                              <div className="title">{r.title}</div>
+                              <div className="sub">Token: {r.slug_or_token}</div>
+                            </div>
+                            <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                            <div>{r.interview_type || '—'}</div>
+                            <div className="center">{hasKB ? '✓' : '—'}</div>
+                            <div className="center">{hasJD ? '✓' : '—'}</div>
+                            <div>
+                              <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
+                            </div>
+                            <div className="center">
+                              <button className="btn-icon" onClick={() => setConfirmRole({ open: true, id: r.id })} title="Delete role">
+                                <IconTrash size={24} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
-          </div>
 
-          {/* Members */}
-          <div className="alpha-card">
-            <div style={{ height: 12 }} />
-            <div className="section-head">
-              <h2 className="section-title">Client Members</h2>
-            </div>
-
-            <div className="row">
-              <input className="alpha-input" placeholder="Member name" value={memberName} onChange={e => setMemberName(e.target.value)} />
-              <input className="alpha-input" placeholder="Member email" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
-              <select className="alpha-input alpha-select" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
-                <option value="member">Member</option>
-                <option value="manager">Manager</option>
-                <option value="tester">Tester</option>
-              </select>
-              <button disabled={!selectedClientId} onClick={addMember}>Add</button>
-            </div>
-
-            {/* toggle UNDER inputs */}
-            <div className="toggle-row">
-              <button
-                type="button"
-                className="toggle"
-                aria-pressed={showMembers}
-                onClick={() => {
-                  setShowMembers(v => !v);
-                  postEmbedSize();
-                  setTimeout(postEmbedSize, 300);
-                }}
-              >
-                {showMembers ? 'Hide members' : 'Show members'}
-              </button>
-            </div>
-
-            {showMembers && (
-              <div className="list list--rows" id="members-list">
-                {members.map(m => (
-                  <div key={m.id} className="list-row">
-                    <div className="grow">
-                      <div className="title">{m.name}</div>
-                      <div className="sub">{m.email} • {m.role || 'member'}</div>
+            {activeTab === 'members' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Client Members</h2>
+                </div>
+                <div className="client-dash-row">
+                  <input className="alpha-input client-dash-input" placeholder="Member name" value={memberName} onChange={e => setMemberName(e.target.value)} />
+                  <input className="alpha-input client-dash-input" placeholder="Member email" value={memberEmail} onChange={e => setMemberEmail(e.target.value)} />
+                  <select className="alpha-input alpha-select client-dash-input" value={memberRole} onChange={e => setMemberRole(e.target.value)}>
+                    <option value="member">Member</option>
+                    <option value="manager">Manager</option>
+                    <option value="tester">Tester</option>
+                  </select>
+                  <button className="btn lilac client-dash-pill" disabled={!selectedClientId} onClick={addMember}>Add</button>
+                </div>
+                <div className="card-scroll">
+                  <div className="client-dash-table members members-extended">
+                    <div className="t-head">
+                      <div>Name</div>
+                      <div>Email</div>
+                      <div>Role</div>
+                      <div>Reset</div>
+                      <div>Remove</div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn-icon" onClick={() => sendPasswordReset(m.email)} title="Send password reset">
-                        <IconKey size={20} />
-                      </button>
-                      <button className="btn-icon" onClick={() => setConfirmMember({ open: true, id: m.id })} title="Remove member">
-                        <IconTrash size={20} />
-                      </button>
+                    <div className="t-body">
+                      {members.map(m => (
+                        <div key={m.id} className="t-row">
+                          <div className="grow">
+                            <div className="title">{m.name}</div>
+                            <div className="sub">{m.email}</div>
+                          </div>
+                          <div className="muted">{m.email}</div>
+                          <div>{m.role || 'member'}</div>
+                          <div className="center">
+                            <button className="btn-icon" onClick={() => sendPasswordReset(m.email)} title="Send password reset">
+                              <IconKey size={20} />
+                            </button>
+                          </div>
+                          <div className="center">
+                            <button className="btn-icon" onClick={() => setConfirmMember({ open: true, id: m.id })} title="Remove member">
+                              <IconTrash size={20} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      {members.length === 0 && <div className="t-empty muted">No members for this client</div>}
                     </div>
                   </div>
-                ))}
-                {members.length === 0 && <div className="muted">No members for this client</div>}
+                </div>
               </div>
             )}
           </div>

@@ -793,36 +793,37 @@ export default function ClientDashboard() {
   }, [clientId, roleFilter, minOverall, sortBy, sortDir]);
 
   return (
-    <div className="client-dash" style={{ padding: 24, fontFamily: 'system-ui', maxWidth: 1200, margin: '0 auto' }}>
-      <div className="dash-head">
-        <h1 style={{ margin: 0 }}>Dashboard</h1>
-        <div className="dash-actions">
-          <SignOutButton />
-        </div>
-      </div>
-
-      {error && <div style={{ color: 'crimson', marginBottom: 16 }}>{error}</div>}
-
-      {hasMembership && (
-        <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap:'wrap' }}>
-          <label htmlFor="clientSel">Client</label>
-          <select
-            id="clientSel"
-            value={clientId}
-            onChange={e => setClientId(e.target.value)}
-            style={{ padding: 8 }}
-          >
-            {clients.map(c => (
-              <option key={c.client_id} value={c.client_id}>
-                {c.name} ({c.role})
-              </option>
-            ))}
-          </select>
-          <div style={{ color:'#6b7280' }}>
-            Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+    <div className="dash-page alpha-theme client-dash">
+      <div className="dash-center dash-inner">
+        <div className="dash-head">
+          <h1 style={{ margin: 0 }}>Dashboard</h1>
+          <div className="dash-actions">
+            <SignOutButton />
           </div>
         </div>
-      )}
+
+        {error && <div style={{ color: 'crimson', marginBottom: 16 }}>{error}</div>}
+
+        {hasMembership && (
+          <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap:'wrap' }}>
+            <label htmlFor="clientSel">Client</label>
+            <select
+              id="clientSel"
+              value={clientId}
+              onChange={e => setClientId(e.target.value)}
+              style={{ padding: 8 }}
+            >
+              {clients.map(c => (
+                <option key={c.client_id} value={c.client_id}>
+                  {c.name} ({c.role})
+                </option>
+              ))}
+            </select>
+            <div style={{ color:'#6b7280' }}>
+              Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+            </div>
+          </div>
+        )}
 
       {showTesterNda && (
         <div className="tester-nda-overlay">
@@ -861,50 +862,51 @@ export default function ClientDashboard() {
         </div>
       )}
 
-      {hasMembership && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={() => setActiveTab('roles')}
-            className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
-          >
-            Roles
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('candidates')}
-            className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
-          >
-            Candidates
-          </button>
-          {canManage && (
+        {hasMembership && (
+          <div className="dash-tabs">
             <button
               type="button"
-              onClick={() => setActiveTab('members')}
-              className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
+              onClick={() => setActiveTab('roles')}
+              className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
             >
-              Members
+              Roles
             </button>
-          )}
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('candidates')}
+              className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
+            >
+              Candidates
+            </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('members')}
+                className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
+              >
+                Members
+              </button>
+            )}
+          </div>
+        )}
 
-      {!hasMembership && !loading && (
-        <div
-          style={{
-            background: '#fff3cd',
-            border: '1px solid #ffeeba',
-            padding: 12,
-            borderRadius: 8,
-            marginTop: 8
-          }}
-        >
-          You are signed in but not a member of any client yet.
-        </div>
-      )}
+        {!hasMembership && !loading && (
+          <div
+            style={{
+              background: '#fff3cd',
+              border: '1px solid #ffeeba',
+              padding: 12,
+              borderRadius: 8,
+              marginTop: 8
+            }}
+          >
+            You are signed in but not a member of any client yet.
+          </div>
+        )}
 
-      {activeTab === 'candidates' && (
-        <div className="client-dash-card">
+        <div className="dash-scroll">
+          {activeTab === 'candidates' && (
+            <div className="client-dash-card">
           {/* Filters: Role + Min Overall */}
           <div className="filters">
             <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
@@ -1054,10 +1056,11 @@ export default function ClientDashboard() {
             </div>
           )}
         </div>
-      )}
+            </div>
+          )}
 
-      {activeTab === 'roles' && (
-        <div className="client-dash-card">
+          {activeTab === 'roles' && (
+            <div className="client-dash-card">
           <div className="client-dash-section-head">
             <h2>Roles for {currentName}</h2>
           </div>
@@ -1161,11 +1164,12 @@ export default function ClientDashboard() {
             </div>
           )}
         </div>
-      )}
+            </div>
+          )}
 
-      {activeTab === 'members' && (
-        canManage ? (
-          <div className="client-dash-card">
+          {activeTab === 'members' && (
+            canManage ? (
+              <div className="client-dash-card">
             <div className="client-dash-section-head">
               <h2>Client Members for {currentName}</h2>
             </div>
@@ -1237,36 +1241,39 @@ export default function ClientDashboard() {
               </div>
             )}
           </div>
-        ) : (
-          <div className="client-dash-card">
+              </div>
+            ) : (
+              <div className="client-dash-card">
             You don’t have permission to manage members for this client.
           </div>
-        )
-      )}
-
-      {/* Toast */}
-      {toast.visible && (
-        <div
-          role="status"
-          aria-live="polite"
-          style={{
-            position: 'fixed',
-            right: 16,
-            bottom: 16,
-            background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : 'rgba(16, 185, 129, 0.95)',
-            color: '#fff',
-            borderRadius: 8,
-            padding: '10px 12px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-            maxWidth: 360,
-            zIndex: 1000,
-            fontSize: 14,
-            lineHeight: 1.3
-          }}
-        >
-          {toast.msg}
+            )
+          )}
         </div>
-      )}
+
+        {/* Toast */}
+        {toast.visible && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              position: 'fixed',
+              right: 16,
+              bottom: 16,
+              background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : 'rgba(16, 185, 129, 0.95)',
+              color: '#fff',
+              borderRadius: 8,
+              padding: '10px 12px',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+              maxWidth: 360,
+              zIndex: 1000,
+              fontSize: 14,
+              lineHeight: 1.3
+            }}
+          >
+            {toast.msg}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
