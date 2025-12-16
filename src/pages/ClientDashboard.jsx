@@ -805,22 +805,24 @@ export default function ClientDashboard() {
         {error && <div style={{ color: 'crimson', marginBottom: 16 }}>{error}</div>}
 
         {hasMembership && (
-          <div style={{ marginBottom: 16, display: 'flex', gap: 8, alignItems: 'center', flexWrap:'wrap' }}>
-            <label htmlFor="clientSel">Client</label>
-            <select
-              id="clientSel"
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              style={{ padding: 8 }}
-            >
-              {clients.map(c => (
-                <option key={c.client_id} value={c.client_id}>
-                  {c.name} ({c.role})
-                </option>
-              ))}
-            </select>
-            <div style={{ color:'#6b7280' }}>
-              Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+          <div className="client-dash-card" style={{ marginBottom: 8 }}>
+            <div className="client-dash-row" style={{ marginBottom: 0 }}>
+              <label htmlFor="clientSel">Client</label>
+              <select
+                id="clientSel"
+                value={clientId}
+                onChange={e => setClientId(e.target.value)}
+                style={{ padding: 8 }}
+              >
+                {clients.map(c => (
+                  <option key={c.client_id} value={c.client_id}>
+                    {c.name} ({c.role})
+                  </option>
+                ))}
+              </select>
+              <div style={{ color:'#6b7280' }}>
+                Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+              </div>
             </div>
           </div>
         )}

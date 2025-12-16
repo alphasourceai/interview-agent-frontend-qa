@@ -9,6 +9,7 @@ const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value |
 
 import '../styles/adminTheme.css';
 import '../styles/clientDashboard.css';
+import '../styles/clientTheme.css';
 
 // Detect if running inside an iframe (Wix embed)
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
@@ -575,14 +576,20 @@ export default function Admin() {
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
 
   if (loading) {
-    return <div className="auth-page alpha-theme admin-page"><div className="alpha-card" style={{ width: '100%', maxWidth: 520 }}><h2>Loading…</h2></div></div>;
+    return (
+      <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
+        <div className="alpha-card auth-wrap client-card" style={{ width: '100%', maxWidth: 520 }}>
+          <h2>Loading…</h2>
+        </div>
+      </div>
+    );
   }
 
   // ---------- Reset UI ----------
   if (showReset) {
     return (
-      <div className="auth-page alpha-theme admin-page">
-        <div className="alpha-card alpha-form" style={{ width: '100%', maxWidth: 520 }}>
+      <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
+        <div className="alpha-card auth-wrap client-card" style={{ width: '100%', maxWidth: 520 }}>
           <h2>Reset Password</h2>
           <form onSubmit={submitReset}>
             <label>New password</label>
@@ -604,8 +611,8 @@ export default function Admin() {
   // ---------- Auth screens ----------
   if (!loading && !session) {
     return (
-      <div className="auth-page alpha-theme admin-page">
-        <div className="alpha-card auth-wrap admin-auth" style={{ width: '100%', maxWidth: 520 }}>
+      <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
+        <div className="alpha-card auth-wrap client-card admin-auth" style={{ width: '100%', maxWidth: 520 }}>
           <div className="auth-head">
             <h2>Admin Sign In</h2>
           </div>
@@ -642,8 +649,8 @@ export default function Admin() {
 
   if (!loading && !isAdmin) {
     return (
-      <div className="auth-page alpha-theme admin-page">
-        <div className="alpha-card" style={{ width: '100%', maxWidth: 520 }}>
+      <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
+        <div className="alpha-card auth-wrap client-card" style={{ width: '100%', maxWidth: 520 }}>
           <h2>Access denied</h2>
           <p>Your account is not an admin.</p>
           <button className="signout-btn" onClick={handleSignOut}>Sign Out</button>
