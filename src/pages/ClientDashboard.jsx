@@ -581,6 +581,11 @@ export default function ClientDashboard() {
       setTimeout(postSizeSoon, 300);
       showToast('Member removed', 'success');
     } catch (err) {
+      const code = err?.data?.code || err?.response?.data?.code;
+      if (code === 'self_delete_forbidden') {
+        showToast('Not allowed to delete yourself', 'error');
+        return;
+      }
       showToast(err?.message || 'Could not remove member.', 'error');
     }
   };
@@ -1167,26 +1172,35 @@ export default function ClientDashboard() {
                   <div>Remove</div>
                 </div>
                 <div className="t-body">
-                  {members.map(m => (
-                    <div key={m.id} className="t-row">
-                      <div className="grow">
-                        <div className="title">{m.name}</div>
-                        <div className="sub">{m.email}</div>
+                  {members.map(m => {
+                    const isSelf = (m.user_id && me?.user?.id && m.user_id === me.user.id) || (m.id && me?.user?.id && m.id === me.user.id);
+                    return (
+                      <div key={m.id} className="t-row">
+                        <div className="grow">
+                          <div className="title">{m.name}</div>
+                          <div className="sub">{m.email}</div>
+                        </div>
+                        <div className="muted">{m.email}</div>
+                        <div>{m.role || 'member'}</div>
+                        <div className="center">
+                          <button
+                            className="btn-icon"
+                            onClick={() => !isSelf && removeMember(m.id)}
+                            title={isSelf ? 'You cannot remove yourself' : 'Remove member'}
+                            disabled={isSelf}
+                            style={isSelf ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                          >
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                              <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                              <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                              <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          </button>
+                        </div>
                       </div>
-                      <div className="muted">{m.email}</div>
-                      <div>{m.role || 'member'}</div>
-                      <div className="center">
-                        <button className="btn-icon" onClick={() => removeMember(m.id)} title="Remove member">
-                          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                            <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
-                            <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
-                            <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {members.length === 0 && <div className="t-empty muted">No members yet</div>}
                 </div>
               </div>
