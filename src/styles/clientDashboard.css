@@ -505,6 +505,43 @@
   min-height: 0;
 }
 
+.tester-feedback-form input.alpha-input,
+.tester-feedback-form select.alpha-input,
+.tester-feedback-form textarea.alpha-input {
+  height: 40px;
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+}
+.tester-feedback-form textarea.alpha-input {
+  height: auto;
+}
+.tester-feedback-form .feedback-check-title,
+.tester-feedback-form .feedback-check-desc,
+.tester-feedback-form .feedback-check-item {
+  font-size: 0.9rem;
+}
+.tester-feedback-form .btn-xl,
+.tester-feedback-form .btn.btn-xl,
+.tester-feedback-form .btn-outline-lilac,
+.tester-feedback-form .btn.btn-outline-lilac {
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  height: 44px;
+  min-height: 44px;
+}
+.tester-feedback-form .btn.btn-wide {
+  min-width: 0;
+}
+.tester-feedback-form .client-dash-file-picker {
+  height: 44px;
+  min-height: 44px;
+  padding: 0 14px;
+}
+.tester-feedback-form .client-dash-file-picker-label {
+  font-size: 0.9rem;
+}
+
 /* Tester NDA overlay */
 .tester-nda-overlay {
   position: fixed;

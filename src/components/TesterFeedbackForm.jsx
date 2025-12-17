@@ -22,6 +22,7 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   const [emailError, setEmailError] = useState('');
+  const [pickerHovered, setPickerHovered] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -128,8 +129,16 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
     }
   };
 
+  const handleFilesFromInput = (fileList) => {
+    const arr = Array.from(fileList || []);
+    setFiles(arr);
+  };
+
   const form = (
-    <form onSubmit={handleSubmit} className="space-y-3 feedback-form-wrap">
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-3 feedback-form-wrap tester-feedback-form ${mode === 'embedded' ? 'tester-feedback-embedded' : ''}`}
+    >
       <div>
         <label className="alpha-label">Name <span className="required-asterisk">*</span></label>
         <input
@@ -242,14 +251,38 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
 
       <div>
         <label className="alpha-label">Screenshots (optional)</label>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          ref={fileInputRef}
-          onChange={(e) => setFiles(Array.from(e.target.files || []))}
-          className="alpha-input"
-        />
+        <div
+          className={`client-dash-file-picker ${pickerHovered ? 'is-hovered' : ''}`}
+          onClick={() => fileInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setPickerHovered(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setPickerHovered(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setPickerHovered(false);
+            handleFilesFromInput(e.dataTransfer?.files);
+          }}
+        >
+          <input
+            ref={fileInputRef}
+            className="client-dash-file-hidden"
+            type="file"
+            accept="*/*"
+            multiple
+            onChange={(e) => handleFilesFromInput(e.target.files)}
+            tabIndex={-1}
+          />
+          <span className="client-dash-file-picker-icon" aria-hidden="true">📄</span>
+          <span className="client-dash-file-picker-label">Drag screenshots or files here or click to browse</span>
+        </div>
         {files.length > 0 && (
           <ul className="feedback-files">
             {files.map((f, idx) => (
