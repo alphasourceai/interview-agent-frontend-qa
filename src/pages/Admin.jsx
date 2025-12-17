@@ -4,6 +4,7 @@ import { apiGet, apiPost, apiDelete, api } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import CustomFilePicker from '../components/CustomFilePicker.jsx';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
@@ -449,6 +450,10 @@ export default function Admin() {
     return api.upload(`/roles-upload/upload-jd?${qs}`, form);
   };
 
+  const handleRoleFileFromPicker = (file) => {
+    setJobFile(file || null);
+  };
+
   const createRole = async () => {
     if (!selectedClientId) return;
     const title = newRoleTitle.trim();
@@ -771,14 +776,13 @@ export default function Admin() {
                     <option value="TECHNICAL">TECHNICAL</option>
                   </select>
                   <div className="client-dash-file-wrapper" style={{ flex: '1 1 240px' }}>
-                    <input
+                    <CustomFilePicker
                       key={fileKey}
-                      className="alpha-input client-dash-input"
-                      type="file"
-                      accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                      onChange={e => setJobFile(e.target.files?.[0] || null)}
-                      aria-label="Job Description file (PDF or DOCX)"
-                      ref={fileInputRef}
+                      accept=".pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      onFileSelected={handleRoleFileFromPicker}
+                      label="Drag JD file here or click to browse"
+                      className="client-dash-input client-dash-file-input"
+                      inputRef={fileInputRef}
                     />
                   </div>
                   {jobFile && (
