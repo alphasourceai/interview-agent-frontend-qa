@@ -221,7 +221,7 @@ export default function ClientDashboard() {
   }
 
   // Tab selector
-  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members
+  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | feedback
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -286,6 +286,17 @@ export default function ClientDashboard() {
       setActiveTab('candidates');
     }
   }, [canManage, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'feedback' && !isTester) {
+      setActiveTab(canManage ? 'roles' : 'candidates');
+    }
+  }, [activeTab, isTester, canManage]);
+
+  useEffect(() => {
+    postSizeSoon();
+    setTimeout(postSizeSoon, 250);
+  }, [activeTab]);
 
   const pctText = (v) =>
     (typeof v === 'number' && isFinite(v)) || v === 0
@@ -880,6 +891,15 @@ export default function ClientDashboard() {
             >
               Candidates
             </button>
+            {isTester && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('feedback')}
+                className={`client-dash-tab ${activeTab === 'feedback' ? 'client-dash-tab--active' : ''}`}
+              >
+                Feedback
+              </button>
+            )}
             {canManage && (
               <button
                 type="button"
@@ -1057,6 +1077,27 @@ export default function ClientDashboard() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {activeTab === 'feedback' && (
+            <div className="client-dash-card feedback-card">
+              <div className="client-dash-section-head">
+                <h2>Feedback</h2>
+              </div>
+              <div className="feedback-frame-wrap">
+                <iframe
+                  className="feedback-frame"
+                  src="https://ia-frontend-prod.onrender.com/tester-feedback"
+                  title="Tester Feedback"
+                  loading="lazy"
+                  scrolling="yes"
+                  onLoad={() => {
+                    postSizeSoon();
+                    setTimeout(postSizeSoon, 250);
+                  }}
+                />
+              </div>
             </div>
           )}
 

@@ -32,6 +32,8 @@ const IconKey = ({ size = 22 }) => (
   </svg>
 );
 
+const ALL_CLIENTS_VALUE = 'ALL';
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -168,9 +170,17 @@ export default function Admin() {
   }, []);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
+  const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
+  const clientNameById = useMemo(
+    () => Object.fromEntries(clients.map((c) => [c.id, c.name])),
+    [clients]
+  );
   const currentClientName = useMemo(
-    () => clients.find((c) => c.id === selectedClientId)?.name || '',
-    [clients, selectedClientId]
+    () => {
+      if (isAllClients) return 'All clients';
+      return clients.find((c) => c.id === selectedClientId)?.name || '';
+    },
+    [clients, selectedClientId, isAllClients]
   );
 
   // Detect Supabase recovery redirect
@@ -227,7 +237,10 @@ export default function Admin() {
   }
 
   async function refreshRoles(clientId = selectedClientId) {
-    const r = await apiGet('/admin/roles' + (clientId ? ('?client_id=' + encodeURIComponent(clientId)) : ''));
+    const isAll = clientId === ALL_CLIENTS_VALUE;
+    if (!isAll && !clientId) { setRoles([]); postEmbedSize(); setTimeout(postEmbedSize, 300); return; }
+    const effectiveClientId = isAll ? '' : clientId;
+    const r = await apiGet('/admin/roles' + (effectiveClientId ? ('?client_id=' + encodeURIComponent(effectiveClientId)) : ''));
     const items = r?.items || [];
     items.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
     setRoles(items);
@@ -236,12 +249,41 @@ export default function Admin() {
   }
 
   async function refreshMembers(clientId = selectedClientId) {
-    if (!clientId) { setMembers([]); postEmbedSize(); setTimeout(postEmbedSize, 300); return; }
-    const m = await apiGet('/admin/client-members?client_id=' + encodeURIComponent(clientId));
-    setMembers(m?.items || []);
+    if (clientId === ALL_CLIENTS_VALUE) {
+      if (!clients.length) { setMembers([]); postEmbedSize(); setTimeout(postEmbedSize, 300); return; }
+      const bundles = await Promise.all(
+        clients.map(async (c) => {
+          try {
+            const resp = await apiGet('/admin/client-members?client_id=' + encodeURIComponent(c.id));
+            return (resp?.items || []).map(item => ({ ...item, client_id: item.client_id || c.id }));
+          } catch {
+            return [];
+          }
+        })
+      );
+      const merged = bundles.flat();
+      merged.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+      setMembers(merged);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+      return;
+    }
+    const effectiveClientId = clientId === ALL_CLIENTS_VALUE ? '' : clientId;
+    if (!effectiveClientId) { setMembers([]); postEmbedSize(); setTimeout(postEmbedSize, 300); return; }
+    const m = await apiGet('/admin/client-members?client_id=' + encodeURIComponent(effectiveClientId));
+    const items = (m?.items || []).map(item => ({ ...item, client_id: item.client_id || effectiveClientId }));
+    setMembers(items);
     postEmbedSize();
     setTimeout(postEmbedSize, 300);
   }
+
+  const requireClientContext = () => {
+    if (!selectedClientId || isAllClients) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return false;
+    }
+    return true;
+  };
 
   useEffect(() => {
     let alive = true;
@@ -253,7 +295,7 @@ export default function Admin() {
       await refreshMembers(selectedClientId);
     })();
     return () => { alive = false; };
-  }, [isAdmin, selectedClientId]);
+  }, [isAdmin, selectedClientId, clients]);
 
   // Ask Safari/WebKit for storage access when embedded (fixes third‑party cookie auth inside Wix)
   async function requestSafariStorageAccess() {
@@ -455,7 +497,7 @@ export default function Admin() {
   };
 
   const createRole = async () => {
-    if (!selectedClientId) return;
+    if (!requireClientContext()) return;
     const title = newRoleTitle.trim();
     if (!title) return;
     if (!jobFile) {
@@ -490,6 +532,10 @@ export default function Admin() {
 
   // Delete role: try canonical DELETE with query params, then fall back to POST if not available
   const deleteRole = async (id) => {
+    if (!requireClientContext()) {
+      setConfirmRole({ open: false, id: null });
+      return;
+    }
     try {
       // Preferred: DELETE /admin/roles?id=...&client_id=...
       const url = `/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(selectedClientId)}`;
@@ -527,7 +573,7 @@ export default function Admin() {
 
   // ---------- Members ----------
   const addMember = async () => {
-    if (!selectedClientId) return;
+    if (!requireClientContext()) return;
     const e = memberEmail.trim();
     const n = memberName.trim();
     if (!e || !n) return;
@@ -549,6 +595,10 @@ export default function Admin() {
   };
 
   const removeMember = async (id) => {
+    if (!requireClientContext()) {
+      setConfirmMember({ open: false, id: null });
+      return;
+    }
     try {
       await apiDelete('/admin/client-members/' + id);
       setMembers(members.filter(m => m.id !== id));
@@ -577,8 +627,6 @@ export default function Admin() {
       toast.error('Failed to send password reset email', { duration: 2000 });
     }
   };
-
-  const selectedClient = useMemo(() => clients.find(c => c.id === selectedClientId) || null, [clients, selectedClientId]);
 
   if (loading) {
     return (
@@ -686,10 +734,11 @@ export default function Admin() {
                 value={selectedClientId}
                 onChange={e => setSelectedClientId(e.target.value)}
               >
+                <option value={ALL_CLIENTS_VALUE}>All</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <div style={{ color: '#9CA3AF' }}>
-                Viewing <strong>{currentClientName || selectedClientId}</strong>
+                Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
               </div>
             </div>
           </div>
@@ -799,18 +848,20 @@ export default function Admin() {
                     </button>
                   )}
                   <button
-                    className="btn lilac client-dash-pill"
+                    className={`btn lilac client-dash-pill ${isAllClients ? 'is-disabled' : ''}`}
+                    aria-disabled={isAllClients}
                     disabled={!selectedClientId || roleBusy || !newRoleTitle.trim() || !jobFile}
                     onClick={createRole}
-                    title={!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role'}
+                    title={isAllClients ? 'Select a client to perform this action.' : (!jobFile ? 'Choose a PDF or DOCX to enable Create' : 'Create role')}
                   >
                     {roleBusy ? 'Creating…' : 'Create'}
                   </button>
                 </div>
                 <div className="card-scroll">
-                  <div className="client-dash-table">
+                  <div className={`client-dash-table ${isAllClients ? 'roles-with-client' : ''}`}>
                     <div className="t-head">
                       <div>Role</div>
+                      {isAllClients && <div>Client</div>}
                       <div>Created</div>
                       <div>Type</div>
                       <div>KB</div>
@@ -822,12 +873,15 @@ export default function Admin() {
                       {roles.map(r => {
                         const hasKB = !!r.kb_document_id;
                         const hasJD = !!r.job_description_url || !!r.description;
+                        const roleClientId = r.client_id || r.clientId || r.client?.id;
+                        const roleClientName = clientNameById[roleClientId] || r.client_name || r.client?.name || '—';
                         return (
                           <div key={r.id} className="t-row">
                             <div>
                               <div className="title">{r.title}</div>
                               <div className="sub">Token: {r.slug_or_token}</div>
                             </div>
+                            {isAllClients && <div>{roleClientName}</div>}
                             <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                             <div>{r.interview_type || '—'}</div>
                             <div className="center">{hasKB ? '✓' : '—'}</div>
@@ -836,7 +890,15 @@ export default function Admin() {
                               <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
                             </div>
                             <div className="center">
-                              <button className="btn-icon" onClick={() => setConfirmRole({ open: true, id: r.id })} title="Delete role">
+                              <button
+                                className={`btn-icon ${isAllClients ? 'is-disabled' : ''}`}
+                                aria-disabled={isAllClients}
+                                onClick={() => {
+                                  if (!requireClientContext()) return;
+                                  setConfirmRole({ open: true, id: r.id });
+                                }}
+                                title={isAllClients ? 'Select a client to perform this action.' : 'Delete role'}
+                              >
                                 <IconTrash size={24} />
                               </button>
                             </div>
@@ -863,39 +925,61 @@ export default function Admin() {
                     <option value="manager">Manager</option>
                     <option value="tester">Tester</option>
                   </select>
-                  <button className="btn lilac client-dash-pill" disabled={!selectedClientId} onClick={addMember}>Add</button>
+                  <button
+                    className={`btn lilac client-dash-pill ${isAllClients ? 'is-disabled' : ''}`}
+                    aria-disabled={isAllClients}
+                    disabled={!selectedClientId}
+                    onClick={addMember}
+                    title={isAllClients ? 'Select a client to perform this action.' : undefined}
+                  >
+                    Add
+                  </button>
                 </div>
                 <div className="card-scroll">
-                  <div className="client-dash-table members members-extended">
+                  <div className={`client-dash-table members members-extended ${isAllClients ? 'members-with-client' : ''}`}>
                     <div className="t-head">
                       <div>Name</div>
                       <div>Email</div>
+                      {isAllClients && <div>Client</div>}
                       <div>Role</div>
                       <div>Reset</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
-                      {members.map(m => (
-                        <div key={m.id} className="t-row">
-                          <div className="grow">
-                            <div className="title">{m.name}</div>
-                            <div className="sub">{m.email}</div>
+                      {members.map(m => {
+                        const memberClientId = m.client_id || m.clientId;
+                        const memberClientName = clientNameById[memberClientId] || '—';
+                        return (
+                          <div key={m.id} className="t-row">
+                            <div className="grow">
+                              <div className="title">{m.name}</div>
+                              <div className="sub">{m.email}</div>
+                            </div>
+                            <div className="muted">{m.email}</div>
+                            {isAllClients && <div>{memberClientName}</div>}
+                            <div>{m.role || 'member'}</div>
+                            <div className="center">
+                              <button className="btn-icon" onClick={() => sendPasswordReset(m.email)} title="Send password reset">
+                                <IconKey size={20} />
+                              </button>
+                            </div>
+                            <div className="center">
+                              <button
+                                className={`btn-icon ${isAllClients ? 'is-disabled' : ''}`}
+                                aria-disabled={isAllClients}
+                                onClick={() => {
+                                  if (!requireClientContext()) return;
+                                  setConfirmMember({ open: true, id: m.id });
+                                }}
+                                title={isAllClients ? 'Select a client to perform this action.' : 'Remove member'}
+                              >
+                                <IconTrash size={20} />
+                              </button>
+                            </div>
                           </div>
-                          <div className="muted">{m.email}</div>
-                          <div>{m.role || 'member'}</div>
-                          <div className="center">
-                            <button className="btn-icon" onClick={() => sendPasswordReset(m.email)} title="Send password reset">
-                              <IconKey size={20} />
-                            </button>
-                          </div>
-                          <div className="center">
-                            <button className="btn-icon" onClick={() => setConfirmMember({ open: true, id: m.id })} title="Remove member">
-                              <IconTrash size={20} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {members.length === 0 && <div className="t-empty muted">No members for this client</div>}
+                        );
+                      })}
+                      {members.length === 0 && <div className="t-empty muted">{isAllClients ? 'No members found' : 'No members for this client'}</div>}
                     </div>
                   </div>
                 </div>

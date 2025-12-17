@@ -215,6 +215,14 @@
 .client-dash-table.members.members-extended .t-row {
   grid-template-columns: 2fr 1.4fr 0.9fr 0.7fr 0.7fr;
 }
+.client-dash-table.roles-with-client .t-head,
+.client-dash-table.roles-with-client .t-row {
+  grid-template-columns: 2fr 1.2fr 1.1fr 0.9fr 0.5fr 0.5fr 0.9fr 0.8fr;
+}
+.client-dash-table.members.members-extended.members-with-client .t-head,
+.client-dash-table.members.members-extended.members-with-client .t-row {
+  grid-template-columns: 2fr 1.2fr 1.2fr 0.9fr 0.7fr 0.7fr;
+}
 .client-dash-table .t-head {
   font-weight: 700;
   color: var(--alpha-text, #EBFEFF);
@@ -276,6 +284,10 @@
   color: #fff;
   width: 52px;
   justify-content: center;
+}
+.client-dash-card .btn-icon.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 .client-dash-file-wrapper {
   display: flex;
@@ -457,6 +469,29 @@
 .cd-spinner--dark {
   border: 2px solid rgba(0,0,0,0.25);
   border-top-color: rgba(0,0,0,0.55);
+}
+
+/* Feedback tab iframe */
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+}
+.feedback-frame-wrap {
+  margin-top: 8px;
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.16));
+  border-radius: 12px;
+  background: #0c1a52;
+  overflow: hidden;
+  height: 72vh;
+  max-height: calc(100vh - 180px);
+  min-height: 500px;
+}
+.feedback-frame {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #ffffff;
 }
 
 /* Tester NDA overlay */
