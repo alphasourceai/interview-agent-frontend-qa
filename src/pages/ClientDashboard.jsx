@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
 import SignOutButton from '../components/SignOutButton.jsx'
 import CustomFilePicker from '../components/CustomFilePicker'
+import TesterFeedbackForm from '../components/TesterFeedbackForm.jsx'
 import '../styles/clientDashboard.css';
 
 // --- Dashboard enhancements: sorting, filtering, tooltips (no summaries) ---
@@ -1085,17 +1086,15 @@ export default function ClientDashboard() {
               <div className="client-dash-section-head">
                 <h2>Feedback</h2>
               </div>
-              <div className="feedback-frame-wrap">
-                <iframe
-                  className="feedback-frame"
-                  src="https://ia-frontend-prod.onrender.com/tester-feedback"
-                  title="Tester Feedback"
-                  loading="lazy"
-                  scrolling="yes"
-                  onLoad={() => {
-                    postSizeSoon();
-                    setTimeout(postSizeSoon, 250);
-                  }}
+              <div className="feedback-form-shell">
+                <TesterFeedbackForm
+                  mode="embedded"
+                  initialEmail={me?.user?.email || me?.email || ''}
+                  initialName={
+                    me?.user?.user_metadata?.full_name ||
+                    me?.user?.user_metadata?.name ||
+                    ''
+                  }
                 />
               </div>
             </div>
