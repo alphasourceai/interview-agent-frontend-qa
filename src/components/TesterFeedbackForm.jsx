@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
+import MultiSelect from './MultiSelect.jsx';
 
 const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
 const optionsUrl = backendBase ? `${backendBase}/api/feedback/options` : '/api/feedback/options';
@@ -29,8 +30,14 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
       try {
         const resp = await fetch(optionsUrl);
         const data = await resp.json();
-        setIssues(Array.isArray(data?.issues) ? data.issues : []);
-        setSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+        const normIssues = Array.isArray(data?.issues)
+          ? data.issues.map((i) => ({ id: i.id, label: i.title || i.name || i.id }))
+          : [];
+        const normSuggestions = Array.isArray(data?.suggestions)
+          ? data.suggestions.map((s) => ({ id: s.id, label: s.title || s.name || s.id }))
+          : [];
+        setIssues(normIssues);
+        setSuggestions(normSuggestions);
       } catch (e) {
         console.warn('[feedback] options fetch failed:', e?.message || e);
       }
@@ -195,22 +202,13 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
 
       <div>
         <h4 style={{ marginBottom: 6 }}>Issues you experienced (optional)</h4>
-        <div className="feedback-checklist">
-          {issues.map((issue) => (
-            <label key={issue.id} className="feedback-check-item">
-              <input
-                type="checkbox"
-                checked={selectedIssueIds.includes(issue.id)}
-                onChange={() => toggleIssue(issue.id)}
-              />
-              <div>
-                <div className="feedback-check-title">{issue.title}</div>
-                {issue.description ? <div className="feedback-check-desc">{issue.description}</div> : null}
-              </div>
-            </label>
-          ))}
-          {issues.length === 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>No known issues listed.</div>}
-        </div>
+        <MultiSelect
+          options={issues}
+          value={selectedIssueIds}
+          onChange={setSelectedIssueIds}
+          placeholder="Select issues..."
+          className="tester-feedback-multiselect"
+        />
         <label className="alpha-label" style={{ marginTop: 8 }}>Other Issue (optional)</label>
         <textarea
           className="alpha-input"
@@ -223,22 +221,13 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
 
       <div>
         <h4 style={{ marginBottom: 6 }}>Suggestions you agree with (optional)</h4>
-        <div className="feedback-checklist">
-          {suggestions.map((s) => (
-            <label key={s.id} className="feedback-check-item">
-              <input
-                type="checkbox"
-                checked={selectedSuggestionIds.includes(s.id)}
-                onChange={() => toggleSuggestion(s.id)}
-              />
-              <div>
-                <div className="feedback-check-title">{s.title}</div>
-                {s.description ? <div className="feedback-check-desc">{s.description}</div> : null}
-              </div>
-            </label>
-          ))}
-          {suggestions.length === 0 && <div className="muted" style={{ fontSize: '0.85rem' }}>No suggestions listed.</div>}
-        </div>
+        <MultiSelect
+          options={suggestions}
+          value={selectedSuggestionIds}
+          onChange={setSelectedSuggestionIds}
+          placeholder="Select suggestions..."
+          className="tester-feedback-multiselect"
+        />
         <label className="alpha-label" style={{ marginTop: 8 }}>Other Suggestion (optional)</label>
         <textarea
           className="alpha-input"

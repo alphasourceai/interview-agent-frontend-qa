@@ -547,6 +547,88 @@
 .tester-feedback-form .client-dash-file-picker-label {
   font-size: 0.9rem;
 }
+.tester-feedback-form .multi-select {
+  width: 600px;
+  position: relative;
+  outline: none;
+}
+.tester-feedback-form .multi-select__control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 30px;
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.18));
+  border-radius: 10px;
+  padding: 0 10px;
+  background: var(--alpha-input-bg, rgba(255,255,255,0.04));
+  color: var(--alpha-text, #EBFEFF);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.tester-feedback-form .multi-select__value {
+  font-size: 0.9rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.tester-feedback-form .multi-select__value.is-placeholder {
+  opacity: 0.7;
+}
+.tester-feedback-form .multi-select__chevron {
+  font-size: 0.8rem;
+}
+.tester-feedback-form .multi-select__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 100%;
+  background: #0c1a52;
+  border: 1px solid var(--alpha-border, rgba(255,255,255,0.18));
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0,0,0,0.32);
+  z-index: 20;
+  max-height: 220px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.tester-feedback-form .multi-select__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 10px 0 10px;
+}
+.tester-feedback-form .multi-select__clear {
+  background: none;
+  border: none;
+  color: var(--alpha-text, #EBFEFF);
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+.tester-feedback-form .multi-select__list {
+  padding: 6px 10px 10px 10px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tester-feedback-form .multi-select__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--alpha-text, #EBFEFF);
+}
+.tester-feedback-form .multi-select__item input {
+  width: 14px;
+  height: 14px;
+}
+.tester-feedback-form .multi-select__empty {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
 
 /* Tester NDA overlay */
 .tester-nda-overlay {
