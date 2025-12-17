@@ -475,6 +475,8 @@
 .feedback-card {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 .feedback-form-shell {
   margin-top: 8px;
@@ -485,16 +487,22 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
 }
 .feedback-form-container {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 .feedback-form-wrap {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  flex: 1;
+  min-height: 0;
 }
 
 /* Tester NDA overlay */

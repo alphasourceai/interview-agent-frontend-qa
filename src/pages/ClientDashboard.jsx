@@ -193,6 +193,7 @@ export default function ClientDashboard() {
   const [memberEmail, setMemberEmail] = useState('');
   const [memberRole, setMemberRole] = useState('member');
   const [membersLoading, setMembersLoading] = useState(false);
+  const [selfMember, setSelfMember] = useState(null);
 
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
@@ -272,6 +273,12 @@ export default function ClientDashboard() {
   const isTester = (currentRole || '').toLowerCase() === 'tester';
   const testerAcknowledged = Boolean(currentMembership?.tester_acknowledged_at);
   const [showTesterNda, setShowTesterNda] = useState(false);
+  const prefillName =
+    selfMember?.name ||
+    me?.user?.user_metadata?.full_name ||
+    me?.user?.user_metadata?.name ||
+    '';
+  const prefillEmail = me?.user?.email || me?.email || '';
 
   useEffect(() => {
     if (isTester && !testerAcknowledged) {
@@ -293,6 +300,35 @@ export default function ClientDashboard() {
       setActiveTab(canManage ? 'roles' : 'candidates');
     }
   }, [activeTab, isTester, canManage]);
+
+  useEffect(() => {
+    setSelfMember(null);
+  }, [clientId]);
+
+  useEffect(() => {
+    if (!isTester || activeTab !== 'feedback') return;
+    if (!clientId || !me?.user?.id) return;
+    if (selfMember) return;
+    const fromMembers = members.find(
+      (m) => m.user_id === me.user.id || (m.email && m.email === me.user.email)
+    );
+    if (fromMembers) {
+      setSelfMember(fromMembers);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        if (!alive) return;
+        if (resp?.item) setSelfMember(resp.item);
+      } catch (e) {
+        if (!alive) return;
+        console.warn('[feedback] me-membership fetch failed', e?.message || e);
+      }
+    })();
+    return () => { alive = false; };
+  }, [isTester, activeTab, clientId, me?.user?.id, me?.user?.email, members]);
 
   useEffect(() => {
     postSizeSoon();
@@ -1089,12 +1125,8 @@ export default function ClientDashboard() {
               <div className="feedback-form-shell">
                 <TesterFeedbackForm
                   mode="embedded"
-                  initialEmail={me?.user?.email || me?.email || ''}
-                  initialName={
-                    me?.user?.user_metadata?.full_name ||
-                    me?.user?.user_metadata?.name ||
-                    ''
-                  }
+                  initialEmail={prefillEmail}
+                  initialName={prefillName}
                 />
               </div>
             </div>
