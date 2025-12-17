@@ -891,15 +891,6 @@ export default function ClientDashboard() {
             >
               Candidates
             </button>
-            {isTester && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('feedback')}
-                className={`client-dash-tab ${activeTab === 'feedback' ? 'client-dash-tab--active' : ''}`}
-              >
-                Feedback
-              </button>
-            )}
             {canManage && (
               <button
                 type="button"
@@ -907,6 +898,15 @@ export default function ClientDashboard() {
                 className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
               >
                 Members
+              </button>
+            )}
+            {isTester && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('feedback')}
+                className={`client-dash-tab ${activeTab === 'feedback' ? 'client-dash-tab--active' : ''}`}
+              >
+                Feedback
               </button>
             )}
           </div>

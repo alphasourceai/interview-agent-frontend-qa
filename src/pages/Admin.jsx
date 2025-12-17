@@ -939,7 +939,6 @@ export default function Admin() {
                   <div className={`client-dash-table members members-extended ${isAllClients ? 'members-with-client' : ''}`}>
                     <div className="t-head">
                       <div>Name</div>
-                      <div>Email</div>
                       {isAllClients && <div>Client</div>}
                       <div>Role</div>
                       <div>Reset</div>
@@ -955,7 +954,6 @@ export default function Admin() {
                               <div className="title">{m.name}</div>
                               <div className="sub">{m.email}</div>
                             </div>
-                            <div className="muted">{m.email}</div>
                             {isAllClients && <div>{memberClientName}</div>}
                             <div>{m.role || 'member'}</div>
                             <div className="center">
