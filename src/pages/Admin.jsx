@@ -399,6 +399,7 @@ export default function Admin() {
       const resp = await apiPost('/admin/clients', { name, admin_name, admin_email, admin_role });
       const item = resp?.item;
       if (item) {
+        // TODO: also create billing customer for this client and seed stripe_customer_id
         await refreshClients();
         setNewClientName('');
         setNewClientAdminName('');
@@ -807,23 +808,47 @@ export default function Admin() {
             </div>
           </div>
 
-          <div className="client-dash-card" style={{ marginBottom: 8 }}>
-            <div className="client-dash-row" style={{ marginBottom: 0 }}>
-              <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
-              <select
-                id="admin-client-sel"
-                className="alpha-input alpha-select client-dash-input"
-                value={selectedClientId}
-                onChange={e => setSelectedClientId(e.target.value)}
-              >
-                <option value={ALL_CLIENTS_VALUE}>All</option>
-                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-              <div style={{ color: '#9CA3AF' }}>
-                Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
+          {activeTab !== 'billing' && (
+            <div className="client-dash-card" style={{ marginBottom: 8 }}>
+              <div className="client-dash-row" style={{ marginBottom: 0 }}>
+                <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
+                <select
+                  id="admin-client-sel"
+                  className="alpha-input alpha-select client-dash-input"
+                  value={selectedClientId}
+                  onChange={e => setSelectedClientId(e.target.value)}
+                >
+                  <option value={ALL_CLIENTS_VALUE}>All</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div style={{ color: '#9CA3AF' }}>
+                  Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {activeTab === 'billing' && (
+            <div className="client-dash-card" style={{ marginBottom: 8, opacity: 0.6, pointerEvents: 'none' }}>
+              <div className="client-dash-row" style={{ marginBottom: 0 }}>
+                <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
+                <select
+                  id="admin-client-sel"
+                  className="alpha-input alpha-select client-dash-input"
+                  value={selectedClientId}
+                  onChange={e => setSelectedClientId(e.target.value)}
+                >
+                  <option value={ALL_CLIENTS_VALUE}>All</option>
+                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div style={{ color: '#9CA3AF' }}>
+                  Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
+                </div>
+                <div style={{ color: '#9CA3AF', marginLeft: 12, fontSize: 13 }}>
+                  Billing is global (not scoped to selected client).
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="dash-tabs">
             <button
