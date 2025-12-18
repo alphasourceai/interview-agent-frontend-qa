@@ -608,16 +608,16 @@ export default function Admin() {
   };
 
   const createBillingCustomer = async () => {
-    const company_name = billingCompanyName.trim();
+    const name = billingCompanyName.trim();
     const primary_contact_name = billingContactName.trim();
     const primary_contact_email = billingContactEmail.trim();
-    if (!company_name || !primary_contact_name || !primary_contact_email) {
+    if (!name || !primary_contact_name || !primary_contact_email) {
       toast.error('Company, contact name, and contact email are required.', { duration: 1800 });
       return;
     }
     try {
       const payload = {
-        company_name,
+        name,
         primary_contact_name,
         primary_contact_email,
         notes: billingNotes || '',
@@ -1123,33 +1123,33 @@ export default function Admin() {
                       <button className="btn lilac client-dash-pill" onClick={() => safeCopy(billingHostedUrl)}>Copy last invoice link</button>
                     )}
                   </div>
-                  <div className="client-dash-row">
-                    <select
-                      className="alpha-input alpha-select client-dash-input"
-                      value={billingSelectedCustomerId}
-                      onChange={(e) => setBillingSelectedCustomerId(e.target.value)}
-                    >
+                <div className="client-dash-row">
+                  <select
+                    className="alpha-input alpha-select client-dash-input"
+                    value={billingSelectedCustomerId}
+                    onChange={(e) => setBillingSelectedCustomerId(e.target.value)}
+                  >
                     <option value="">Select billing customer…</option>
                     {billingCustomers.map((c) => (
                       <option key={c.id} value={c.id}>{c.name} ({c.primary_contact_email})</option>
                     ))}
                   </select>
-                    <input className="alpha-input client-dash-input" placeholder="Invoice title" value={billingInvoiceTitle} onChange={(e) => setBillingInvoiceTitle(e.target.value)} />
-                    <input className="alpha-input client-dash-input" placeholder="Invoice description (optional)" value={billingInvoiceDesc} onChange={(e) => setBillingInvoiceDesc(e.target.value)} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
-                      <label style={{ fontWeight: 600, color: '#e5e7eb' }}>Payment terms (days until due)</label>
-                      <input
-                        className="alpha-input client-dash-input"
-                        type="number"
-                        min={0}
-                        max={90}
-                        placeholder="7"
-                        value={billingDueDays}
-                        onChange={(e) => setBillingDueDays(e.target.value)}
-                      />
-                      <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
-                    </div>
+                  <input className="alpha-input client-dash-input" placeholder="Invoice title" value={billingInvoiceTitle} onChange={(e) => setBillingInvoiceTitle(e.target.value)} />
+                  <input className="alpha-input client-dash-input" placeholder="Invoice description (optional)" value={billingInvoiceDesc} onChange={(e) => setBillingInvoiceDesc(e.target.value)} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 600, width: 600 }}>
+                    <input
+                      className="alpha-input client-dash-input"
+                      type="number"
+                      min={0}
+                      max={90}
+                      placeholder="7"
+                      value={billingDueDays}
+                      onChange={(e) => setBillingDueDays(e.target.value)}
+                      style={{ height: 30, minHeight: 30 }}
+                    />
+                    <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
                   </div>
+                </div>
                   <div className="card-scroll" style={{ maxHeight: 320 }}>
                     <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
                       <div className="t-head" style={{ gridTemplateColumns: '2fr 0.6fr 0.8fr 0.4fr' }}>
@@ -1224,7 +1224,7 @@ export default function Admin() {
                           const customer = billingCustomers.find((c) => c.id === inv.billing_customer_id);
                           const custName = inv.customer_name || customer?.name || inv.billing_customer_id;
                           const custEmail = inv.customer_email || customer?.primary_contact_email || '';
-                          const amountDisplay = inv.amount_total != null ? `$${Number(inv.amount_total).toFixed(2)}` : '$0.00';
+                          const amountDisplay = inv.amount_total_cents != null ? `$${(Number(inv.amount_total_cents) / 100).toFixed(2)}` : '$0.00';
                           return (
                             <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
                               <div>{inv.created_at ? new Date(inv.created_at).toLocaleString() : '—'}</div>
