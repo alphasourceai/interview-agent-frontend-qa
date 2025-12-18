@@ -1,17 +1,17 @@
 // src/pages/Admin.jsx
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiGet, apiPost, apiDelete, api } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import CustomFilePicker from '../components/CustomFilePicker.jsx';
 
-const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
-
 import '../styles/adminTheme.css';
 import '../styles/clientDashboard.css';
 import '../styles/clientTheme.css';
 
+const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const ALL_CLIENTS_VALUE = 'ALL';
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
 
 const IconTrash = ({ size = 24 }) => (
@@ -29,8 +29,6 @@ const IconKey = ({ size = 22 }) => (
     <path d="M12 10h.01" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
-
-const ALL_CLIENTS_VALUE = 'ALL';
 
 export default function Admin() {
   const [session, setSession] = useState(null);
@@ -78,6 +76,8 @@ export default function Admin() {
   const [billingContactEmail, setBillingContactEmail] = useState('');
   const [billingNotes, setBillingNotes] = useState('');
   const [billingSelectedCustomerId, setBillingSelectedCustomerId] = useState('');
+  const [billingSelectedCustomerLabel, setBillingSelectedCustomerLabel] = useState('');
+  const [billingCustomerQuery, setBillingCustomerQuery] = useState('');
   const [billingInvoiceTitle, setBillingInvoiceTitle] = useState('');
   const [billingInvoiceDesc, setBillingInvoiceDesc] = useState('');
   const [billingDueDays, setBillingDueDays] = useState('7');
@@ -85,6 +85,8 @@ export default function Admin() {
   const [billingHostedUrl, setBillingHostedUrl] = useState('');
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingSending, setBillingSending] = useState(false);
+  const [billingCustomerMenuOpen, setBillingCustomerMenuOpen] = useState(false);
+  const customerDropdownRef = useRef(null);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
@@ -289,6 +291,17 @@ export default function Admin() {
     if (activeTab !== 'billing') return;
     refreshBilling();
   }, [isAdmin, activeTab]);
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target)) {
+        setBillingCustomerQuery(billingSelectedCustomerLabel || '');
+        setBillingCustomerMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [billingSelectedCustomerLabel]);
 
   async function requestSafariStorageAccess() {
     try {
@@ -661,6 +674,19 @@ export default function Admin() {
     });
     return valid.length > 0;
   }, [billingLineItems]);
+
+  const filteredCustomers = useMemo(() => {
+    const q = billingCustomerQuery.trim().toLowerCase();
+    if (!q) return billingCustomers;
+    return billingCustomers.filter((c) => `${c.name} ${c.primary_contact_email}`.toLowerCase().includes(q));
+  }, [billingCustomerQuery, billingCustomers]);
+
+  const selectCustomer = (id, label) => {
+    setBillingSelectedCustomerId(id);
+    setBillingSelectedCustomerLabel(label);
+    setBillingCustomerQuery(label);
+    setBillingCustomerMenuOpen(false);
+  };
 
   const sendInvoice = async () => {
     if (!billingSelectedCustomerId) return;
@@ -1123,33 +1149,72 @@ export default function Admin() {
                       <button className="btn lilac client-dash-pill" onClick={() => safeCopy(billingHostedUrl)}>Copy last invoice link</button>
                     )}
                   </div>
-                <div className="client-dash-row">
-                  <select
-                    className="alpha-input alpha-select client-dash-input"
-                    value={billingSelectedCustomerId}
-                    onChange={(e) => setBillingSelectedCustomerId(e.target.value)}
-                  >
-                    <option value="">Select billing customer…</option>
-                    {billingCustomers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.primary_contact_email})</option>
-                    ))}
-                  </select>
-                  <input className="alpha-input client-dash-input" placeholder="Invoice title" value={billingInvoiceTitle} onChange={(e) => setBillingInvoiceTitle(e.target.value)} />
-                  <input className="alpha-input client-dash-input" placeholder="Invoice description (optional)" value={billingInvoiceDesc} onChange={(e) => setBillingInvoiceDesc(e.target.value)} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 600, width: 600 }}>
+                  <div className="client-dash-row" ref={customerDropdownRef}>
+                    <div style={{ position: 'relative', width: '100%', maxWidth: 600 }}>
+                      <input
+                        className="alpha-input client-dash-input"
+                        placeholder="Select billing customer…"
+                        value={billingCustomerQuery}
+                        onChange={(e) => {
+                          setBillingCustomerQuery(e.target.value);
+                          setBillingSelectedCustomerId('');
+                          setBillingSelectedCustomerLabel('');
+                          setBillingCustomerMenuOpen(true);
+                        }}
+                        onFocus={() => {
+                          setBillingCustomerQuery(billingCustomerQuery || billingSelectedCustomerLabel);
+                          setBillingCustomerMenuOpen(true);
+                        }}
+                        style={{ width: '100%' }}
+                      />
+                      {billingCustomerMenuOpen && filteredCustomers.length > 0 && (
+                        <div className="billing-customer-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#0A1547', border: '1px solid rgba(255,255,255,0.16)', borderRadius: 10, zIndex: 10, maxHeight: 260, overflowY: 'auto' }}>
+                          {filteredCustomers.map((c) => {
+                            const label = `${c.name} (${c.primary_contact_email})`;
+                            return (
+                              <button
+                                key={c.id}
+                                type="button"
+                                className="billing-customer-option"
+                                style={{ width: '100%', textAlign: 'left', padding: '8px 10px', background: 'transparent', border: 'none', color: '#EBFEFF', cursor: 'pointer' }}
+                                onClick={() => selectCustomer(c.id, label)}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                     <input
                       className="alpha-input client-dash-input"
-                      type="number"
-                      min={0}
-                      max={90}
-                      placeholder="7"
-                      value={billingDueDays}
-                      onChange={(e) => setBillingDueDays(e.target.value)}
-                      style={{ height: 30, minHeight: 30 }}
+                      placeholder="Invoice title"
+                      value={billingInvoiceTitle}
+                      onChange={(e) => setBillingInvoiceTitle(e.target.value)}
+                      onFocus={() => setBillingCustomerMenuOpen(false)}
                     />
-                    <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
+                    <input
+                      className="alpha-input client-dash-input"
+                      placeholder="Invoice description (optional)"
+                      value={billingInvoiceDesc}
+                      onChange={(e) => setBillingInvoiceDesc(e.target.value)}
+                      onFocus={() => setBillingCustomerMenuOpen(false)}
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200 }}>
+                      <input
+                        className="alpha-input client-dash-input"
+                        type="number"
+                        min={0}
+                        max={90}
+                        placeholder="7"
+                        value={billingDueDays}
+                        onChange={(e) => setBillingDueDays(e.target.value)}
+                        onFocus={() => setBillingCustomerMenuOpen(false)}
+                        style={{ height: 52, minHeight: 52 }}
+                      />
+                      <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
+                    </div>
                   </div>
-                </div>
                   <div className="card-scroll" style={{ maxHeight: 320 }}>
                     <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
                       <div className="t-head" style={{ gridTemplateColumns: '2fr 0.6fr 0.8fr 0.4fr' }}>
@@ -1211,7 +1276,7 @@ export default function Admin() {
                   </div>
                   <div className="card-scroll">
                     <div className="client-dash-table members members-extended">
-                      <div className="t-head" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
+                      <div className="t-head" style={{ gridTemplateColumns: '1.1fr 1.3fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
                         <div>Created</div>
                         <div>Customer</div>
                         <div>Title</div>
@@ -1226,7 +1291,7 @@ export default function Admin() {
                           const custEmail = inv.customer_email || customer?.primary_contact_email || '';
                           const amountDisplay = inv.amount_total_cents != null ? `$${(Number(inv.amount_total_cents) / 100).toFixed(2)}` : '$0.00';
                           return (
-                            <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
+                            <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.3fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
                               <div>{inv.created_at ? new Date(inv.created_at).toLocaleString() : '—'}</div>
                               <div>{custName}{custEmail ? ` (${custEmail})` : ''}</div>
                               <div>{inv.title || '—'}</div>
