@@ -710,6 +710,7 @@ export default function Admin() {
       const payload = {
         billing_customer_id: billingSelectedCustomerId,
         title: billingInvoiceTitle.trim(),
+        invoice_title: billingInvoiceTitle.trim(),
         invoice_description: billingInvoiceDesc.trim() || null,
         days_until_due: billingDueDays ? parseInt(billingDueDays, 10) || 7 : 7,
         line_items: validItems.map((li) => ({
@@ -1210,7 +1211,7 @@ export default function Admin() {
                         value={billingDueDays}
                         onChange={(e) => setBillingDueDays(e.target.value)}
                         onFocus={() => setBillingCustomerMenuOpen(false)}
-                        style={{ height: 52, minHeight: 52 }}
+                        style={{ height: 52, minHeight: 52, boxSizing: 'border-box' }}
                       />
                       <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
                     </div>
@@ -1290,11 +1291,12 @@ export default function Admin() {
                           const custName = inv.customer_name || customer?.name || inv.billing_customer_id;
                           const custEmail = inv.customer_email || customer?.primary_contact_email || '';
                           const amountDisplay = inv.amount_total_cents != null ? `$${(Number(inv.amount_total_cents) / 100).toFixed(2)}` : '$0.00';
+                          const invoiceTitle = inv.title || inv.invoice_title || '—';
                           return (
                             <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.3fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
                               <div>{inv.created_at ? new Date(inv.created_at).toLocaleString() : '—'}</div>
                               <div>{custName}{custEmail ? ` (${custEmail})` : ''}</div>
-                              <div>{inv.title || '—'}</div>
+                              <div>{invoiceTitle}</div>
                               <div>{amountDisplay}</div>
                               <div>{inv.status || '—'}</div>
                               <div>
