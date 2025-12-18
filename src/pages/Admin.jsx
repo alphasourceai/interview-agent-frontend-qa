@@ -683,13 +683,13 @@ export default function Admin() {
     try {
       const payload = {
         billing_customer_id: billingSelectedCustomerId,
-        invoice_title: billingInvoiceTitle.trim(),
+        title: billingInvoiceTitle.trim(),
         invoice_description: billingInvoiceDesc.trim() || null,
-        due_in_days: billingDueDays ? parseInt(billingDueDays, 10) || 7 : 7,
+        days_until_due: billingDueDays ? parseInt(billingDueDays, 10) || 7 : 7,
         line_items: validItems.map((li) => ({
           description: li.description,
           quantity: li.quantity,
-          unit_amount_cents: Math.round(li.unitAmount * 100)
+          unit_amount: li.unitAmount
         }))
       };
       const resp = await apiPost('/admin/billing/invoices/send', payload);
@@ -1129,14 +1129,26 @@ export default function Admin() {
                       value={billingSelectedCustomerId}
                       onChange={(e) => setBillingSelectedCustomerId(e.target.value)}
                     >
-                      <option value="">Select billing customer…</option>
-                      {billingCustomers.map((c) => (
-                        <option key={c.id} value={c.id}>{c.company_name} ({c.primary_contact_email})</option>
-                      ))}
-                    </select>
+                    <option value="">Select billing customer…</option>
+                    {billingCustomers.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name} ({c.primary_contact_email})</option>
+                    ))}
+                  </select>
                     <input className="alpha-input client-dash-input" placeholder="Invoice title" value={billingInvoiceTitle} onChange={(e) => setBillingInvoiceTitle(e.target.value)} />
                     <input className="alpha-input client-dash-input" placeholder="Invoice description (optional)" value={billingInvoiceDesc} onChange={(e) => setBillingInvoiceDesc(e.target.value)} />
-                    <input className="alpha-input client-dash-input" type="number" min={1} placeholder="Due in days (default 7)" value={billingDueDays} onChange={(e) => setBillingDueDays(e.target.value)} style={{ maxWidth: 160 }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 220 }}>
+                      <label style={{ fontWeight: 600, color: '#e5e7eb' }}>Payment terms (days until due)</label>
+                      <input
+                        className="alpha-input client-dash-input"
+                        type="number"
+                        min={0}
+                        max={90}
+                        placeholder="7"
+                        value={billingDueDays}
+                        onChange={(e) => setBillingDueDays(e.target.value)}
+                      />
+                      <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
+                    </div>
                   </div>
                   <div className="card-scroll" style={{ maxHeight: 320 }}>
                     <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
@@ -1209,13 +1221,16 @@ export default function Admin() {
                       </div>
                       <div className="t-body">
                         {billingInvoices.map((inv) => {
-                          const custName = billingCustomers.find((c) => c.id === inv.billing_customer_id)?.company_name || inv.billing_customer_id;
+                          const customer = billingCustomers.find((c) => c.id === inv.billing_customer_id);
+                          const custName = inv.customer_name || customer?.name || inv.billing_customer_id;
+                          const custEmail = inv.customer_email || customer?.primary_contact_email || '';
+                          const amountDisplay = inv.amount_total != null ? `$${Number(inv.amount_total).toFixed(2)}` : '$0.00';
                           return (
                             <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
                               <div>{inv.created_at ? new Date(inv.created_at).toLocaleString() : '—'}</div>
-                              <div>{custName}</div>
-                              <div>{inv.title || inv.invoice_title || '—'}</div>
-                              <div>${((inv.amount_total_cents || 0) / 100).toFixed(2)}</div>
+                              <div>{custName}{custEmail ? ` (${custEmail})` : ''}</div>
+                              <div>{inv.title || '—'}</div>
+                              <div>{amountDisplay}</div>
                               <div>{inv.status || '—'}</div>
                               <div>
                                 {inv.hosted_invoice_url ? (
