@@ -12,10 +12,8 @@ import '../styles/adminTheme.css';
 import '../styles/clientDashboard.css';
 import '../styles/clientTheme.css';
 
-// Detect if running inside an iframe (Wix embed)
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
 
-/* bright white trash icon */
 const IconTrash = ({ size = 24 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
@@ -40,16 +38,13 @@ export default function Admin() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // auth form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  // forgot/reset password
   const [showReset, setShowReset] = useState(false);
   const [newPass1, setNewPass1] = useState('');
   const [newPass2, setNewPass2] = useState('');
 
-  // clients
   const [clients, setClients] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState('');
   const [newClientName, setNewClientName] = useState('');
@@ -57,30 +52,48 @@ export default function Admin() {
   const [newClientAdminEmail, setNewClientAdminEmail] = useState('');
   const [newClientAdminRole, setNewClientAdminRole] = useState('manager');
 
-  // roles
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
-  const [interviewType, setInterviewType] = useState('BASIC'); // BASIC | DETAILED | TECHNICAL
+  const [interviewType, setInterviewType] = useState('BASIC');
   const [jobFile, setJobFile] = useState(null);
   const [roleBusy, setRoleBusy] = useState(false);
   const fileInputRef = useRef(null);
-  const [fileKey, setFileKey] = useState(0); // ensure full reset of file input
+  const [fileKey, setFileKey] = useState(0);
 
-  // members
   const [members, setMembers] = useState([]);
   const [memberEmail, setMemberEmail] = useState('');
   const [memberName, setMemberName] = useState('');
-  const [memberRole, setMemberRole] = useState('member'); // member | manager
+  const [memberRole, setMemberRole] = useState('member');
   const [confirmClient, setConfirmClient] = useState({ open: false, id: null });
   const [confirmRole, setConfirmRole] = useState({ open: false, id: null });
   const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
   const [emailError, setEmailError] = useState('');
 
-  const [activeTab, setActiveTab] = useState('clients'); // clients | roles | members
+  const [activeTab, setActiveTab] = useState('clients');
 
-  // --- Embedded (Wix) auto-resize helper ---
-  // Posts the current document height to the parent (Wix) so the iframe resizes.
-  // Now posts multiple times (immediate and delayed) to ensure resizes on both grow and shrink.
+  const [billingCustomers, setBillingCustomers] = useState([]);
+  const [billingInvoices, setBillingInvoices] = useState([]);
+  const [billingCompanyName, setBillingCompanyName] = useState('');
+  const [billingContactName, setBillingContactName] = useState('');
+  const [billingContactEmail, setBillingContactEmail] = useState('');
+  const [billingNotes, setBillingNotes] = useState('');
+  const [billingSelectedCustomerId, setBillingSelectedCustomerId] = useState('');
+  const [billingInvoiceTitle, setBillingInvoiceTitle] = useState('');
+  const [billingInvoiceDesc, setBillingInvoiceDesc] = useState('');
+  const [billingDueDays, setBillingDueDays] = useState('7');
+  const [billingLineItems, setBillingLineItems] = useState([{ id: 1, description: '', quantity: 1, unitAmount: '' }]);
+  const [billingHostedUrl, setBillingHostedUrl] = useState('');
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingSending, setBillingSending] = useState(false);
+
+  const shareBase = 'https://interviews.alphasourceai.com/interview-host';
+  const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
+  const clientNameById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.name])), [clients]);
+  const currentClientName = useMemo(() => {
+    if (isAllClients) return 'All clients';
+    return clients.find((c) => c.id === selectedClientId)?.name || '';
+  }, [clients, selectedClientId, isAllClients]);
+
   const postEmbedSize = () => {
     if (typeof window === 'undefined') return;
     try {
@@ -98,14 +111,10 @@ export default function Admin() {
     } catch (_) {}
   };
 
-  // Notify parent (Wix) whenever key UI pieces change size/content
-  // Keep session in sync with Supabase and handle fresh sign-ins
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess || null);
-      // On a fresh sign-in inside an embed, do a hard replace to avoid stale state
       if (sess && window.location.pathname !== '/admin') {
-        // Delay redirect slightly to allow Supabase session to settle
         setTimeout(() => {
           window.location.replace('/admin');
         }, 250);
@@ -122,68 +131,36 @@ export default function Admin() {
 
   useEffect(() => {
     const t = setTimeout(postEmbedSize, 60);
-    // also post again after a longer delay to ensure shrinkage is handled
     const t2 = setTimeout(postEmbedSize, 320);
     return () => { clearTimeout(t); clearTimeout(t2); };
-  }, [loading, isAdmin, clients.length, roles.length, members.length, selectedClientId]);
+  }, [loading, isAdmin, clients.length, roles.length, members.length, selectedClientId, billingCustomers.length, billingInvoices.length]);
 
-  // --- 60-minute inactivity auto-logout ---
   useEffect(() => {
-    const IDLE_LIMIT_MS = 60 * 60 * 1000; // 60 minutes
+    const IDLE_LIMIT_MS = 60 * 60 * 1000;
     let timer;
-
     const triggerLogout = async () => {
       try {
         await supabase.auth.signOut();
       } finally {
-        // also clear section-state so a fresh login starts collapsed
         localStorage.removeItem('adm_show_clients');
         localStorage.removeItem('adm_show_roles');
         localStorage.removeItem('adm_show_members');
         window.location.replace('/admin');
       }
     };
-
     const resetTimer = () => {
       clearTimeout(timer);
       timer = setTimeout(triggerLogout, IDLE_LIMIT_MS);
     };
-
-    // Reset on any user activity
-    const activityEvents = [
-      'mousemove',
-      'mousedown',
-      'keydown',
-      'scroll',
-      'touchstart',
-      'visibilitychange',
-      'click'
-    ];
-
+    const activityEvents = ['mousemove','mousedown','keydown','scroll','touchstart','visibilitychange','click'];
     activityEvents.forEach((ev) => window.addEventListener(ev, resetTimer));
-    resetTimer(); // start on mount
-
+    resetTimer();
     return () => {
       clearTimeout(timer);
       activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
     };
   }, []);
 
-  const shareBase = 'https://interviews.alphasourceai.com/interview-host';
-  const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
-  const clientNameById = useMemo(
-    () => Object.fromEntries(clients.map((c) => [c.id, c.name])),
-    [clients]
-  );
-  const currentClientName = useMemo(
-    () => {
-      if (isAllClients) return 'All clients';
-      return clients.find((c) => c.id === selectedClientId)?.name || '';
-    },
-    [clients, selectedClientId, isAllClients]
-  );
-
-  // Detect Supabase recovery redirect
   useEffect(() => {
     const url = new URL(window.location.href);
     const needsReset =
@@ -197,11 +174,9 @@ export default function Admin() {
     let alive = true;
     let initializing = true;
     (async () => {
-      // Only run if initializing is true
       if (!initializing) return;
       const { data } = await supabase.auth.getSession();
       if (!alive || !initializing) return;
-      // Add a small delay to allow Supabase to settle
       await new Promise(res => setTimeout(res, 200));
       if (!alive || !initializing) return;
       setSession(data?.session || null);
@@ -277,13 +252,25 @@ export default function Admin() {
     setTimeout(postEmbedSize, 300);
   }
 
-  const requireClientContext = () => {
-    if (!selectedClientId || isAllClients) {
-      toast.error('Select a client to perform this action.', { duration: 1500 });
-      return false;
+  async function refreshBilling() {
+    if (!isAdmin) return;
+    setBillingLoading(true);
+    try {
+      const [cust, inv] = await Promise.all([
+        apiGet('/admin/billing/customers'),
+        apiGet('/admin/billing/invoices')
+      ]);
+      setBillingCustomers(cust?.items || []);
+      setBillingInvoices(inv?.items || []);
+    } catch (e) {
+      console.warn('[billing] fetch failed', e?.message || e);
+      toast.error('Could not load billing data', { duration: 1500 });
+    } finally {
+      setBillingLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
     }
-    return true;
-  };
+  }
 
   useEffect(() => {
     let alive = true;
@@ -297,19 +284,21 @@ export default function Admin() {
     return () => { alive = false; };
   }, [isAdmin, selectedClientId, clients]);
 
-  // Ask Safari/WebKit for storage access when embedded (fixes third‑party cookie auth inside Wix)
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'billing') return;
+    refreshBilling();
+  }, [isAdmin, activeTab]);
+
   async function requestSafariStorageAccess() {
     try {
       if (document.hasStorageAccess && document.requestStorageAccess) {
         const has = await document.hasStorageAccess();
         if (!has) {
-          // Must be called in response to a user gesture (our sign‑in submit)
           await document.requestStorageAccess();
         }
       }
-    } catch (e) {
-      // non‑Safari or not needed
-    }
+    } catch (e) {}
   }
 
   const handleSignIn = async (e) => {
@@ -372,7 +361,6 @@ export default function Admin() {
     url.searchParams.delete('pwreset');
     window.history.replaceState({}, '', url.toString());
     await supabase.auth.signOut();
-    // collapse sections for next login
     localStorage.removeItem('adm_show_clients');
     localStorage.removeItem('adm_show_roles');
     localStorage.removeItem('adm_show_members');
@@ -387,7 +375,6 @@ export default function Admin() {
     window.location.replace('/admin');
   };
 
-  // ---------- Clients ----------
   const getNiceErrorMessage = (err, status) => {
     const s = status ?? err?.status ?? err?.response?.status;
     const code = err?.data?.error || err?.data?.code || err?.response?.data?.error || err?.response?.data?.code;
@@ -445,10 +432,8 @@ export default function Admin() {
     }
   };
 
-  // Robust clipboard helper: tries modern Clipboard API, falls back to execCommand
   async function safeCopy(text) {
     try {
-      // First, try modern Clipboard API if available in a secure context
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
         toast.success('Link copied to clipboard', { duration: 1000 });
@@ -456,7 +441,6 @@ export default function Admin() {
       }
       throw new Error('clipboard_api_unavailable');
     } catch (err) {
-      console.warn('Clipboard API failed, falling back to execCommand:', err);
       try {
         const textarea = document.createElement('textarea');
         textarea.value = text;
@@ -467,24 +451,19 @@ export default function Admin() {
         document.body.appendChild(textarea);
         textarea.select();
         textarea.setSelectionRange(0, textarea.value.length);
-
         const successful = document.execCommand('copy');
         document.body.removeChild(textarea);
-
         if (successful) {
           toast.success('Link copied to clipboard', { duration: 1000 });
           return;
         }
-
         throw new Error('execCommand_copy_failed');
       } catch (fallbackErr) {
-        console.error('Copy failed after fallback:', fallbackErr);
         toast.error('Unable to copy link. Please right-click and copy link address.', { duration: 2500 });
       }
     }
   }
 
-  // ---------- Roles ----------
   const uploadJDToBackend = async (roleId, file) => {
     const form = new FormData();
     form.append('file', file);
@@ -511,10 +490,8 @@ export default function Admin() {
       const role = resp?.item;
       if (!role) { toast.error('Role create failed', { duration: 2000 }); return; }
       try {
-        const out = await uploadJDToBackend(role.id, jobFile);
-        if (out?.parsed_text_preview) console.log('[JD preview]', out.parsed_text_preview);
+        await uploadJDToBackend(role.id, jobFile);
       } catch (e) {
-        console.error('uploadJDToBackend error', e);
         toast.error('Role created, but JD processing failed: ' + e.message, { duration: 2000 });
       }
       await refreshRoles(selectedClientId);
@@ -530,21 +507,18 @@ export default function Admin() {
     }
   };
 
-  // Delete role: try canonical DELETE with query params, then fall back to POST if not available
   const deleteRole = async (id) => {
     if (!requireClientContext()) {
       setConfirmRole({ open: false, id: null });
       return;
     }
     try {
-      // Preferred: DELETE /admin/roles?id=...&client_id=...
       const url = `/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(selectedClientId)}`;
       let ok = false;
       try {
         await apiDelete(url);
         ok = true;
       } catch (e) {
-        // If server doesn't support that yet, try POST /admin/roles/delete
         if (e?.response?.status === 404) {
           await apiPost('/admin/roles/delete', { id, client_id: selectedClientId });
           ok = true;
@@ -564,14 +538,12 @@ export default function Admin() {
         (err?.response?.data?.error) ||
         (err?.message) ||
         'Could not delete role. Please refresh and try again.';
-      console.error('Role delete failed:', err);
       toast.error(msg, { duration: 2000 });
     } finally {
       setConfirmRole({ open: false, id: null });
     }
   };
 
-  // ---------- Members ----------
   const addMember = async () => {
     if (!requireClientContext()) return;
     const e = memberEmail.trim();
@@ -622,11 +594,124 @@ export default function Admin() {
         toast.error('Failed to send password reset email', { duration: 2000 });
       }
     } catch (err) {
-      const rid = err?.data?.request_id || err?.response?.data?.request_id;
-      if (rid) console.error('[send-password-reset] request_id', rid);
       toast.error('Failed to send password reset email', { duration: 2000 });
     }
   };
+
+  const requireClientContext = () => {
+    if (!selectedClientId || isAllClients) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return false;
+    }
+    return true;
+  };
+
+  const createBillingCustomer = async () => {
+    const company_name = billingCompanyName.trim();
+    const primary_contact_name = billingContactName.trim();
+    const primary_contact_email = billingContactEmail.trim();
+    if (!company_name || !primary_contact_name || !primary_contact_email) {
+      toast.error('Company, contact name, and contact email are required.', { duration: 1800 });
+      return;
+    }
+    try {
+      const payload = {
+        company_name,
+        primary_contact_name,
+        primary_contact_email,
+        notes: billingNotes || '',
+        client_id: !isAllClients && selectedClientId ? selectedClientId : null
+      };
+      const resp = await apiPost('/admin/billing/customers', payload);
+      if (resp?.item) {
+        setBillingCustomers((prev) => [resp.item, ...prev]);
+        setBillingCompanyName('');
+        setBillingContactName('');
+        setBillingContactEmail('');
+        setBillingNotes('');
+        postEmbedSize();
+        setTimeout(postEmbedSize, 300);
+        toast.success('Billing customer created', { duration: 1400 });
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.detail || e?.message || 'Could not create billing customer';
+      toast.error(msg, { duration: 1800 });
+    }
+  };
+
+  const addLineItem = () => {
+    setBillingLineItems((prev) => [...prev, { id: Date.now(), description: '', quantity: 1, unitAmount: '' }]);
+  };
+
+  const updateLineItem = (id, field, value) => {
+    setBillingLineItems((prev) => prev.map((item) => item.id === id ? { ...item, [field]: value } : item));
+  };
+
+  const removeLineItem = (id) => {
+    setBillingLineItems((prev) => (prev.length === 1 ? prev : prev.filter((item) => item.id !== id)));
+  };
+
+  const hasValidLineItems = useMemo(() => {
+    const valid = billingLineItems.filter((li) => {
+      const desc = (li.description || '').trim();
+      const unit = parseFloat(li.unitAmount);
+      const qty = parseInt(li.quantity, 10);
+      return desc && !Number.isNaN(unit) && unit > 0 && qty > 0;
+    });
+    return valid.length > 0;
+  }, [billingLineItems]);
+
+  const sendInvoice = async () => {
+    if (!billingSelectedCustomerId) return;
+    const validItems = billingLineItems
+      .map((li) => ({
+        description: (li.description || '').trim(),
+        quantity: parseInt(li.quantity, 10) || 1,
+        unitAmount: parseFloat(li.unitAmount)
+      }))
+      .filter((li) => li.description && !Number.isNaN(li.unitAmount) && li.unitAmount > 0 && li.quantity > 0);
+    if (!validItems.length) {
+      toast.error('Add at least one valid line item.', { duration: 1500 });
+      return;
+    }
+    if (!billingInvoiceTitle.trim()) {
+      toast.error('Invoice title is required.', { duration: 1400 });
+      return;
+    }
+    setBillingSending(true);
+    try {
+      const payload = {
+        billing_customer_id: billingSelectedCustomerId,
+        invoice_title: billingInvoiceTitle.trim(),
+        invoice_description: billingInvoiceDesc.trim() || null,
+        due_in_days: billingDueDays ? parseInt(billingDueDays, 10) || 7 : 7,
+        line_items: validItems.map((li) => ({
+          description: li.description,
+          quantity: li.quantity,
+          unit_amount_cents: Math.round(li.unitAmount * 100)
+        }))
+      };
+      const resp = await apiPost('/admin/billing/invoices/send', payload);
+      if (resp?.ok) {
+        toast.success('Invoice sent', { duration: 1500 });
+        setBillingHostedUrl(resp?.invoice?.hosted_invoice_url || '');
+        setBillingInvoiceTitle('');
+        setBillingInvoiceDesc('');
+        setBillingDueDays('7');
+        setBillingLineItems([{ id: Date.now(), description: '', quantity: 1, unitAmount: '' }]);
+        refreshBilling();
+        postEmbedSize();
+        setTimeout(postEmbedSize, 300);
+      }
+    } catch (e) {
+      const msg = e?.response?.data?.detail || e?.message || 'Could not send invoice';
+      toast.error(msg, { duration: 1800 });
+    } finally {
+      setBillingSending(false);
+    }
+  };
+
+  const canSendInvoice = billingSelectedCustomerId && hasValidLineItems && billingInvoiceTitle.trim();
 
   if (loading) {
     return (
@@ -638,7 +723,6 @@ export default function Admin() {
     );
   }
 
-  // ---------- Reset UI ----------
   if (showReset) {
     return (
       <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
@@ -661,7 +745,6 @@ export default function Admin() {
     );
   }
 
-  // ---------- Auth screens ----------
   if (!loading && !session) {
     return (
       <div className="alpha-theme client-auth admin-page" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
@@ -712,7 +795,6 @@ export default function Admin() {
     );
   }
 
-  // ---------- Admin app ----------
   return (
     <>
       <div className="dash-page alpha-theme client-dash admin-page">
@@ -764,6 +846,13 @@ export default function Admin() {
               className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
             >
               Members
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('billing')}
+              className={`client-dash-tab ${activeTab === 'billing' ? 'client-dash-tab--active' : ''}`}
+            >
+              Billing
             </button>
           </div>
 
@@ -982,6 +1071,143 @@ export default function Admin() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {activeTab === 'billing' && (
+              <>
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Create Billing Customer</h2>
+                    {billingLoading && <div className="muted">Loading…</div>}
+                  </div>
+                  <div className="client-dash-row">
+                    <input className="alpha-input client-dash-input" placeholder="Company name" value={billingCompanyName} onChange={(e) => setBillingCompanyName(e.target.value)} />
+                    <input className="alpha-input client-dash-input" placeholder="Primary contact name" value={billingContactName} onChange={(e) => setBillingContactName(e.target.value)} />
+                    <input className="alpha-input client-dash-input" placeholder="Primary contact email" value={billingContactEmail} onChange={(e) => setBillingContactEmail(e.target.value)} />
+                  </div>
+                  <div className="client-dash-row">
+                    <input className="alpha-input client-dash-input" placeholder="Notes (optional)" value={billingNotes} onChange={(e) => setBillingNotes(e.target.value)} />
+                    <button className="btn lilac client-dash-pill" onClick={createBillingCustomer}>Create billing customer</button>
+                  </div>
+                </div>
+
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Send Invoice</h2>
+                    {billingHostedUrl && (
+                      <button className="btn lilac client-dash-pill" onClick={() => safeCopy(billingHostedUrl)}>Copy last invoice link</button>
+                    )}
+                  </div>
+                  <div className="client-dash-row">
+                    <select
+                      className="alpha-input alpha-select client-dash-input"
+                      value={billingSelectedCustomerId}
+                      onChange={(e) => setBillingSelectedCustomerId(e.target.value)}
+                    >
+                      <option value="">Select billing customer…</option>
+                      {billingCustomers.map((c) => (
+                        <option key={c.id} value={c.id}>{c.company_name} ({c.primary_contact_email})</option>
+                      ))}
+                    </select>
+                    <input className="alpha-input client-dash-input" placeholder="Invoice title" value={billingInvoiceTitle} onChange={(e) => setBillingInvoiceTitle(e.target.value)} />
+                    <input className="alpha-input client-dash-input" placeholder="Invoice description (optional)" value={billingInvoiceDesc} onChange={(e) => setBillingInvoiceDesc(e.target.value)} />
+                    <input className="alpha-input client-dash-input" type="number" min={1} placeholder="Due in days (default 7)" value={billingDueDays} onChange={(e) => setBillingDueDays(e.target.value)} style={{ maxWidth: 160 }} />
+                  </div>
+                  <div className="card-scroll" style={{ maxHeight: 320 }}>
+                    <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
+                      <div className="t-head" style={{ gridTemplateColumns: '2fr 0.6fr 0.8fr 0.4fr' }}>
+                        <div>Description</div>
+                        <div>Qty</div>
+                        <div>Unit ($)</div>
+                        <div>Remove</div>
+                      </div>
+                      <div className="t-body">
+                        {billingLineItems.map((li) => (
+                          <div key={li.id} className="t-row" style={{ gridTemplateColumns: '2fr 0.6fr 0.8fr 0.4fr' }}>
+                            <input
+                              className="alpha-input client-dash-input"
+                              placeholder="Line item description"
+                              value={li.description}
+                              onChange={(e) => updateLineItem(li.id, 'description', e.target.value)}
+                            />
+                            <input
+                              className="alpha-input client-dash-input"
+                              type="number"
+                              min={1}
+                              value={li.quantity}
+                              onChange={(e) => updateLineItem(li.id, 'quantity', e.target.value)}
+                            />
+                            <input
+                              className="alpha-input client-dash-input"
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={li.unitAmount}
+                              onChange={(e) => updateLineItem(li.id, 'unitAmount', e.target.value)}
+                            />
+                            <div className="center">
+                              <button className="btn-icon" onClick={() => removeLineItem(li.id)} title="Remove line item">
+                                <IconTrash size={20} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="client-dash-row" style={{ justifyContent: 'space-between', marginTop: 8 }}>
+                    <button className="btn lilac client-dash-pill" type="button" onClick={addLineItem}>Add line item</button>
+                    <button
+                      className="btn lilac client-dash-pill"
+                      type="button"
+                      disabled={!canSendInvoice || billingSending}
+                      onClick={sendInvoice}
+                    >
+                      {billingSending ? 'Sending…' : 'Send Invoice'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Invoice History</h2>
+                  </div>
+                  <div className="card-scroll">
+                    <div className="client-dash-table members members-extended">
+                      <div className="t-head" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
+                        <div>Created</div>
+                        <div>Customer</div>
+                        <div>Title</div>
+                        <div>Amount</div>
+                        <div>Status</div>
+                        <div>Link</div>
+                      </div>
+                      <div className="t-body">
+                        {billingInvoices.map((inv) => {
+                          const custName = billingCustomers.find((c) => c.id === inv.billing_customer_id)?.company_name || inv.billing_customer_id;
+                          return (
+                            <div key={inv.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 1.1fr 1.4fr 0.8fr 0.8fr 0.8fr' }}>
+                              <div>{inv.created_at ? new Date(inv.created_at).toLocaleString() : '—'}</div>
+                              <div>{custName}</div>
+                              <div>{inv.title || inv.invoice_title || '—'}</div>
+                              <div>${((inv.amount_total_cents || 0) / 100).toFixed(2)}</div>
+                              <div>{inv.status || '—'}</div>
+                              <div>
+                                {inv.hosted_invoice_url ? (
+                                  <button className="btn lilac client-dash-pill" onClick={() => window.open(inv.hosted_invoice_url, '_blank', 'noopener,noreferrer')}>
+                                    Open
+                                  </button>
+                                ) : '—'}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {billingInvoices.length === 0 && <div className="t-empty muted">No invoices yet</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>
