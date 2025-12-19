@@ -825,6 +825,19 @@ export default function Admin() {
 
   return (
     <>
+      <style>{`
+        .dash-page.alpha-theme.client-dash.admin-page input.alpha-input.client-dash-input.billing-terms-input {
+          height: 52px !important;
+          min-height: 52px !important;
+          max-height: 52px !important;
+          box-sizing: border-box !important;
+          line-height: 24px !important;
+          padding: 12px 14px !important;
+          display: block !important;
+          flex: 0 0 auto !important;
+          align-self: flex-start !important;
+        }
+      `}</style>
       <div className="dash-page alpha-theme client-dash admin-page">
         <div className="dash-center dash-inner">
           <div className="dash-head">
@@ -1203,7 +1216,7 @@ export default function Admin() {
                     />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200 }}>
                       <input
-                        className="alpha-input client-dash-input"
+                        className="alpha-input client-dash-input billing-terms-input"
                         type="number"
                         min={0}
                         max={90}
@@ -1211,7 +1224,6 @@ export default function Admin() {
                         value={billingDueDays}
                         onChange={(e) => setBillingDueDays(e.target.value)}
                         onFocus={() => setBillingCustomerMenuOpen(false)}
-                        style={{ height: 52, minHeight: 52, boxSizing: 'border-box' }}
                       />
                       <div className="muted" style={{ fontSize: 12 }}>Number of days the customer has to pay after the invoice is sent.</div>
                     </div>
