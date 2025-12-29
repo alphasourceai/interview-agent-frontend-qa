@@ -39,6 +39,29 @@ const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlig
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
 const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
 
+const csvEscape = (value) => {
+  const str = value == null ? '' : String(value);
+  const escaped = str.replace(/"/g, '""');
+  return `"${escaped}"`;
+};
+
+const buildCsv = (headers, rows) => {
+  const lines = [headers, ...rows].map((row) => row.map(csvEscape).join(','));
+  return lines.join('\r\n');
+};
+
+const downloadCsv = (csvText, filename) => {
+  const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+};
+
 function HeaderButton({ label, active, dir, onClick }) {
   return (
     <button
@@ -840,6 +863,59 @@ export default function ClientDashboard() {
     setTimeout(postSizeSoon, 250);
   }, [clientId, roleFilter, minOverall, sortBy, sortDir]);
 
+  const exportCandidatesCsv = () => {
+    const rowsForExport = visibleRows || [];
+    const pctCsv = (v) =>
+      (typeof v === 'number' && isFinite(v)) || v === 0
+        ? `${Math.max(0, Math.min(100, v))}%`
+        : '';
+    const fmtDateCsv = (iso) => {
+      if (!iso) return '';
+      const formatted = fmtDate(iso);
+      return formatted === '—' ? '' : formatted;
+    };
+    const headers = [
+      'Name',
+      'Email',
+      'Role',
+      'Resume Score',
+      'Interview Score',
+      'Overall Score',
+      'Experience Score',
+      'Skills Score',
+      'Education Score',
+      'Resume Analysis Summary',
+      'Clarity Score',
+      'Confidence Score',
+      'Body Language Score',
+      'Interview Analysis Summary',
+      'Created At'
+    ];
+    const csvRows = rowsForExport.map((r) => [
+      r.candidate?.name || '',
+      r.candidate?.email || '',
+      r.role?.title || '',
+      pctCsv(r.resume_score),
+      pctCsv(r.interview_score),
+      pctCsv(r.overall_score),
+      pctCsv(r.resume_analysis?.experience),
+      pctCsv(r.resume_analysis?.skills),
+      pctCsv(r.resume_analysis?.education),
+      r.resume_analysis?.summary || '',
+      pctCsv(r.interview_analysis?.clarity),
+      pctCsv(r.interview_analysis?.confidence),
+      pctCsv(r.interview_analysis?.body_language),
+      r.interview_analysis?.summary || '',
+      fmtDateCsv(r.created_at)
+    ]);
+    const csvText = buildCsv(headers, csvRows);
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    downloadCsv(csvText, `alphascreen-candidates-${yyyy}-${mm}-${dd}.csv`);
+  };
+
   return (
     <div className="dash-page alpha-theme client-dash">
       <div className="dash-center dash-inner">
@@ -1006,6 +1082,18 @@ export default function ClientDashboard() {
                       Clear
                     </button>
                   )}
+                </div>
+                <div style={{ display:'flex', alignItems:'center' }}>
+                  <button
+                    type="button"
+                    className="client-dash-tab"
+                    onClick={exportCandidatesCsv}
+                    disabled={visibleRows.length === 0}
+                    title={visibleRows.length === 0 ? 'No candidates to export' : 'Export CSV'}
+                    style={visibleRows.length === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  >
+                    Export CSV
+                  </button>
                 </div>
               </div>
 
