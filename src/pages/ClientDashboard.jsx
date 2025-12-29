@@ -16,19 +16,13 @@ const TIPS = {
   body_language: 'Non-verbal cues such as posture and eye contact.'
 };
 
-function SortIcon({ dir }) {
-  return <span style={{ marginLeft: 6, opacity: 0.8 }}>{dir === 'asc' ? '▲' : '▼'}</span>;
+function SortIcon({ dir, active }) {
+  if (!active) {
+    return <span className="client-dash-sort-caret client-dash-sort-caret--neutral">▼</span>;
+  }
+  return <span className="client-dash-sort-caret">{dir === 'asc' ? '▲' : '▼'}</span>;
 }
 
-const btn = {
-  border: '1px solid #e5e7eb',
-  padding: '6px 10px',
-  borderRadius: 6,
-  background: '#f9fafb',
-  cursor: 'pointer',
-  textDecoration: 'none',
-  display: 'inline-block',
-};
 const th = {
   textAlign: 'left',
   borderBottom: '1px solid #e5e7eb',
@@ -66,19 +60,12 @@ function HeaderButton({ label, active, dir, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="btn lilac client-dash-pill client-dash-sort"
-      style={{
-        ...btn,
-        background: active ? '#AD8BF7' : undefined,
-        color: active ? '#fff' : undefined,
-        borderColor: active ? '#AD8BF7' : undefined,
-        padding: undefined
-      }}
+      className="client-dash-sort-button"
       title={`Sort by ${label}`}
       aria-pressed={active}
     >
       <span>{label}</span>
-      {active && <SortIcon dir={dir} />}
+      <SortIcon dir={dir} active={active} />
     </button>
   );
 }

@@ -46,6 +46,34 @@
   color: var(--alpha-text, #EBFEFF); /* white on dark */
 }
 .client-dash thead { background: transparent; }
+.client-dash .client-dash-sort-button {
+  appearance: none;
+  border: none;
+  background: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.client-dash .client-dash-sort-button:hover {
+  color: #fff;
+}
+.client-dash .client-dash-sort-button:focus-visible {
+  outline: 2px solid var(--alpha-primary, #AD8BF7);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.client-dash .client-dash-sort-caret {
+  font-size: 12px;
+  opacity: 0.85;
+}
+.client-dash .client-dash-sort-caret--neutral {
+  opacity: 0.45;
+}
 .client-dash td {
   border-bottom: 1px solid rgba(255,255,255,0.08);
   padding: 8px 6px;
