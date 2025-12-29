@@ -79,6 +79,75 @@
   }
 }
 
+/* Text interview chat layout */
+.text-interview-chat{
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.text-interview-progress{
+  font-size: 0.9rem;
+  color: rgba(255,255,255,0.72);
+}
+.text-chat-window{
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 16px;
+  max-height: 360px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.text-chat-thread{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.chat-bubble{
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  max-width: 78%;
+}
+.chat-question{
+  align-self: flex-start;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: var(--alpha-text, #EBFEFF);
+}
+.chat-answer{
+  align-self: flex-end;
+  background: rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  color: #f5f3ff;
+}
+.text-chat-input{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.text-chat-actions{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+@media (max-width: 640px){
+  .chat-bubble{
+    max-width: 100%;
+  }
+  .text-chat-actions{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .text-chat-actions .btn-lg{
+    width: 100%;
+  }
+}
+
 /* New outer 3-col grid for desktop alignment (equal columns) */
 .alpha-form-grid-3{
   display: grid;

@@ -1251,7 +1251,7 @@ export default function Admin() {
                 )}
 
                 {!accommodationsLoading && accommodations.length > 0 && (
-                  <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
+                  <div className="client-dash-table accommodations" style={{ marginTop: 8 }}>
                     <div className="t-head">
                       <div>Candidate</div>
                       <div>Role</div>
@@ -1267,7 +1267,7 @@ export default function Admin() {
                         const canSend = statusVal === 'approved';
                         const resumeUrl = req.resume_url;
                         return (
-                          <div key={req.id} className="t-row">
+                          <div key={req.id} className="t-row accommodation-row">
                             <div className="grow">
                               <div className="title">{req.candidate_name || '—'}</div>
                               <div className="sub">{req.candidate_email || '—'}</div>
@@ -1298,7 +1298,7 @@ export default function Admin() {
                               {req.approved_at && <div className="sub">Approved {new Date(req.approved_at).toLocaleString()}</div>}
                               {req.sent_at && <div className="sub">Sent {new Date(req.sent_at).toLocaleString()}</div>}
                             </div>
-                            <div>
+                            <div className="accommodation-notes">
                               <textarea
                                 className="alpha-input"
                                 rows={3}
@@ -1315,7 +1315,7 @@ export default function Admin() {
                                 {accommodationSaving[req.id] ? 'Saving…' : 'Save Notes'}
                               </button>
                             </div>
-                            <div>
+                            <div className="accommodation-actions">
                               <button
                                 className="btn lilac client-dash-pill"
                                 onClick={() => sendTextInterviewLink(req.id)}

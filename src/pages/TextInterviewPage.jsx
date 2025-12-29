@@ -27,8 +27,10 @@ export default function TextInterviewPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [answers, setAnswers] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [closeAttempted, setCloseAttempted] = useState(false);
 
   const header = useMemo(
     () => (
@@ -71,6 +73,7 @@ export default function TextInterviewPage() {
         answer: '',
       }));
       setAnswers(nextAnswers);
+      setCurrentIndex(0);
     } catch {
       setError('Network error loading interview.');
     } finally {
@@ -142,6 +145,36 @@ export default function TextInterviewPage() {
   };
 
   const resumeRequired = !!session?.resume_required;
+  const current = answers[currentIndex] || null;
+  const totalQuestions = answers.length || 0;
+
+  const handleNext = () => {
+    if (!current) return;
+    if (!current.answer.trim()) {
+      setError('Please enter your response before continuing.');
+      return;
+    }
+    setError('');
+    if (currentIndex < totalQuestions - 1) {
+      setCurrentIndex((idx) => idx + 1);
+    } else {
+      submitAnswers();
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentIndex > 0) {
+      setError('');
+      setCurrentIndex((idx) => idx - 1);
+    }
+  };
+
+  const handleClose = () => {
+    setCloseAttempted(true);
+    try {
+      window.close();
+    } catch {}
+  };
 
   return (
     <div className="alpha-theme alpha-page interview-access-page">
@@ -189,41 +222,69 @@ export default function TextInterviewPage() {
           {!loading && !error && !resumeRequired && (
             <>
               {submitted ? (
-                <div className="text-green-300 text-sm">
-                  Interview submitted. Completed via accommodation pathway (text).
+                <div>
+                  <div className="text-green-300 text-sm" style={{ marginBottom: 12 }}>
+                    Thanks for completing your text interview. We’ve received your responses and will follow up soon.
+                  </div>
+                  <button type="button" className="btn-lg" onClick={handleClose}>
+                    Close window
+                  </button>
+                  {closeAttempted && (
+                    <div className="muted" style={{ marginTop: 10 }}>
+                      If this window didn’t close automatically, you can safely close it now.
+                    </div>
+                  )}
                 </div>
               ) : (
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    submitAnswers();
-                  }}
-                  className="alpha-form-grid gap-y-4"
-                >
-                  {(answers || []).map((item, idx) => (
-                    <div key={item.index} className="alpha-col-span-2">
-                      <label className="alpha-label">
-                        {idx + 1}. {item.question}
-                      </label>
-                      <textarea
-                        className="alpha-input w-full"
-                        rows={4}
-                        value={item.answer}
-                        onChange={(e) => {
-                          const next = [...answers];
-                          next[idx] = { ...next[idx], answer: e.target.value };
-                          setAnswers(next);
-                        }}
-                        required
-                      />
-                    </div>
-                  ))}
-                  <div className="interview-submit-wrapper">
-                    <button type="submit" className="btn-lg" disabled={submitting}>
-                      {submitting ? 'Submitting…' : 'Submit Interview'}
-                    </button>
+                <div className="text-interview-chat">
+                  <div className="text-interview-progress">
+                    Question {Math.min(currentIndex + 1, totalQuestions)} of {totalQuestions}
                   </div>
-                </form>
+                  <div className="text-chat-window">
+                    {(answers || []).slice(0, currentIndex).map((item) => (
+                      <div key={item.index} className="text-chat-thread">
+                        <div className="chat-bubble chat-question">
+                          {item.index}. {item.question}
+                        </div>
+                        <div className="chat-bubble chat-answer">
+                          {item.answer || '—'}
+                        </div>
+                      </div>
+                    ))}
+                    {current && (
+                      <div className="chat-bubble chat-question">
+                        {current.index}. {current.question}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-chat-input">
+                    <label className="alpha-label">Your response</label>
+                    <textarea
+                      className="alpha-input w-full"
+                      rows={4}
+                      value={current?.answer || ''}
+                      onChange={(e) => {
+                        const next = [...answers];
+                        next[currentIndex] = { ...next[currentIndex], answer: e.target.value };
+                        setAnswers(next);
+                      }}
+                      required
+                    />
+                    <div className="text-chat-actions">
+                      <button
+                        type="button"
+                        className="btn lilac client-dash-pill"
+                        onClick={handlePrev}
+                        disabled={currentIndex === 0}
+                      >
+                        Back
+                      </button>
+                      <button type="button" className="btn-lg" disabled={submitting} onClick={handleNext}>
+                        {submitting ? 'Submitting…' : (currentIndex === totalQuestions - 1 ? 'Submit Interview' : 'Next')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </>
           )}

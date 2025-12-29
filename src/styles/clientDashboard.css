@@ -245,6 +245,11 @@
 .client-dash-table.members.members-extended .t-row {
   grid-template-columns: 2fr 1.2fr 0.9fr 0.7fr;
 }
+.client-dash-table.accommodations .t-head,
+.client-dash-table.accommodations .t-row {
+  grid-template-columns: 2fr 1.3fr 1.6fr 0.9fr 1.2fr 0.8fr;
+  align-items: start;
+}
 .client-dash-table.roles-with-client .t-head,
 .client-dash-table.roles-with-client .t-row {
   grid-template-columns: 2fr 1.2fr 1.1fr 0.9fr 0.5fr 0.5fr 0.9fr 0.8fr;
@@ -280,6 +285,16 @@
 .client-dash-table .t-row .sub {
   font-size: 0.8rem;
   opacity: 0.8;
+}
+.client-dash-table .accommodation-notes {
+  display: flex;
+  flex-direction: column;
+}
+.client-dash-table .accommodation-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+  height: 100%;
 }
 .client-dash-table .center {
   text-align: center;
