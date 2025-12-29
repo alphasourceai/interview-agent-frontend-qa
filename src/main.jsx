@@ -15,6 +15,8 @@ const SignIn = React.lazy(() => import('./pages/SignIn.jsx'))
 const PwReset = React.lazy(() => import('./pages/PwReset.jsx'))
 const VerifyOtp = React.lazy(() => import('./pages/VerifyOtp.jsx'))
 const InterviewAccessPage = React.lazy(() => import('./pages/InterviewAccessPage.jsx'))
+const AccommodationRequestPage = React.lazy(() => import('./pages/AccommodationRequestPage.jsx'))
+const TextInterviewPage = React.lazy(() => import('./pages/TextInterviewPage.jsx'))
 const Admin = React.lazy(() => import('./pages/Admin.jsx'))
 const PaymentTerminal = React.lazy(() => import('./pages/PaymentTerminal.jsx'))
 const TesterFeedback = React.lazy(() => import('./pages/TesterFeedback.jsx'))
@@ -161,6 +163,9 @@ const router = createBrowserRouter([
   { path: '/verify-otp', element: <VerifyOtp />, errorElement },
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
+  { path: '/accommodation-request', element: <AccommodationRequestPage />, errorElement },
+  { path: '/accommodation-request/:role_token', element: <AccommodationRequestPage />, errorElement },
+  { path: '/text-interview/:token', element: <TextInterviewPage />, errorElement },
   { path: '/admin', element: <Admin />, errorElement },
   { path: '/payment-terminal', element: <PaymentTerminal />, errorElement },
   { path: '/tester-feedback', element: <TesterFeedback />, errorElement },

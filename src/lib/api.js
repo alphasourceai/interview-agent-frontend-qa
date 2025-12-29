@@ -51,6 +51,16 @@ export async function apiDelete(path) {
   return handleJson(res);
 }
 
+export async function apiPatch(path, body) {
+  const res = await fetch(`${base}${path}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
+    body: JSON.stringify(body || {}),
+    credentials: 'omit'
+  });
+  return handleJson(res);
+}
+
 export async function getSignedUrl(interviewId, kind) {
   const qs = `?interview_id=${encodeURIComponent(interviewId)}&kind=${encodeURIComponent(kind)}`;
   const data = await apiGet(`/files/signed-url${qs}`);
@@ -102,6 +112,7 @@ export const api = {
   get: apiGet,
   post: apiPost,
   delete: apiDelete,
+  patch: apiPatch,
   download: apiDownload,
   getSignedUrl,
   upload: apiUpload,   // ← NEW

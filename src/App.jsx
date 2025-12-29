@@ -3,6 +3,8 @@ import { Routes, Route } from 'react-router-dom';
 
 import SignIn from './pages/SignIn';                  // ⬅ add
 import InterviewAccessPage from './pages/InterviewAccessPage';
+import AccommodationRequestPage from './pages/AccommodationRequestPage';
+import TextInterviewPage from './pages/TextInterviewPage';
 import VerifyOtp from './pages/VerifyOtp';
 import ClientDashboard from './pages/ClientDashboard';
 import RoleCreator from './pages/RoleCreator';
@@ -17,6 +19,9 @@ function App() {
       <Route path="/signin" element={<SignIn />} />    {/* ⬅ add */}
       <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route path="/interview-access/:role_token" element={<InterviewAccessPage />} />
+      <Route path="/accommodation-request/:role_token" element={<AccommodationRequestPage />} />
+      <Route path="/accommodation-request" element={<AccommodationRequestPage />} />
+      <Route path="/text-interview/:token" element={<TextInterviewPage />} />
       <Route path="/verify-otp" element={<VerifyOtp />} />
 
       {/* Legacy single-page dashboard & role views */}

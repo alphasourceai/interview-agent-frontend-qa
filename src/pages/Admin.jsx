@@ -1,6 +1,6 @@
 // src/pages/Admin.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { apiGet, apiPost, apiDelete, api } from '../lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, api } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
@@ -88,6 +88,13 @@ export default function Admin() {
   const [billingCustomerMenuOpen, setBillingCustomerMenuOpen] = useState(false);
   const customerDropdownRef = useRef(null);
 
+  const [accommodations, setAccommodations] = useState([]);
+  const [accommodationsLoading, setAccommodationsLoading] = useState(false);
+  const [accommodationFilter, setAccommodationFilter] = useState('pending');
+  const [accommodationNotes, setAccommodationNotes] = useState({});
+  const [accommodationSaving, setAccommodationSaving] = useState({});
+  const [accommodationSending, setAccommodationSending] = useState({});
+
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
   const clientNameById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.name])), [clients]);
@@ -135,7 +142,7 @@ export default function Admin() {
     const t = setTimeout(postEmbedSize, 60);
     const t2 = setTimeout(postEmbedSize, 320);
     return () => { clearTimeout(t); clearTimeout(t2); };
-  }, [loading, isAdmin, clients.length, roles.length, members.length, selectedClientId, billingCustomers.length, billingInvoices.length]);
+  }, [loading, isAdmin, clients.length, roles.length, members.length, selectedClientId, billingCustomers.length, billingInvoices.length, accommodations.length]);
 
   useEffect(() => {
     const IDLE_LIMIT_MS = 60 * 60 * 1000;
@@ -274,6 +281,34 @@ export default function Admin() {
     }
   }
 
+  async function refreshAccommodations() {
+    if (!isAdmin) return;
+    setAccommodationsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (accommodationFilter) params.set('status', accommodationFilter);
+      if (selectedClientId && selectedClientId !== ALL_CLIENTS_VALUE) {
+        params.set('client_id', selectedClientId);
+      }
+      const qs = params.toString();
+      const resp = await apiGet('/admin/accommodation-requests' + (qs ? `?${qs}` : ''));
+      const items = resp?.items || [];
+      setAccommodations(items);
+      const notes = {};
+      items.forEach((item) => {
+        notes[item.id] = item.admin_notes || '';
+      });
+      setAccommodationNotes(notes);
+    } catch (e) {
+      console.warn('[accommodations] fetch failed', e?.message || e);
+      toast.error('Could not load accommodation requests', { duration: 1500 });
+    } finally {
+      setAccommodationsLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -291,6 +326,12 @@ export default function Admin() {
     if (activeTab !== 'billing') return;
     refreshBilling();
   }, [isAdmin, activeTab]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'accommodations') return;
+    refreshAccommodations();
+  }, [isAdmin, activeTab, selectedClientId, accommodationFilter]);
 
   useEffect(() => {
     const onClickOutside = (e) => {
@@ -313,6 +354,41 @@ export default function Admin() {
       }
     } catch (e) {}
   }
+
+  const updateAccommodation = async (id, payload) => {
+    setAccommodationSaving((prev) => ({ ...prev, [id]: true }));
+    try {
+      const resp = await apiPatch(`/admin/accommodation-requests/${id}`, payload);
+      const item = resp?.item;
+      if (item) {
+        setAccommodations((prev) => prev.map((r) => (r.id === id ? { ...r, ...item } : r)));
+      }
+      if (payload?.status === 'approved') {
+        toast.success('Request approved', { duration: 1200 });
+      } else if (payload?.status === 'denied') {
+        toast.success('Request denied', { duration: 1200 });
+      } else {
+        toast.success('Request updated', { duration: 1200 });
+      }
+    } catch (e) {
+      toast.error('Update failed', { duration: 1500 });
+    } finally {
+      setAccommodationSaving((prev) => ({ ...prev, [id]: false }));
+    }
+  };
+
+  const sendTextInterviewLink = async (id) => {
+    setAccommodationSending((prev) => ({ ...prev, [id]: true }));
+    try {
+      await apiPost(`/admin/accommodation-requests/${id}/send-text-link`, {});
+      toast.success('Text interview link sent', { duration: 1400 });
+      await refreshAccommodations();
+    } catch (e) {
+      toast.error('Failed to send link', { duration: 1500 });
+    } finally {
+      setAccommodationSending((prev) => ({ ...prev, [id]: false }));
+    }
+  };
 
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -914,6 +990,13 @@ export default function Admin() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('accommodations')}
+              className={`client-dash-tab ${activeTab === 'accommodations' ? 'client-dash-tab--active' : ''}`}
+            >
+              Accommodation Requests
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('billing')}
               className={`client-dash-tab ${activeTab === 'billing' ? 'client-dash-tab--active' : ''}`}
             >
@@ -1135,6 +1218,119 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'accommodations' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Accommodation Requests</h2>
+                </div>
+                <div className="client-dash-row" style={{ alignItems: 'center' }}>
+                  <label htmlFor="accommodation-status" style={{ minWidth: 120 }}>Status</label>
+                  <select
+                    id="accommodation-status"
+                    className="alpha-input alpha-select client-dash-input"
+                    value={accommodationFilter}
+                    onChange={(e) => setAccommodationFilter(e.target.value)}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="sent">Sent</option>
+                    <option value="denied">Denied</option>
+                    <option value="all">All</option>
+                  </select>
+                  <button className="btn lilac client-dash-pill" onClick={refreshAccommodations}>
+                    Refresh
+                  </button>
+                </div>
+
+                {accommodationsLoading && <div className="client-dash-muted">Loading accommodation requests…</div>}
+                {!accommodationsLoading && accommodations.length === 0 && (
+                  <div className="client-dash-muted">No accommodation requests found.</div>
+                )}
+
+                {!accommodationsLoading && accommodations.length > 0 && (
+                  <div className="client-dash-table members members-extended" style={{ marginTop: 8 }}>
+                    <div className="t-head">
+                      <div>Candidate</div>
+                      <div>Role</div>
+                      <div>Request</div>
+                      <div>Status</div>
+                      <div>Notes</div>
+                      <div>Actions</div>
+                    </div>
+                    <div className="t-body">
+                      {accommodations.map((req) => {
+                        const roleTitle = req.role?.title || '—';
+                        const statusVal = String(req.status || 'pending').toLowerCase();
+                        const canSend = statusVal === 'approved';
+                        const resumeUrl = req.resume_url;
+                        return (
+                          <div key={req.id} className="t-row">
+                            <div className="grow">
+                              <div className="title">{req.candidate_name || '—'}</div>
+                              <div className="sub">{req.candidate_email || '—'}</div>
+                              {req.candidate_phone && <div className="sub">{req.candidate_phone}</div>}
+                              <div className="sub">Created {req.created_at ? new Date(req.created_at).toLocaleString() : '—'}</div>
+                            </div>
+                            <div>
+                              <div className="title">{roleTitle}</div>
+                              {resumeUrl ? (
+                                <a href={resumeUrl} target="_blank" rel="noreferrer">Resume</a>
+                              ) : (
+                                <div className="muted">No resume</div>
+                              )}
+                            </div>
+                            <div style={{ whiteSpace: 'pre-wrap' }}>{req.request_text || '—'}</div>
+                            <div>
+                              <select
+                                className="alpha-input alpha-select client-dash-input"
+                                value={statusVal}
+                                onChange={(e) => updateAccommodation(req.id, { status: e.target.value })}
+                                disabled={!!accommodationSaving[req.id]}
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="sent">Sent</option>
+                                <option value="denied">Denied</option>
+                              </select>
+                              {req.approved_at && <div className="sub">Approved {new Date(req.approved_at).toLocaleString()}</div>}
+                              {req.sent_at && <div className="sub">Sent {new Date(req.sent_at).toLocaleString()}</div>}
+                            </div>
+                            <div>
+                              <textarea
+                                className="alpha-input"
+                                rows={3}
+                                value={accommodationNotes[req.id] ?? ''}
+                                onChange={(e) => setAccommodationNotes((prev) => ({ ...prev, [req.id]: e.target.value }))}
+                                placeholder="Admin notes"
+                              />
+                              <button
+                                className="btn lilac client-dash-pill"
+                                style={{ marginTop: 6 }}
+                                onClick={() => updateAccommodation(req.id, { admin_notes: accommodationNotes[req.id] || '' })}
+                                disabled={!!accommodationSaving[req.id]}
+                              >
+                                {accommodationSaving[req.id] ? 'Saving…' : 'Save Notes'}
+                              </button>
+                            </div>
+                            <div>
+                              <button
+                                className="btn lilac client-dash-pill"
+                                onClick={() => sendTextInterviewLink(req.id)}
+                                disabled={!canSend || !!accommodationSending[req.id]}
+                                title={canSend ? 'Send text interview link' : 'Approve request to send'}
+                              >
+                                {accommodationSending[req.id] ? 'Sending…' : 'Send Text Interview Link'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

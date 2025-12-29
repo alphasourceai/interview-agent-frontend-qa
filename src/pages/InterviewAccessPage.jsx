@@ -423,6 +423,13 @@ useEffect(() => {
           </div>
         )}
         {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
+        <div className="mt-4 center">
+          <a
+            href={roleToken ? `/accommodation-request/${encodeURIComponent(roleToken)}` : '/accommodation-request'}
+          >
+            Need an accommodation?
+          </a>
+        </div>
       </div>
       )}
 
