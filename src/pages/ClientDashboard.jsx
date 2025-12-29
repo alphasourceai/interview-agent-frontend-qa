@@ -60,7 +60,7 @@ function HeaderButton({ label, active, dir, onClick }) {
   return (
     <button
       onClick={onClick}
-      className="client-dash-sort-button"
+      className="sortable-header"
       title={`Sort by ${label}`}
       aria-pressed={active}
     >

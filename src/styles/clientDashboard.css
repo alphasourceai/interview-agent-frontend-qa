@@ -46,11 +46,11 @@
   color: var(--alpha-text, #EBFEFF); /* white on dark */
 }
 .client-dash thead { background: transparent; }
-.client-dash .client-dash-sort-button {
+.client-dash .sortable-header {
   appearance: none;
-  border: none;
-  background: none;
-  padding: 0;
+  border: none !important;
+  background: none !important;
+  padding: 0 !important;
   margin: 0;
   color: inherit;
   font: inherit;
@@ -58,11 +58,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
-.client-dash .client-dash-sort-button:hover {
+.client-dash .sortable-header:hover {
   color: #fff;
 }
-.client-dash .client-dash-sort-button:focus-visible {
+.client-dash .sortable-header:focus-visible {
   outline: 2px solid var(--alpha-primary, #AD8BF7);
   outline-offset: 2px;
   border-radius: 4px;
@@ -411,35 +413,11 @@
   border-color: var(--alpha-primary-strong, #854DFF) !important;
 }
 
-/* Style the Name/Role sort buttons in the header like "Created" */
-.client-dash th button {
-  appearance: none;
-  border: 1px solid var(--alpha-primary, #AD8BF7) !important;
-  padding: 10px 14px !important;
-  border-radius: 999px !important;
-  background: var(--alpha-primary, #AD8BF7) !important;
-  color: #fff !important;
-  cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  font-weight: 700;
-}
-.client-dash th button:hover {
-  background: var(--alpha-primary-strong, #854DFF) !important;
-  border-color: var(--alpha-primary-strong, #854DFF) !important;
-}
-.client-dash th button svg {
-  width: 14px; height: 14px;
-  stroke: #fff; fill: none;
-}
-
 /* ------- usability polish: focus states, hover, truncation, filter width ------- */
 
 /* Visible focus for keyboard users */
 .client-dash .btn.lilac:focus-visible,
-.client-dash th button:focus-visible,
+.client-dash .sortable-header:focus-visible,
 .client-dash .expand-toggle:focus-visible,
 .client-dash .filters select:focus-visible,
 .client-dash .filters input[type="number"]:focus-visible {
