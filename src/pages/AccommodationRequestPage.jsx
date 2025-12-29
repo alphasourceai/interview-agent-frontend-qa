@@ -143,8 +143,8 @@ export default function AccommodationRequestPage() {
               Thank you. Your accommodation request has been received.
             </div>
           ) : (
-            <form onSubmit={onSubmit} className="alpha-form-grid gap-y-4">
-              <div>
+            <form onSubmit={onSubmit} className="alpha-form-grid accommodation-form-grid gap-y-4">
+              <div className="accommodation-col-left">
                 <label className="alpha-label">Full name <span className="required-asterisk">*</span></label>
                 <input
                   type="text"
@@ -173,7 +173,7 @@ export default function AccommodationRequestPage() {
                 {emailError && <div className="input-error-text">{emailError}</div>}
                 <div className="required-note">Required</div>
               </div>
-              <div>
+              <div className="accommodation-col-left">
                 <label className="alpha-label">Phone (optional)</label>
                 <input
                   type="tel"
@@ -199,7 +199,7 @@ export default function AccommodationRequestPage() {
                 <div className="required-note">Required</div>
               </div>
 
-              <div>
+              <div className="accommodation-resume">
                 <label className="alpha-label">Resume (optional)</label>
                 <div className="client-dash-file-wrapper interview-resume-wrapper">
                   <CustomFilePicker
@@ -213,7 +213,7 @@ export default function AccommodationRequestPage() {
                 {form.resume && <div className="mt-1 text-xs opacity-80">{form.resume.name}</div>}
               </div>
 
-              <div className="interview-submit-wrapper">
+              <div className="interview-submit-wrapper accommodation-submit">
                 <button type="submit" disabled={submitting} className="btn-lg">
                   {submitting ? 'Submitting…' : 'Submit Request'}
                 </button>

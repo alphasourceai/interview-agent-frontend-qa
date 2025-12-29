@@ -40,6 +40,45 @@
   .alpha-form-grid{ grid-template-columns: 1fr; }
 }
 
+/* Accommodation request layout */
+.accommodation-form-grid{
+  grid-template-columns: minmax(220px, 0.9fr) minmax(320px, 1.3fr);
+  column-gap: 20px;
+  row-gap: 16px;
+  align-items: start;
+}
+.accommodation-form-grid .accommodation-col-left{
+  grid-column: 1 / 2;
+  max-width: 360px;
+  justify-self: start;
+  width: 100%;
+}
+.accommodation-form-grid .accommodation-resume{
+  grid-column: 1 / 2;
+  justify-self: start;
+  width: 100%;
+}
+.accommodation-form-grid .accommodation-submit{
+  grid-column: 1 / 2;
+  justify-self: start;
+  width: auto;
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 4px;
+}
+@media (max-width: 640px){
+  .accommodation-form-grid{
+    grid-template-columns: 1fr;
+    column-gap: 0;
+  }
+  .accommodation-form-grid .accommodation-col-left,
+  .accommodation-form-grid .accommodation-resume,
+  .accommodation-form-grid .accommodation-submit{
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+}
+
 /* New outer 3-col grid for desktop alignment (equal columns) */
 .alpha-form-grid-3{
   display: grid;
