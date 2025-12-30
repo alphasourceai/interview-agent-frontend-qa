@@ -20,6 +20,8 @@ export default function TextInterviewPage() {
   const params = useParams();
   const token = params?.token || params?.role_token || params?.id || '';
   const fileInputRef = useRef(null);
+  const chatEndRef = useRef(null);
+  const answerInputRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -95,6 +97,25 @@ export default function TextInterviewPage() {
     loadSession();
   }, [token]);
 
+  const resumeRequired = !!session?.resume_required;
+  const chatActive = !loading && !error && !blocked && !resumeRequired && !submitted;
+
+  useEffect(() => {
+    if (!chatActive) return;
+    const raf = requestAnimationFrame(() => {
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [chatActive, currentIndex, answers.length]);
+
+  useEffect(() => {
+    if (!chatActive) return;
+    const raf = requestAnimationFrame(() => {
+      answerInputRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [chatActive, currentIndex]);
+
   const onResumeSelected = (file) => {
     setResumeFile(file || null);
   };
@@ -154,7 +175,6 @@ export default function TextInterviewPage() {
     }
   };
 
-  const resumeRequired = !!session?.resume_required;
   const current = answers[currentIndex] || null;
   const totalQuestions = answers.length || 0;
 
@@ -188,129 +208,184 @@ export default function TextInterviewPage() {
 
   return (
     <div className="alpha-theme alpha-page interview-access-page">
-      {header}
-      <div className="alpha-form">
-        <div className="alpha-card" style={{ padding: 20 }}>
-          <h2 className="text-xl font-semibold mb-2">Text Interview</h2>
-          {session?.role_title && (
-            <div className="muted" style={{ marginBottom: 12 }}>
-              Role: <strong>{session.role_title}</strong>
-            </div>
-          )}
-
-          {loading && <div className="client-dash-muted">Loading interview…</div>}
-          {!loading && error && <div className="text-red-300 text-sm">{error}</div>}
-
-          {!loading && !error && blocked && (
-            <div>
-              <div className="text-yellow-200 text-sm" style={{ marginBottom: 10 }}>
-                {blocked.message}
-              </div>
-              <div className="muted">
-                If you believe this is an error, please contact support at <strong>info@alphasourceai.com</strong>.
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && !blocked && resumeRequired && (
-            <div>
-              <p className="muted" style={{ marginBottom: 12 }}>
-                Resume required. Please upload your resume to continue.
-              </p>
-              <div className="client-dash-file-wrapper interview-resume-wrapper">
-                <CustomFilePicker
-                  accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  onFileSelected={onResumeSelected}
-                  label="Drag resume here or click to browse"
-                  className="client-dash-dropzone client-dash-input client-dash-file-input"
-                  inputRef={fileInputRef}
-                />
-              </div>
-              {resumeFile && <div className="mt-1 text-xs opacity-80">{resumeFile.name}</div>}
-              <div style={{ marginTop: 12 }}>
-                <button
-                  type="button"
-                  className="btn-lg"
-                  disabled={!resumeFile || uploading}
-                  onClick={uploadResume}
-                >
-                  {uploading ? 'Uploading…' : 'Upload Resume'}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {!loading && !error && !blocked && !resumeRequired && (
-            <>
-              {submitted ? (
-                <div>
-                  <div className="text-green-300 text-sm" style={{ marginBottom: 12 }}>
-                    Thanks for completing your text interview. We’ve received your responses and will follow up soon.
-                  </div>
-                  <button type="button" className="btn-lg" onClick={handleClose}>
-                    Close window
-                  </button>
-                  {closeAttempted && (
-                    <div className="muted" style={{ marginTop: 10 }}>
-                      If this window didn’t close automatically, you can safely close it now.
+      <div className="space-y-6">
+        {header}
+        <div className="alpha-hero fullbleed">
+          <div className="tavus-stage text-interview-stage">
+            <div className="tavus-slot text-interview-slot" aria-label="Text interview area">
+              <div className="text-interview-shell">
+                <div className="text-interview-title">
+                  <h2 className="text-xl font-semibold">Text Interview</h2>
+                  {session?.role_title && (
+                    <div className="muted">
+                      Role: <strong>{session.role_title}</strong>
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-interview-chat">
-                  <div className="text-interview-progress">
-                    Question {Math.min(currentIndex + 1, totalQuestions)} of {totalQuestions}
+
+                {loading && <div className="client-dash-muted">Loading interview…</div>}
+                {!loading && error && <div className="text-red-300 text-sm">{error}</div>}
+
+                {!loading && !error && blocked && (
+                  <div>
+                    <div className="text-yellow-200 text-sm" style={{ marginBottom: 10 }}>
+                      {blocked.message}
+                    </div>
+                    <div className="muted">
+                      If you believe this is an error, please contact support at <strong>info@alphasourceai.com</strong>.
+                    </div>
                   </div>
-                  <div className="text-chat-window">
-                    {(answers || []).slice(0, currentIndex).map((item) => (
-                      <div key={item.index} className="text-chat-thread">
-                        <div className="chat-bubble chat-question">
-                          {item.index}. {item.question}
-                        </div>
-                        <div className="chat-bubble chat-answer">
-                          {item.answer || '—'}
-                        </div>
-                      </div>
-                    ))}
-                    {current && (
-                      <div className="chat-bubble chat-question">
-                        {current.index}. {current.question}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-chat-input">
-                    <label className="alpha-label">Your response</label>
-                    <textarea
-                      className="alpha-input w-full"
-                      rows={4}
-                      value={current?.answer || ''}
-                      onChange={(e) => {
-                        const next = [...answers];
-                        next[currentIndex] = { ...next[currentIndex], answer: e.target.value };
-                        setAnswers(next);
-                      }}
-                      required
-                    />
-                    <div className="text-chat-actions">
+                )}
+
+                {!loading && !error && !blocked && resumeRequired && (
+                  <div>
+                    <p className="muted" style={{ marginBottom: 12 }}>
+                      Resume required. Please upload your resume to continue.
+                    </p>
+                    <div className="client-dash-file-wrapper interview-resume-wrapper">
+                      <CustomFilePicker
+                        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        onFileSelected={onResumeSelected}
+                        label="Drag resume here or click to browse"
+                        className="client-dash-dropzone client-dash-input client-dash-file-input"
+                        inputRef={fileInputRef}
+                      />
+                    </div>
+                    {resumeFile && <div className="mt-1 text-xs opacity-80">{resumeFile.name}</div>}
+                    <div style={{ marginTop: 12 }}>
                       <button
                         type="button"
-                        className="btn lilac client-dash-pill"
-                        onClick={handlePrev}
-                        disabled={currentIndex === 0}
+                        className="btn-lg"
+                        disabled={!resumeFile || uploading}
+                        onClick={uploadResume}
                       >
-                        Back
-                      </button>
-                      <button type="button" className="btn-lg" disabled={submitting} onClick={handleNext}>
-                        {submitting ? 'Submitting…' : (currentIndex === totalQuestions - 1 ? 'Submit Interview' : 'Next')}
+                        {uploading ? 'Uploading…' : 'Upload Resume'}
                       </button>
                     </div>
                   </div>
-                </div>
-              )}
-            </>
-          )}
+                )}
+
+                {!loading && !error && !blocked && !resumeRequired && submitted && (
+                  <div>
+                    <div className="text-green-300 text-sm" style={{ marginBottom: 12 }}>
+                      Thanks for completing your text interview. We’ve received your responses and will follow up soon.
+                    </div>
+                    <button type="button" className="btn-lg" onClick={handleClose}>
+                      Close window
+                    </button>
+                    {closeAttempted && (
+                      <div className="muted" style={{ marginTop: 10 }}>
+                        If this window didn’t close automatically, you can safely close it now.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {!loading && !error && !blocked && !resumeRequired && !submitted && (
+                  <div className="text-interview-chat text-interview-chat--full">
+                    <div className="text-interview-progress">
+                      Question {Math.min(currentIndex + 1, totalQuestions)} of {totalQuestions}
+                    </div>
+                    <div className="text-chat-window text-chat-window--full">
+                      {(answers || []).slice(0, currentIndex).map((item) => (
+                        <div key={item.index} className="text-chat-thread">
+                          <div className="chat-bubble chat-question">
+                            {item.index}. {item.question}
+                          </div>
+                          <div className="chat-bubble chat-answer">
+                            {item.answer || ''}
+                          </div>
+                        </div>
+                      ))}
+                      {current && (
+                        <div className="chat-bubble chat-question">
+                          {current.index}. {current.question}
+                        </div>
+                      )}
+                      <div ref={chatEndRef} />
+                    </div>
+                    <div className="text-chat-input">
+                      <label className="alpha-label">Your response</label>
+                      <textarea
+                        ref={answerInputRef}
+                        className="alpha-input w-full"
+                        rows={4}
+                        value={current?.answer || ''}
+                        onChange={(e) => {
+                          const next = [...answers];
+                          next[currentIndex] = { ...next[currentIndex], answer: e.target.value };
+                          setAnswers(next);
+                        }}
+                        required
+                      />
+                      <div className="text-chat-actions">
+                        <button
+                          type="button"
+                          className="btn lilac client-dash-pill"
+                          onClick={handlePrev}
+                          disabled={currentIndex === 0}
+                        >
+                          Back
+                        </button>
+                        <button type="button" className="btn-lg" disabled={submitting} onClick={handleNext}>
+                          {submitting ? 'Submitting…' : (currentIndex === totalQuestions - 1 ? 'Submit Interview' : 'Next')}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+      <style>{`
+        .text-interview-stage { width: 100%; }
+        .text-interview-slot {
+          position: relative;
+          width: 100%;
+          border-radius: 16px;
+          border: 1px solid rgba(255,255,255,0.1);
+          background: rgba(0,0,0,0.85);
+          overflow: hidden;
+          margin: 0 auto;
+          max-width: 1200px;
+        }
+        @media (min-width: 768px) {
+          .text-interview-slot { height: 520px; }
+        }
+        @media (max-width: 767px) {
+          .text-interview-slot { aspect-ratio: 16 / 9; }
+        }
+        .text-interview-shell{
+          display: flex;
+          flex-direction: column;
+          height: 100%;
+          gap: 12px;
+          padding: 24px;
+          box-sizing: border-box;
+        }
+        .text-interview-title{
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .text-interview-chat.text-interview-chat--full{
+          flex: 1;
+          min-height: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .text-chat-window.text-chat-window--full{
+          flex: 1;
+          min-height: 0;
+          max-height: none;
+        }
+        @media (max-width: 640px) {
+          .text-interview-shell{ padding: 16px; }
+        }
+      `}</style>
     </div>
   );
 }
