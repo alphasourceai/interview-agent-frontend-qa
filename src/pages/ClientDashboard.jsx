@@ -44,6 +44,65 @@ const buildCsv = (headers, rows) => {
   return lines.join('\r\n');
 };
 
+const extractRubricQuestions = (rubric) => {
+  const questions = [];
+  const seen = new Set();
+  const add = (value) => {
+    const text = value == null ? '' : String(value).trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    questions.push(text);
+  };
+  const handleItem = (item) => {
+    if (item == null) return;
+    if (typeof item === 'string' || typeof item === 'number') {
+      add(item);
+      return;
+    }
+    if (Array.isArray(item)) {
+      item.forEach(handleItem);
+      return;
+    }
+    if (typeof item === 'object') {
+      const candidate = item.question || item.text || item.prompt || item.label || item.value;
+      if (candidate) add(candidate);
+      if (Array.isArray(item.questions)) item.questions.forEach(handleItem);
+      if (Array.isArray(item.rubric)) item.rubric.forEach(handleItem);
+      if (Array.isArray(item.items)) item.items.forEach(handleItem);
+      if (Array.isArray(item.prompts)) item.prompts.forEach(handleItem);
+    }
+  };
+
+  if (rubric == null) return questions;
+  if (typeof rubric === 'string') {
+    const raw = rubric.trim();
+    if (!raw) return questions;
+    if ((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'))) {
+      try {
+        handleItem(JSON.parse(raw));
+        return questions;
+      } catch {
+        add(raw);
+        return questions;
+      }
+    }
+    add(raw);
+    return questions;
+  }
+
+  handleItem(rubric);
+  return questions;
+};
+
+function FileIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+      <path d="M14 2v6h6" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
 const downloadCsv = (csvText, filename) => {
   const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -196,6 +255,13 @@ export default function ClientDashboard() {
   const [rolesLoading, setRolesLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [fileKey, setFileKey] = useState(0);
+  const [openingJd, setOpeningJd] = useState({});
+  const [rubricModalOpen, setRubricModalOpen] = useState(false);
+  const [rubricRole, setRubricRole] = useState(null);
+  const [rubricQuestions, setRubricQuestions] = useState([]);
+  const [rubricNotes, setRubricNotes] = useState('');
+  const [rubricError, setRubricError] = useState('');
+  const [rubricSending, setRubricSending] = useState(false);
 
   // Members panel state
   const [members, setMembers] = useState([]);
@@ -517,6 +583,60 @@ export default function ClientDashboard() {
 
   const handleRoleFileFromPicker = (file) => {
     setJobFile(file || null);
+  };
+
+  const openRubricModal = (role) => {
+    const questions = extractRubricQuestions(role?.rubric);
+    setRubricRole(role || null);
+    setRubricQuestions(questions);
+    setRubricNotes('');
+    setRubricError('');
+    setRubricModalOpen(true);
+  };
+
+  const closeRubricModal = () => {
+    setRubricModalOpen(false);
+    setRubricRole(null);
+    setRubricQuestions([]);
+    setRubricNotes('');
+    setRubricError('');
+  };
+
+  const requestRubricChanges = async () => {
+    if (!rubricRole?.id) return;
+    setRubricSending(true);
+    setRubricError('');
+    try {
+      await apiPost(`/api/roles/${encodeURIComponent(rubricRole.id)}/rubric-request-changes`, {
+        notes: rubricNotes,
+        questions: rubricQuestions,
+      });
+      showToast('Rubric change request sent', 'success');
+      closeRubricModal();
+    } catch (e) {
+      const detail = e?.data?.detail || e?.data?.error || e?.message || 'Request failed';
+      setRubricError(detail);
+      showToast(detail, 'error');
+    } finally {
+      setRubricSending(false);
+    }
+  };
+
+  const openRoleJd = async (role) => {
+    const roleId = role?.id;
+    if (!roleId) return;
+    setOpeningJd((prev) => ({ ...prev, [roleId]: true }));
+    try {
+      const data = await apiGet(`/api/roles/${encodeURIComponent(roleId)}/jd-signed-url`);
+      if (!data?.url) throw new Error('No URL returned');
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+      showToast('Job description opened', 'success');
+    } catch (e) {
+      const detail = e?.data?.detail || e?.data?.error || e?.message || 'Could not open JD';
+      showToast(detail, 'error');
+    } finally {
+      setOpeningJd((prev) => ({ ...prev, [roleId]: false }));
+    }
   };
 
   const resolveClientIdForTesterAck = () => {
@@ -1270,15 +1390,16 @@ export default function ClientDashboard() {
                     <div>Role</div>
                     <div>Created</div>
                     <div>Type</div>
-                    <div>KB</div>
+                    <div>Rubric</div>
                     <div>JD</div>
                     <div>Link</div>
                     {canManage && <div>Delete</div>}
                   </div>
                   <div className="t-body">
                     {roles.map(r => {
-                      const hasKB = !!r.kb_document_id;
-                      const hasJD = !!r.job_description_url || !!r.description;
+                      const rubricQuestions = extractRubricQuestions(r.rubric);
+                      const hasRubric = rubricQuestions.length > 0;
+                      const hasJD = !!r.job_description_url;
                       return (
                         <div key={r.id} className="t-row">
                           <div>
@@ -1287,8 +1408,36 @@ export default function ClientDashboard() {
                           </div>
                           <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                           <div>{r.interview_type || '—'}</div>
-                          <div className="center">{hasKB ? '✓' : '—'}</div>
-                          <div className="center">{hasJD ? '✓' : '—'}</div>
+                          <div className="center">
+                            {hasRubric ? (
+                              <button
+                                className="btn-icon"
+                                onClick={() => openRubricModal(r)}
+                                title="View rubric questions"
+                                aria-label="View rubric questions"
+                              >
+                                <FileIcon />
+                              </button>
+                            ) : (
+                              <span className="muted">—</span>
+                            )}
+                          </div>
+                          <div className="center">
+                            {hasJD ? (
+                              <button
+                                className="btn-icon"
+                                onClick={() => openRoleJd(r)}
+                                title="Open job description"
+                                aria-label="Open job description"
+                                disabled={!!openingJd[r.id]}
+                                style={openingJd[r.id] ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                              >
+                                <FileIcon />
+                              </button>
+                            ) : (
+                              <span className="muted">—</span>
+                            )}
+                          </div>
                           <div>
                             <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
                           </div>
@@ -1417,6 +1566,49 @@ export default function ClientDashboard() {
             }}
           >
             {toast.msg}
+          </div>
+        )}
+
+        {rubricModalOpen && (
+          <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
+            <div className="rubric-modal-card">
+              <div className="rubric-modal-head">
+                <h2>Rubric — {rubricRole?.title || 'Role'}</h2>
+              </div>
+              <div className="rubric-modal-body">
+                {rubricQuestions.length === 0 ? (
+                  <div className="muted">No rubric questions available.</div>
+                ) : (
+                  <ol className="rubric-list">
+                    {rubricQuestions.map((q, idx) => (
+                      <li key={`${idx}-${q.slice(0, 12)}`}>{q}</li>
+                    ))}
+                  </ol>
+                )}
+                <label className="alpha-label">Requested changes (optional)</label>
+                <textarea
+                  className="alpha-input rubric-notes"
+                  rows={4}
+                  value={rubricNotes}
+                  onChange={(e) => setRubricNotes(e.target.value)}
+                  placeholder="Add notes for the alphaScreen team"
+                />
+                {rubricError && <div className="text-red-300 text-sm">{rubricError}</div>}
+              </div>
+              <div className="rubric-modal-actions">
+                <button type="button" className="btn lilac client-dash-pill" onClick={closeRubricModal}>
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn lilac client-dash-pill"
+                  onClick={requestRubricChanges}
+                  disabled={rubricSending}
+                >
+                  {rubricSending ? 'Sending…' : 'Request changes'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>
