@@ -1307,7 +1307,7 @@ export default function Admin() {
                                 placeholder="Admin notes"
                               />
                               <button
-                                className="btn lilac client-dash-pill"
+                                className="btn client-dash-pill accommodation-btn accommodation-btn-secondary"
                                 style={{ marginTop: 6 }}
                                 onClick={() => updateAccommodation(req.id, { admin_notes: accommodationNotes[req.id] || '' })}
                                 disabled={!!accommodationSaving[req.id]}
@@ -1317,12 +1317,12 @@ export default function Admin() {
                             </div>
                             <div className="accommodation-actions">
                               <button
-                                className="btn lilac client-dash-pill"
+                                className="btn lilac client-dash-pill accommodation-btn"
                                 onClick={() => sendTextInterviewLink(req.id)}
                                 disabled={!canSend || !!accommodationSending[req.id]}
                                 title={canSend ? 'Send text interview link' : 'Approve request to send'}
                               >
-                                {accommodationSending[req.id] ? 'Sending…' : 'Send Text Interview Link'}
+                                {accommodationSending[req.id] ? 'Sending…' : 'Send Link'}
                               </button>
                             </div>
                           </div>

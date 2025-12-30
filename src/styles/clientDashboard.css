@@ -296,6 +296,22 @@
   align-items: flex-end;
   height: 100%;
 }
+.client-dash-table .accommodation-btn {
+  width: 160px;
+  min-width: 160px;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.client-dash-table .accommodation-btn-secondary {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.35) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.client-dash-table .accommodation-btn-secondary:hover {
+  background: rgba(255,255,255,0.08) !important;
+  border-color: rgba(255,255,255,0.6) !important;
+}
 .client-dash-table .center {
   text-align: center;
 }
