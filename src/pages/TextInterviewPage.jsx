@@ -31,6 +31,7 @@ export default function TextInterviewPage() {
   const [error, setError] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [closeAttempted, setCloseAttempted] = useState(false);
+  const [blocked, setBlocked] = useState(null);
 
   const header = useMemo(
     () => (
@@ -61,11 +62,20 @@ export default function TextInterviewPage() {
       });
       const data = await resp.json();
       if (!resp.ok) {
+        if (data?.code === 'duplicate_candidate') {
+          setBlocked({
+            message: data?.error || "Our records show you’ve already completed an interview for this role.",
+          });
+          setError('');
+          setSession(null);
+          return;
+        }
         setError(data?.error || 'Could not load interview.');
         setSession(null);
         return;
       }
       setSession(data);
+      setBlocked(null);
       setSubmitted(!!data?.completed);
       const nextAnswers = (data?.questions || []).map((q, idx) => ({
         index: idx + 1,
@@ -191,7 +201,18 @@ export default function TextInterviewPage() {
           {loading && <div className="client-dash-muted">Loading interview…</div>}
           {!loading && error && <div className="text-red-300 text-sm">{error}</div>}
 
-          {!loading && !error && resumeRequired && (
+          {!loading && !error && blocked && (
+            <div>
+              <div className="text-yellow-200 text-sm" style={{ marginBottom: 10 }}>
+                {blocked.message}
+              </div>
+              <div className="muted">
+                If you believe this is an error, please contact support at <strong>info@alphasourceai.com</strong>.
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && !blocked && resumeRequired && (
             <div>
               <p className="muted" style={{ marginBottom: 12 }}>
                 Resume required. Please upload your resume to continue.
@@ -219,7 +240,7 @@ export default function TextInterviewPage() {
             </div>
           )}
 
-          {!loading && !error && !resumeRequired && (
+          {!loading && !error && !blocked && !resumeRequired && (
             <>
               {submitted ? (
                 <div>

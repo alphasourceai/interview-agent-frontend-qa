@@ -17,6 +17,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   : '';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})$/.test(String(value || '').trim());
 
 export default function AccommodationRequestPage() {
   const params = useParams();
@@ -36,6 +37,7 @@ export default function AccommodationRequestPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -91,6 +93,12 @@ export default function AccommodationRequestPage() {
       return;
     }
     setEmailError('');
+    if (!isValidPhone(form.candidate_phone)) {
+      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.');
+      toast.error('Enter a valid phone number.', { duration: 1500 });
+      return;
+    }
+    setPhoneError('');
     if (!form.accommodation_request_text.trim()) {
       setError('Please describe the accommodation you need.');
       return;
@@ -105,7 +113,7 @@ export default function AccommodationRequestPage() {
       const body = new FormData();
       body.append('candidate_name', form.candidate_name.trim());
       body.append('candidate_email', form.candidate_email.trim());
-      if (form.candidate_phone) body.append('candidate_phone', form.candidate_phone.trim());
+      body.append('candidate_phone', String(form.candidate_phone || '').replace(/\D/g, ''));
       body.append('accommodation_request_text', form.accommodation_request_text.trim());
       body.append('role_token', roleToken);
       if (form.resume) body.append('resume', form.resume);
@@ -116,7 +124,11 @@ export default function AccommodationRequestPage() {
       });
       const data = await resp.json();
       if (!resp.ok) {
-        setError(data?.error || 'Something went wrong.');
+        if (data?.code === 'duplicate_candidate') {
+          setError("Our records show you’ve already completed an interview for this role.");
+        } else {
+          setError(data?.error || 'Something went wrong.');
+        }
         return;
       }
       setSubmitted(true);
@@ -174,16 +186,22 @@ export default function AccommodationRequestPage() {
                 <div className="required-note">Required</div>
               </div>
               <div className="accommodation-col-left">
-                <label className="alpha-label">Phone (optional)</label>
+                <label className="alpha-label">Phone <span className="required-asterisk">*</span></label>
                 <input
                   type="tel"
                   name="candidate_phone"
                   value={form.candidate_phone}
                   onChange={onChange}
-                  placeholder="e.g. (555) 123-4567"
-                  className="alpha-input w-full"
+                  placeholder="e.g. (555) 123-4567 or 555-123-4567"
+                  className={`alpha-input w-full ${phoneError ? 'input-error' : ''}`}
+                  required
+                  inputMode="tel"
+                  autoComplete="tel"
                   disabled={submitting}
+                  onBlur={() => setPhoneError(form.candidate_phone ? (isValidPhone(form.candidate_phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.') : '')}
                 />
+                {phoneError && <div className="input-error-text">{phoneError}</div>}
+                <div className="required-note">Required</div>
               </div>
               <div className="alpha-col-span-2">
                 <label className="alpha-label">Accommodation request <span className="required-asterisk">*</span></label>
