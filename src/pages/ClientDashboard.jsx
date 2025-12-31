@@ -1405,8 +1405,8 @@ export default function ClientDashboard() {
                     <div>Role</div>
                     <div>Created</div>
                     <div>Type</div>
-                    <div>Rubric</div>
-                    <div>JD</div>
+                    <div className="col-center">Rubric</div>
+                    <div className="col-center">JD</div>
                     <div>Link</div>
                     {canManage && <div>Delete</div>}
                   </div>
@@ -1423,7 +1423,7 @@ export default function ClientDashboard() {
                           </div>
                           <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                           <div>{r.interview_type || '—'}</div>
-                          <div className="center">
+                          <div className="col-center">
                             {hasRubric ? (
                               <button
                                 className="btn-icon"
@@ -1437,7 +1437,7 @@ export default function ClientDashboard() {
                               <span className="muted">—</span>
                             )}
                           </div>
-                          <div className="center">
+                          <div className="col-center">
                             {hasJD ? (
                               <button
                                 className="btn-icon"

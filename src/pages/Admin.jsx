@@ -30,6 +30,63 @@ const IconKey = ({ size = 22 }) => (
   </svg>
 );
 
+const FileIcon = ({ size = 22 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+    <path d="M14 2v6h6" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+  </svg>
+);
+
+const extractRubricQuestions = (rubric) => {
+  const questions = [];
+  const seen = new Set();
+  const add = (value) => {
+    const text = value == null ? '' : String(value).trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    questions.push(text);
+  };
+  const handleItem = (item) => {
+    if (item == null) return;
+    if (typeof item === 'string' || typeof item === 'number') {
+      add(item);
+      return;
+    }
+    if (Array.isArray(item)) {
+      item.forEach(handleItem);
+      return;
+    }
+    if (typeof item === 'object') {
+      const candidate = item.question || item.text || item.prompt || item.label || item.value;
+      if (candidate) add(candidate);
+      if (Array.isArray(item.questions)) item.questions.forEach(handleItem);
+      if (Array.isArray(item.rubric)) item.rubric.forEach(handleItem);
+      if (Array.isArray(item.items)) item.items.forEach(handleItem);
+      if (Array.isArray(item.prompts)) item.prompts.forEach(handleItem);
+    }
+  };
+
+  if (rubric == null) return questions;
+  if (typeof rubric === 'string') {
+    const raw = rubric.trim();
+    if (!raw) return questions;
+    if ((raw.startsWith('{') && raw.endsWith('}')) || (raw.startsWith('[') && raw.endsWith(']'))) {
+      try {
+        handleItem(JSON.parse(raw));
+        return questions;
+      } catch {
+        add(raw);
+        return questions;
+      }
+    }
+    add(raw);
+    return questions;
+  }
+
+  handleItem(rubric);
+  return questions;
+};
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -57,6 +114,10 @@ export default function Admin() {
   const [roleBusy, setRoleBusy] = useState(false);
   const fileInputRef = useRef(null);
   const [fileKey, setFileKey] = useState(0);
+  const [openingJd, setOpeningJd] = useState({});
+  const [rubricModalOpen, setRubricModalOpen] = useState(false);
+  const [rubricRole, setRubricRole] = useState(null);
+  const [rubricQuestions, setRubricQuestions] = useState([]);
 
   const [members, setMembers] = useState([]);
   const [memberEmail, setMemberEmail] = useState('');
@@ -102,6 +163,40 @@ export default function Admin() {
     if (isAllClients) return 'All clients';
     return clients.find((c) => c.id === selectedClientId)?.name || '';
   }, [clients, selectedClientId, isAllClients]);
+
+  const openRubricModal = (role) => {
+    const questions = extractRubricQuestions(role?.rubric);
+    setRubricRole(role || null);
+    setRubricQuestions(questions);
+    setRubricModalOpen(true);
+  };
+
+  const closeRubricModal = () => {
+    setRubricModalOpen(false);
+    setRubricRole(null);
+    setRubricQuestions([]);
+  };
+
+  const openRoleJd = async (role) => {
+    const roleId = role?.id;
+    if (!roleId) return;
+    setOpeningJd((prev) => ({ ...prev, [roleId]: true }));
+    try {
+      const data = await apiGet(`/api/roles/${encodeURIComponent(roleId)}/jd-signed-url`);
+      if (!data?.url) throw new Error('No URL returned');
+      window.open(data.url, '_blank', 'noopener,noreferrer');
+      toast.success('Job description opened', { duration: 1400 });
+    } catch (e) {
+      console.error('[admin/roles] jd_open_failed', {
+        role_id: roleId,
+        error: e?.message || e,
+        detail: e?.data?.detail || e?.data?.error || null,
+      });
+      toast.error('Could not open Job Description', { duration: 1600 });
+    } finally {
+      setOpeningJd((prev) => ({ ...prev, [roleId]: false }));
+    }
+  };
 
   const postEmbedSize = () => {
     if (typeof window === 'undefined') return;
@@ -1101,15 +1196,16 @@ export default function Admin() {
                       {isAllClients && <div>Client</div>}
                       <div>Created</div>
                       <div>Type</div>
-                      <div>KB</div>
-                      <div>JD</div>
+                      <div className="col-center">Rubric</div>
+                      <div className="col-center">JD</div>
                       <div>Link</div>
                       <div>Delete</div>
                     </div>
                     <div className="t-body">
                       {roles.map(r => {
-                        const hasKB = !!r.kb_document_id;
-                        const hasJD = !!r.job_description_url || !!r.description;
+                        const rubricQuestions = extractRubricQuestions(r.rubric);
+                        const hasRubric = rubricQuestions.length > 0;
+                        const hasJD = !!r.job_description_url;
                         const roleClientId = r.client_id || r.clientId || r.client?.id;
                         const roleClientName = clientNameById[roleClientId] || r.client_name || r.client?.name || '—';
                         return (
@@ -1121,8 +1217,36 @@ export default function Admin() {
                             {isAllClients && <div>{roleClientName}</div>}
                             <div>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                             <div>{r.interview_type || '—'}</div>
-                            <div className="center">{hasKB ? '✓' : '—'}</div>
-                            <div className="center">{hasJD ? '✓' : '—'}</div>
+                            <div className="col-center">
+                              {hasRubric ? (
+                                <button
+                                  className="btn-icon"
+                                  onClick={() => openRubricModal({ ...r, rubric: r.rubric })}
+                                  title="View rubric questions"
+                                  aria-label="View rubric questions"
+                                >
+                                  <FileIcon />
+                                </button>
+                              ) : (
+                                <span className="muted">—</span>
+                              )}
+                            </div>
+                            <div className="col-center">
+                              {hasJD ? (
+                                <button
+                                  className="btn-icon"
+                                  onClick={() => openRoleJd(r)}
+                                  title="Open job description"
+                                  aria-label="Open job description"
+                                  disabled={!!openingJd[r.id]}
+                                  style={openingJd[r.id] ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                                >
+                                  <FileIcon />
+                                </button>
+                              ) : (
+                                <span className="muted">—</span>
+                              )}
+                            </div>
                             <div>
                               <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
                             </div>
@@ -1527,6 +1651,32 @@ export default function Admin() {
           </div>
         </div>
       </div>
+
+      {rubricModalOpen && (
+        <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
+          <div className="rubric-modal-card">
+            <div className="rubric-modal-head">
+              <h2>Rubric — {rubricRole?.title || 'Role'}</h2>
+            </div>
+            <div className="rubric-modal-body">
+              {rubricQuestions.length === 0 ? (
+                <div className="muted">—</div>
+              ) : (
+                <ol className="rubric-list">
+                  {rubricQuestions.map((q, idx) => (
+                    <li key={`${idx}-${q.slice(0, 12)}`}>{q}</li>
+                  ))}
+                </ol>
+              )}
+            </div>
+            <div className="rubric-modal-actions">
+              <button type="button" className="btn lilac client-dash-pill" onClick={closeRubricModal}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={confirmClient.open}

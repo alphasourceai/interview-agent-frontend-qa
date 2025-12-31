@@ -296,6 +296,13 @@
   align-items: flex-end;
   height: 100%;
 }
+.client-dash-table .col-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  width: 100%;
+}
 .client-dash-table .accommodation-btn {
   width: 160px;
   min-width: 160px;
