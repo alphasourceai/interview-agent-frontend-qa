@@ -246,6 +246,16 @@ export default function ClientDashboard() {
     }, ttlMs);
   }
 
+  const toMessage = (value, fallback) => {
+    if (typeof value === 'string') return value;
+    if (value == null) return fallback;
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return fallback;
+    }
+  };
+
   // Roles panel state (for manager/admin client members)
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
@@ -615,8 +625,9 @@ export default function ClientDashboard() {
       closeRubricModal();
     } catch (e) {
       const detail = e?.data?.detail || e?.data?.error || e?.message || 'Request failed';
-      setRubricError(detail);
-      showToast(detail, 'error');
+      const message = toMessage(detail, 'Request failed');
+      setRubricError(message);
+      showToast(message, 'error');
     } finally {
       setRubricSending(false);
     }
@@ -632,8 +643,12 @@ export default function ClientDashboard() {
       window.open(data.url, '_blank', 'noopener,noreferrer');
       showToast('Job description opened', 'success');
     } catch (e) {
-      const detail = e?.data?.detail || e?.data?.error || e?.message || 'Could not open JD';
-      showToast(detail, 'error');
+      console.error('[roles] jd_open_failed', {
+        role_id: roleId,
+        error: e?.message || e,
+        detail: e?.data?.detail || e?.data?.error || null,
+      });
+      showToast('Could not open Job Description', 'error');
     } finally {
       setOpeningJd((prev) => ({ ...prev, [roleId]: false }));
     }
