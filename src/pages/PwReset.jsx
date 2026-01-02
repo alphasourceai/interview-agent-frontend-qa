@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { apiGet } from '../lib/api';
 import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
-
-const accountUrl = 'https://www.alphasourceai.com/account';
 
 export default function PwReset() {
   const [readyForPassword, setReadyForPassword] = useState(false);
@@ -12,6 +9,24 @@ export default function PwReset() {
   const [error, setError] = useState('');
   const [pw1, setPw1] = useState('');
   const [pw2, setPw2] = useState('');
+  const getResetOrigin = () => {
+    try {
+      const url = new URL(window.location.href);
+      const originParam = url.searchParams.get('origin');
+      if (originParam === 'admin' || originParam === 'client') {
+        try { localStorage.setItem('pwreset_origin', originParam); } catch {}
+        return originParam;
+      }
+    } catch {}
+    try {
+      const stored = localStorage.getItem('pwreset_origin');
+      if (stored === 'admin' || stored === 'client') return stored;
+    } catch {}
+    return '';
+  };
+  const resetOrigin = getResetOrigin();
+  const signInPath = resetOrigin === 'admin' ? '/admin-dashboard' : '/signin';
+  const signInLabel = resetOrigin === 'admin' ? 'Back to Admin Sign In' : 'Back to Client Sign In';
 
   const requestId = useMemo(() => {
     try { return crypto.randomUUID(); } catch (_) { return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`; }
@@ -101,39 +116,18 @@ export default function PwReset() {
         return;
       }
       toast.success('Password updated. Redirecting…', { duration: 1200 });
-
-      let isAdmin = false;
-      let hasMembership = false;
-      try {
-        const me = await apiGet('/auth/me');
-        hasMembership = Array.isArray(me?.memberships) && me.memberships.length > 0;
-        isAdmin = (me?.memberships || []).some((m) => String(m.role || '').toLowerCase() === 'admin');
-      } catch (_) { /* ignore */ }
-      if (!isAdmin && !hasMembership) {
-        try {
-          await apiGet('/admin/clients');
-          isAdmin = true;
-        } catch (_) {}
-      }
-
+      const redirectOrigin = getResetOrigin();
+      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : '/signin';
       await supabase.auth.signOut();
       const cleanUrl = new URL(window.location.href);
-      ['pwreset', 'code', 'token_hash', 'type'].forEach((k) => cleanUrl.searchParams.delete(k));
+      ['pwreset', 'code', 'token_hash', 'type', 'origin'].forEach((k) => cleanUrl.searchParams.delete(k));
       window.history.replaceState({}, '', cleanUrl.toString().split('#')[0]);
-
-      if (isAdmin) {
-        window.location.replace('/admin');
-      } else {
-        window.location.replace(accountUrl);
-      }
+      try { localStorage.removeItem('pwreset_origin'); } catch {}
+      window.location.replace(redirectPath);
     } catch (e) {
       console.error('[pwreset] submit failed', { request_id: requestId, error: e?.message || e });
       toast.error(e?.message || 'Something went wrong.');
     }
-  };
-
-  const goSignin = () => {
-    window.location.replace('/signin');
   };
 
   return (
@@ -169,11 +163,11 @@ export default function PwReset() {
 
         <div style={{ marginTop: 10 }}>
           <a
-            href="https://www.alphasourceai.com/account"
+            href={signInPath}
             className="btn-ghost"
             style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
           >
-            Back to Client Sign In
+            {signInLabel}
           </a>
         </div>
       </div>

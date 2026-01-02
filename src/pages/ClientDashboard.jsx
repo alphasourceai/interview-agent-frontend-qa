@@ -714,7 +714,7 @@ export default function ClientDashboard() {
         showToast('Link copied', 'success');
       } catch (err) {
         console.warn('Copy failed:', err);
-        showToast('Copy failed', 'error');
+        showToast('Could not copy link', 'error');
       }
     }
   };

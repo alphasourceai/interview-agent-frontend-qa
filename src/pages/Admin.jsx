@@ -517,8 +517,9 @@ export default function Admin() {
     }
     setEmailError('');
     const origin = window.location.origin;
+    try { localStorage.setItem('pwreset_origin', 'admin'); } catch {}
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/pwreset`
+      redirectTo: `${origin}/pwreset?origin=admin`
     });
     if (error) {
       toast.error('Could not start reset: ' + error.message, { duration: 2000 });
@@ -621,7 +622,7 @@ export default function Admin() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
-        toast.success('Link copied to clipboard', { duration: 1000 });
+        toast.success('Link copied', { duration: 1000 });
         return;
       }
       throw new Error('clipboard_api_unavailable');
@@ -639,12 +640,12 @@ export default function Admin() {
         const successful = document.execCommand('copy');
         document.body.removeChild(textarea);
         if (successful) {
-          toast.success('Link copied to clipboard', { duration: 1000 });
+          toast.success('Link copied', { duration: 1000 });
           return;
         }
         throw new Error('execCommand_copy_failed');
       } catch (fallbackErr) {
-        toast.error('Unable to copy link. Please right-click and copy link address.', { duration: 2500 });
+        toast.error('Could not copy link', { duration: 2500 });
       }
     }
   }

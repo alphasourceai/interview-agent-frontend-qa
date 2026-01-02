@@ -18,6 +18,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})$/.test(String(value || '').trim());
+const MAX_REQUEST_CHARS = 200;
 
 export default function AccommodationRequestPage() {
   const params = useParams();
@@ -39,6 +40,13 @@ export default function AccommodationRequestPage() {
   const [emailError, setEmailError] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const fileInputRef = useRef(null);
+  const requestCharCount = form.accommodation_request_text.length;
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   useEffect(() => {
     if (paramToken && paramToken !== roleToken) {
@@ -101,6 +109,10 @@ export default function AccommodationRequestPage() {
     setPhoneError('');
     if (!form.accommodation_request_text.trim()) {
       setError('Please describe the accommodation you need.');
+      return;
+    }
+    if (form.accommodation_request_text.length > MAX_REQUEST_CHARS) {
+      setError(`Please keep the accommodation request to ${MAX_REQUEST_CHARS} characters or less.`);
       return;
     }
     if (!roleToken) {
@@ -210,10 +222,14 @@ export default function AccommodationRequestPage() {
                   value={form.accommodation_request_text}
                   onChange={onChange}
                   rows={5}
+                  maxLength={MAX_REQUEST_CHARS}
                   required
                   className="alpha-input w-full"
                   disabled={submitting}
                 />
+                <div style={{ textAlign: 'right', fontSize: 12, opacity: 0.7 }}>
+                  {requestCharCount}/{MAX_REQUEST_CHARS}
+                </div>
                 <div className="required-note">Required</div>
               </div>
 

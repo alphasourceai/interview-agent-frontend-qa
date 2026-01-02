@@ -372,6 +372,11 @@ dialog::backdrop {
 .input-error {
   border-color: #ef4444 !important;
   background: #fef2f2 !important;
+  color: #7a0019 !important;
+}
+.input-error::placeholder {
+  color: #7a0019 !important;
+  opacity: 1;
 }
 .input-error:focus {
   outline: 2px solid rgba(239, 68, 68, 0.5);

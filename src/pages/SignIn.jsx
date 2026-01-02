@@ -134,8 +134,9 @@ export default function SignIn() {
     }
     setEmailError('');
     const origin = window.location.origin;
+    try { localStorage.setItem('pwreset_origin', 'client'); } catch {}
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/pwreset`
+      redirectTo: `${origin}/pwreset?origin=client`
     });
     if (error) toast.error('Could not start reset: ' + error.message, { duration: 2000 });
     else toast.success('Check your email for a password reset link.', { duration: 1500 });
