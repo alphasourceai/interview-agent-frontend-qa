@@ -2,6 +2,15 @@
 import { supabase } from './supabaseClient';
 
 const base = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, '') || '';
+const isDev = !!import.meta.env.DEV;
+const rolesPathRe = /^\/(api\/)?roles(\/|$)/i;
+
+function logRolesUrl(method, path) {
+  if (!isDev) return;
+  if (!rolesPathRe.test(path || '')) return;
+  const url = `${base}${path}`;
+  console.debug('[roles] url', { method, url });
+}
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -15,7 +24,7 @@ async function handleJson(res) {
   let data = null;
   try { data = text ? JSON.parse(text) : null; } catch { /* keep raw text */ }
   if (!res.ok) {
-    const msg = (data && (data.detail || data.error || data.message)) || text || `HTTP ${res.status}`;
+    const msg = (data && (data.error || data.message)) || text || `HTTP ${res.status}`;
     const err = new Error(msg);
     err.status = res.status;
     err.data = data;
@@ -25,6 +34,7 @@ async function handleJson(res) {
 }
 
 export async function apiGet(path) {
+  logRolesUrl('GET', path);
   const res = await fetch(`${base}${path}`, {
     headers: await authHeaders(),
     credentials: 'omit'
@@ -33,6 +43,7 @@ export async function apiGet(path) {
 }
 
 export async function apiPost(path, body) {
+  logRolesUrl('POST', path);
   const res = await fetch(`${base}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
@@ -43,6 +54,7 @@ export async function apiPost(path, body) {
 }
 
 export async function apiDelete(path) {
+  logRolesUrl('DELETE', path);
   const res = await fetch(`${base}${path}`, {
     method: 'DELETE',
     headers: await authHeaders(),
@@ -52,6 +64,7 @@ export async function apiDelete(path) {
 }
 
 export async function apiPatch(path, body) {
+  logRolesUrl('PATCH', path);
   const res = await fetch(`${base}${path}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },

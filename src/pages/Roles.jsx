@@ -11,8 +11,11 @@ export default function Roles() {
   useEffect(() => {
     if (!clientId) return;
     setLoading(true);
-    api.get(`/roles?client_id=${encodeURIComponent(clientId)}`)
-      .then(r => setRows(Array.isArray(r) ? r : []))
+    api.get(`/api/roles?client_id=${encodeURIComponent(clientId)}`)
+      .then(r => {
+        const items = Array.isArray(r?.roles) ? r.roles : (r?.items || r);
+        setRows(Array.isArray(items) ? items : []);
+      })
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
   }, [clientId]);

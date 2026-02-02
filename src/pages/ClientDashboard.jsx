@@ -265,6 +265,7 @@ export default function ClientDashboard() {
   const [rolesLoading, setRolesLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [fileKey, setFileKey] = useState(0);
+  const rolesEndpointBase = '/api/roles';
   const [openingJd, setOpeningJd] = useState({});
   const [rubricModalOpen, setRubricModalOpen] = useState(false);
   const [rubricRole, setRubricRole] = useState(null);
@@ -515,7 +516,7 @@ export default function ClientDashboard() {
       setRoles([]);
       return;
     }
-    const endpoint = `/roles?client_id=${encodeURIComponent(targetId)}`;
+    const endpoint = `${rolesEndpointBase}?client_id=${encodeURIComponent(targetId)}`;
     console.debug('[roles] fetch start', { clientId: targetId, userId, endpoint });
     setRolesLoading(true);
     try {
@@ -538,12 +539,15 @@ export default function ClientDashboard() {
         e?.data?.message ||
         e?.message ||
         'Failed to load roles';
+      const requestId = e?.data?.request_id || e?.response?.data?.request_id;
+      if (requestId) console.error('[roles] request_id', requestId);
       console.error('[roles] fetch error', {
         clientId: targetId,
         userId,
         endpoint,
         status,
         detail,
+        request_id: requestId || null,
         keys: e?.data ? Object.keys(e.data || {}) : []
       });
       setRoles([]);
@@ -730,7 +734,7 @@ export default function ClientDashboard() {
     setRoleBusy(true);
     try {
       const payload = { client_id: clientId, title, interview_type: interviewType };
-      const resp = await apiPost('/roles', payload);
+      const resp = await apiPost(rolesEndpointBase, payload);
       const role = resp?.role;
       if (!role) { showToast('Role create failed', 'error'); return; }
       try {
@@ -749,6 +753,23 @@ export default function ClientDashboard() {
       postSizeSoon();
       setTimeout(postSizeSoon, 300);
       showToast('Role created', 'success');
+    } catch (e) {
+      const status = e?.status || e?.response?.status;
+      const requestId = e?.data?.request_id || e?.response?.data?.request_id;
+      const detail =
+        e?.data?.detail ||
+        e?.response?.data?.detail ||
+        e?.data?.message ||
+        e?.message ||
+        'Failed to create role';
+      if (requestId) console.error('[roles] request_id', requestId);
+      console.error('[roles] create error', {
+        clientId,
+        status,
+        detail,
+        request_id: requestId || null
+      });
+      showToast(detail || 'Failed to create role', 'error');
     } finally {
       setRoleBusy(false);
     }
@@ -756,7 +777,7 @@ export default function ClientDashboard() {
 
   const deleteRole = async (id) => {
     try {
-      const url = `/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
+      const url = `${rolesEndpointBase}?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
       await apiDelete(url);
       setRoles((prev) => prev.filter((r) => r.id !== id));
       postSizeSoon();
@@ -764,6 +785,8 @@ export default function ClientDashboard() {
       showToast('Role deleted', 'success');
     } catch (err) {
       const msg = err?.message || 'Could not delete role. Please refresh and try again.';
+      const requestId = err?.data?.request_id || err?.response?.data?.request_id;
+      if (requestId) console.error('[roles] request_id', requestId);
       console.error('Role delete failed:', err);
       showToast(msg, 'error');
     }
