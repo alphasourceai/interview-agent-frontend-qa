@@ -32,6 +32,11 @@ const th = {
 const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlign: 'top' };
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
 const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
+const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;
+
+function isDailyRoomUrl(url) {
+  return !!url && DAILY_ROOM_RE.test(String(url));
+}
 
 const csvEscape = (value) => {
   const str = value == null ? '' : String(value);
@@ -906,13 +911,13 @@ export default function ClientDashboard() {
       },
       role: r.role || null,
 
-      video_url: r.video_url || null,
+      video_url: r.video_url && !isDailyRoomUrl(r.video_url) ? r.video_url : null,
       transcript_url: r.transcript_url || null,
       analysis_url: r.analysis_url || null,
 
-      has_video: !!r.video_url,
-      has_transcript: !!r.transcript_url,
-      has_analysis: !!r.analysis_url,
+      has_video: r.has_video ?? (!!r.video_url && !isDailyRoomUrl(r.video_url)),
+      has_transcript: r.has_transcript ?? !!r.transcript_url,
+      has_analysis: r.has_analysis ?? !!r.analysis_url,
 
       resume_score: r.resume_score ?? null,
       interview_score: r.interview_score ?? null,
@@ -1308,6 +1313,7 @@ export default function ClientDashboard() {
                             generatePdfForRow={generatePdfForRow}
                             trKey={trKey}
                             pdfKey={pdfKey}
+                            showToast={showToast}
                           />
                         )
                       })}
@@ -1655,8 +1661,34 @@ export default function ClientDashboard() {
 }
 
 function FragmentRow({
-  r, opened, toggleRow, pctText, fmtDate, openSigned, opening, generatePdfForRow, trKey, pdfKey
+  r, opened, toggleRow, pctText, fmtDate, openSigned, opening, generatePdfForRow, trKey, pdfKey, showToast
 }) {
+  const videoReady = !!r.video_url && !isDailyRoomUrl(r.video_url);
+  const handleVideoClick = () => {
+    if (!videoReady) {
+      if (typeof showToast === 'function') showToast('Recording is processing', 'success');
+      return;
+    }
+    try {
+      window.open(r.video_url, '_blank', 'noopener,noreferrer');
+    } catch {
+      if (typeof showToast === 'function') showToast('Could not open recording.', 'error');
+    }
+  };
+  const analysisSummary = r.interview_analysis.summary;
+  const analysisPending = !analysisSummary;
+  const analysisStatus = analysisPending
+    ? (r.has_video || r.has_transcript || r.has_analysis ? 'Processing' : 'Not available yet')
+    : null;
+  const transcriptReady = !!r.latest_interview_id && !!r.has_transcript;
+  const handleTranscriptClick = () => {
+    if (opening[trKey]) return;
+    if (!transcriptReady) {
+      if (typeof showToast === 'function') showToast('Transcript is processing', 'success');
+      return;
+    }
+    openSigned(r.latest_interview_id, 'transcript');
+  };
   return (
     <>
       <tr className={opened ? 'cd-row opened' : 'cd-row'}>
@@ -1701,15 +1733,21 @@ function FragmentRow({
           <td style={{...td, paddingTop: 0}} colSpan={7}>
             <div style={{ display:'grid', gap: 12 }}>
               <div className="row-actions" style={{ display:'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                {r.video_url && (
-                  <a href={r.video_url} target="_blank" rel="noreferrer" className="btn lilac">Video</a>
-                )}
+                <button
+                  onClick={handleVideoClick}
+                  className={`btn lilac${!videoReady ? ' is-disabled' : ''}`}
+                  style={!videoReady ? disabledBtn : undefined}
+                  aria-disabled={!videoReady}
+                  title={videoReady ? 'Open recording' : 'Recording is processing'}
+                >
+                  Video
+                </button>
 
                 <button
-                  onClick={() => openSigned(r.latest_interview_id, 'transcript')}
-                  disabled={!r.latest_interview_id || !r.has_transcript || !!opening[trKey]}
-                  className={`btn lilac${(!r.latest_interview_id || !r.has_transcript || !!opening[trKey]) ? ' is-disabled' : ''}`}
-                  style={(!r.latest_interview_id || !r.has_transcript || !!opening[trKey]) ? disabledBtn : undefined}
+                  onClick={handleTranscriptClick}
+                  className={`btn lilac${(!transcriptReady || !!opening[trKey]) ? ' is-disabled' : ''}`}
+                  style={(!transcriptReady || !!opening[trKey]) ? disabledBtn : undefined}
+                  aria-disabled={!transcriptReady || !!opening[trKey]}
                 >
                   {opening[trKey] ? 'Opening…' : 'Transcript'}
                 </button>
@@ -1750,9 +1788,9 @@ function FragmentRow({
                   </div>
                   <div style={{ marginTop: 8, color:'#374151' }}>
                     <strong>Summary:</strong>{' '}
-                    {r.interview_analysis.summary
-                      ? r.interview_analysis.summary
-                      : <span style={{ color: '#6b7280' }}>Summary not available</span>}
+                    {analysisSummary
+                      ? analysisSummary
+                      : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
                   </div>
                 </div>
               </div>
