@@ -38,6 +38,13 @@ function isDailyRoomUrl(url) {
   return !!url && DAILY_ROOM_RE.test(String(url));
 }
 
+function isUsableRecordingUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed || !/^https:\/\//i.test(trimmed)) return false;
+  return !isDailyRoomUrl(trimmed);
+}
+
 const csvEscape = (value) => {
   const str = value == null ? '' : String(value);
   const escaped = str.replace(/"/g, '""');
@@ -1663,7 +1670,7 @@ export default function ClientDashboard() {
 function FragmentRow({
   r, opened, toggleRow, pctText, fmtDate, openSigned, opening, generatePdfForRow, trKey, pdfKey, showToast
 }) {
-  const videoReady = !!r.video_url && !isDailyRoomUrl(r.video_url);
+  const videoReady = isUsableRecordingUrl(r.video_url);
   const handleVideoClick = () => {
     if (!videoReady) {
       if (typeof showToast === 'function') showToast('Recording is processing', 'success');
@@ -1733,15 +1740,15 @@ function FragmentRow({
           <td style={{...td, paddingTop: 0}} colSpan={7}>
             <div style={{ display:'grid', gap: 12 }}>
               <div className="row-actions" style={{ display:'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
-                <button
-                  onClick={handleVideoClick}
-                  className={`btn lilac${!videoReady ? ' is-disabled' : ''}`}
-                  style={!videoReady ? disabledBtn : undefined}
-                  aria-disabled={!videoReady}
-                  title={videoReady ? 'Open recording' : 'Recording is processing'}
-                >
-                  Video
-                </button>
+                {videoReady && (
+                  <button
+                    onClick={handleVideoClick}
+                    className="btn lilac"
+                    title="Open recording"
+                  >
+                    Video
+                  </button>
+                )}
 
                 <button
                   onClick={handleTranscriptClick}
