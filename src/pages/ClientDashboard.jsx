@@ -13,7 +13,7 @@ const TIPS = {
   education: 'Relevance and level of education for the role.',
   clarity: 'How clearly the candidate communicates ideas/use of filler words.',
   confidence: 'Apparent confidence and composure while answering.',
-  body_language: 'Non-verbal cues such as posture and eye contact.'
+  engagement: 'Engagement and non-verbal cues such as posture and eye contact.'
 };
 
 function SortIcon({ dir, active }) {
@@ -43,6 +43,28 @@ function isUsableRecordingUrl(url) {
   const trimmed = url.trim();
   if (!trimmed || !/^https:\/\//i.test(trimmed)) return false;
   return !isDailyRoomUrl(trimmed);
+}
+
+function parseAnalysis(a) {
+  if (a && typeof a === 'object') return a;
+  if (typeof a === 'string') {
+    try {
+      const parsed = JSON.parse(a);
+      if (parsed && typeof parsed === 'object') return parsed;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+function sanitizeFilenamePart(value, fallback) {
+  const raw = value == null ? '' : String(value);
+  const trimmed = raw.trim();
+  if (!trimmed) return fallback;
+  const cleaned = trimmed.replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '');
+  return cleaned || fallback;
 }
 
 const csvEscape = (value) => {
@@ -238,6 +260,9 @@ export default function ClientDashboard() {
   const [error, setError] = useState('')
   const [opening, setOpening] = useState({})
   const [expanded, setExpanded] = useState({})
+  const [isTranscriptOpen, setIsTranscriptOpen] = useState(false)
+  const [activeTranscript, setActiveTranscript] = useState('')
+  const [activeTranscriptFilename, setActiveTranscriptFilename] = useState('')
 
   // --- Row visibility controls (Show more / Show less) ---
   const INITIAL_COUNT = 20;
@@ -258,6 +283,74 @@ export default function ClientDashboard() {
     }, ttlMs);
   }
 
+  const closeTranscriptModal = () => {
+    setIsTranscriptOpen(false);
+  };
+
+  const openTranscriptModal = async (row) => {
+    const transcriptText = typeof row?.transcript === 'string' ? row.transcript.trim() : '';
+    const email = row?.candidate?.email || row?.email || 'candidate';
+    const roleName = row?.role_name || row?.role?.title || row?.role || 'role';
+    const filename = `${sanitizeFilenamePart(email, 'candidate')}-${sanitizeFilenamePart(roleName, 'role')}-transcript.txt`;
+
+    if (transcriptText) {
+      setActiveTranscript(transcriptText);
+      setActiveTranscriptFilename(filename);
+      setIsTranscriptOpen(true);
+      postSizeSoon();
+      setTimeout(postSizeSoon, 250);
+      return;
+    }
+
+    showToast('Transcript is not available yet', 'error');
+  };
+
+  const downloadTranscript = () => {
+    if (!activeTranscript) {
+      showToast('Transcript is empty', 'error');
+      return;
+    }
+    const blob = new Blob([activeTranscript], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = activeTranscriptFilename || 'transcript.txt';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyTranscript = async () => {
+    if (!activeTranscript) {
+      showToast('Transcript is empty', 'error');
+      return;
+    }
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(activeTranscript);
+        showToast('Transcript copied', 'success');
+        return;
+      }
+      throw new Error('clipboard_api_unavailable');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = activeTranscript;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.setAttribute('readonly', '');
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('Transcript copied', 'success');
+      } catch (err) {
+        console.warn('Copy failed:', err);
+        showToast('Could not copy transcript', 'error');
+      }
+    }
+  };
   const toMessage = (value, fallback) => {
     if (typeof value === 'string') return value;
     if (value == null) return fallback;
@@ -921,9 +1014,20 @@ export default function ClientDashboard() {
       video_url: r.video_url && !isDailyRoomUrl(r.video_url) ? r.video_url : null,
       transcript_url: r.transcript_url || null,
       analysis_url: r.analysis_url || null,
+      transcript: typeof r.transcript === 'string' ? r.transcript : '',
+      analysis: r.analysis ?? r.interview?.analysis ?? r.interviewAnalysis ?? null,
+      interviewAnalysis: r.interviewAnalysis ?? null,
+      transcript_scores: r.transcript_scores ?? r.interview?.transcript_scores ?? null,
+      perception_scores: r.perception_scores ?? r.interview?.perception_scores ?? null,
+      interview_summary: typeof r.interview_summary === 'string'
+        ? r.interview_summary
+        : (typeof r.interview?.interview_summary === 'string' ? r.interview.interview_summary : ''),
+      unanswered_candidate_questions: Array.isArray(r.unanswered_candidate_questions)
+        ? r.unanswered_candidate_questions
+        : (Array.isArray(r.interview?.unanswered_candidate_questions) ? r.interview.unanswered_candidate_questions : []),
 
       has_video: r.has_video ?? (!!r.video_url && !isDailyRoomUrl(r.video_url)),
-      has_transcript: r.has_transcript ?? !!r.transcript_url,
+      has_transcript: typeof r.transcript === 'string' && r.transcript.trim().length > 0,
       has_analysis: r.has_analysis ?? !!r.analysis_url,
 
       resume_score: r.resume_score ?? null,
@@ -937,22 +1041,10 @@ export default function ClientDashboard() {
         summary: r.resume_analysis?.summary || '',
       },
       interview_analysis: {
-        clarity:
-          r.interview_analysis?.clarity ??
-          r.interview?.analysis?.scores?.clarity ??
-          null,
-        confidence:
-          r.interview_analysis?.confidence ??
-          r.interview?.analysis?.scores?.confidence ??
-          null,
-        body_language:
-          r.interview_analysis?.body_language ??
-          r.interview?.analysis?.scores?.body_language ??
-          null,
-        summary:
-          r.interview_analysis?.summary ||
-          r.interview?.analysis?.summary ||
-          '',
+        clarity: r.perception_scores?.clarity ?? null,
+        confidence: r.perception_scores?.confidence ?? null,
+        engagement: r.perception_scores?.engagement ?? r.perception_scores?.body_language ?? null,
+        summary: typeof r.interview_summary === 'string' ? r.interview_summary : ''
       },
     }))
   }, [items])
@@ -1044,7 +1136,7 @@ export default function ClientDashboard() {
       'Resume Analysis Summary',
       'Clarity Score',
       'Confidence Score',
-      'Body Language Score',
+      'Engagement Score',
       'Interview Analysis Summary',
       'Created At'
     ];
@@ -1061,7 +1153,7 @@ export default function ClientDashboard() {
       r.resume_analysis?.summary || '',
       pctCsv(r.interview_analysis?.clarity),
       pctCsv(r.interview_analysis?.confidence),
-      pctCsv(r.interview_analysis?.body_language),
+      pctCsv(r.interview_analysis?.engagement),
       r.interview_analysis?.summary || '',
       fmtDateCsv(r.created_at)
     ]);
@@ -1315,12 +1407,12 @@ export default function ClientDashboard() {
                             toggleRow={toggleRow}
                             pctText={pctText}
                             fmtDate={fmtDate}
-                            openSigned={openSigned}
                             opening={opening}
                             generatePdfForRow={generatePdfForRow}
                             trKey={trKey}
                             pdfKey={pdfKey}
                             showToast={showToast}
+                            onOpenTranscript={openTranscriptModal}
                           />
                         )
                       })}
@@ -1620,6 +1712,46 @@ export default function ClientDashboard() {
           </div>
         )}
 
+        {isTranscriptOpen && (
+          <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
+            <div className="rubric-modal-card" style={{ maxWidth: 720 }}>
+              <div className="rubric-modal-head">
+                <h2>Transcript</h2>
+              </div>
+              <div className="rubric-modal-body">
+                <div
+                  style={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: 8,
+                    padding: 12,
+                    background: '#f8fafc',
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    maxHeight: 360,
+                    overflowY: 'auto',
+                    color: '#111827'
+                  }}
+                >
+                  {activeTranscript || 'Transcript not available.'}
+                </div>
+              </div>
+              <div className="rubric-modal-actions">
+                <button type="button" className="btn lilac client-dash-pill" onClick={closeTranscriptModal}>
+                  Close
+                </button>
+                <button type="button" className="btn lilac client-dash-pill" onClick={copyTranscript}>
+                  Copy Transcript
+                </button>
+                <button type="button" className="btn lilac client-dash-pill" onClick={downloadTranscript}>
+                  Download Transcript
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {rubricModalOpen && (
           <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
             <div className="rubric-modal-card">
@@ -1668,7 +1800,7 @@ export default function ClientDashboard() {
 }
 
 function FragmentRow({
-  r, opened, toggleRow, pctText, fmtDate, openSigned, opening, generatePdfForRow, trKey, pdfKey, showToast
+  r, opened, toggleRow, pctText, fmtDate, opening, generatePdfForRow, pdfKey, showToast, onOpenTranscript
 }) {
   const videoReady = isUsableRecordingUrl(r.video_url);
   const handleVideoClick = () => {
@@ -1682,19 +1814,18 @@ function FragmentRow({
       if (typeof showToast === 'function') showToast('Could not open recording.', 'error');
     }
   };
-  const analysisSummary = r.interview_analysis.summary;
+  const perceptionScores = r.perception_scores && typeof r.perception_scores === 'object' ? r.perception_scores : {};
+  const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
   const analysisPending = !analysisSummary;
-  const analysisStatus = analysisPending
-    ? (r.has_video || r.has_transcript || r.has_analysis ? 'Processing' : 'Not available yet')
-    : null;
-  const transcriptReady = !!r.latest_interview_id && !!r.has_transcript;
-  const handleTranscriptClick = () => {
-    if (opening[trKey]) return;
+  const analysisStatus = analysisPending ? 'Processing' : null;
+  const transcriptReady =
+    typeof r.transcript === 'string' && r.transcript.trim().length > 0;
+  const handleTranscriptClick = async () => {
     if (!transcriptReady) {
       if (typeof showToast === 'function') showToast('Transcript is processing', 'success');
       return;
     }
-    openSigned(r.latest_interview_id, 'transcript');
+    if (typeof onOpenTranscript === 'function') await onOpenTranscript(r);
   };
   return (
     <>
@@ -1752,11 +1883,11 @@ function FragmentRow({
 
                 <button
                   onClick={handleTranscriptClick}
-                  className={`btn lilac${(!transcriptReady || !!opening[trKey]) ? ' is-disabled' : ''}`}
-                  style={(!transcriptReady || !!opening[trKey]) ? disabledBtn : undefined}
-                  aria-disabled={!transcriptReady || !!opening[trKey]}
+                  className={`btn lilac${!transcriptReady ? ' is-disabled' : ''}`}
+                  style={!transcriptReady ? disabledBtn : undefined}
+                  aria-disabled={!transcriptReady}
                 >
-                  {opening[trKey] ? 'Opening…' : 'Transcript'}
+                  Transcript
                 </button>
 
                 <button
@@ -1789,9 +1920,9 @@ function FragmentRow({
                 <div className="detail-card" style={{ gridColumn: 'span 6' }}>
                   <div className="detail-title">Interview Analysis</div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
-                    <div><Meter label="Clarity" value={r.interview_analysis.clarity} /> <InfoTip text={TIPS.clarity} /></div>
-                    <div><Meter label="Confidence" value={r.interview_analysis.confidence} /> <InfoTip text={TIPS.confidence} /></div>
-                    <div><Meter label="Body Language" value={r.interview_analysis.body_language} /> <InfoTip text={TIPS.body_language} /></div>
+                    <div><Meter label="Clarity" value={perceptionScores?.clarity ?? null} /> <InfoTip text={TIPS.clarity} /></div>
+                    <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
+                    <div><Meter label="Engagement" value={perceptionScores?.engagement ?? perceptionScores?.body_language ?? null} /> <InfoTip text={TIPS.engagement} /></div>
                   </div>
                   <div style={{ marginTop: 8, color:'#374151' }}>
                     <strong>Summary:</strong>{' '}
@@ -1799,6 +1930,19 @@ function FragmentRow({
                       ? analysisSummary
                       : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
                   </div>
+                </div>
+
+                <div className="detail-card" style={{ gridColumn: 'span 12' }}>
+                  <div className="detail-title">Unanswered questions</div>
+                  {Array.isArray(r.unanswered_candidate_questions) && r.unanswered_candidate_questions.length ? (
+                    <ul style={{ marginTop: 6, paddingLeft: 20, color: '#374151' }}>
+                      {r.unanswered_candidate_questions.map((q, idx) => (
+                        <li key={`${idx}-${q.slice(0, 20)}`}>{q}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div style={{ marginTop: 6, color: '#6b7280' }}>No unanswered questions captured.</div>
+                  )}
                 </div>
               </div>
             </div>
