@@ -272,7 +272,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [opening, setOpening] = useState({})
-  const [expanded, setExpanded] = useState({})
+  const [expandedId, setExpandedId] = useState(null)
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false)
   const [activeTranscript, setActiveTranscript] = useState('')
   const [activeTranscriptFilename, setActiveTranscriptFilename] = useState('')
@@ -364,10 +364,12 @@ export default function ClientDashboard() {
     const state = pollRef.current;
     if (state.inflight) return;
     state.inflight = true;
+    const isSilentFetch = !!silent;
     const isManual = silent && reason === 'manual';
     if (isManual) {
       setRefreshing(true);
-    } else {
+    }
+    if (!isSilentFetch) {
       setLoading(true);
     }
     try {
@@ -376,6 +378,23 @@ export default function ClientDashboard() {
       const raw = resp?.items || [];
       const scrubbed = (raw || []).filter(r => r && r.id);
       setItems(scrubbed);
+      if (reason === 'poll' && typeof import.meta !== 'undefined' && import.meta?.env?.DEV) {
+        scrubbed.forEach((row) => {
+          const transcriptScores = normalizeScoreObject(row?.transcript_scores) || {};
+          const perceptionScores = normalizeScoreObject(row?.perception_scores) || {};
+          console.log('[dashboard][poll] applied', {
+            candidate_id: row?.candidate?.id || row?.id || null,
+            has_analysis: row?.has_analysis ?? null,
+            transcript_overall: Number.isFinite(Number(transcriptScores.overall))
+              ? Number(transcriptScores.overall)
+              : null,
+            perception_keys: Object.keys(perceptionScores),
+            interview_summary_len: typeof row?.interview_summary === 'string'
+              ? row.interview_summary.trim().length
+              : 0
+          });
+        });
+      }
       const incomplete = countIncompleteRows(scrubbed);
       if (incomplete > 0) {
         if (!state.active) startPolling(reason);
@@ -392,7 +411,8 @@ export default function ClientDashboard() {
       state.inflight = false;
       if (isManual) {
         setRefreshing(false);
-      } else {
+      }
+      if (!isSilentFetch) {
         setLoading(false);
       }
     }
@@ -659,10 +679,9 @@ export default function ClientDashboard() {
   }
 
   function toggleRow(id) {
-    setExpanded(prev => {
-      const next = { ...prev, [id]: !prev[id] };
-      postSizeSoon(); // grow/shrink when row toggles
-      // Also trigger a delayed call to catch DOM reflow
+    setExpandedId(prev => {
+      const next = prev === id ? null : id;
+      postSizeSoon();
       setTimeout(postSizeSoon, 250);
       return next;
     });
@@ -1093,6 +1112,7 @@ export default function ClientDashboard() {
   // Load candidate-centric rows for selected client
   useEffect(() => {
     stopPolling()
+    setExpandedId(null)
     if (!clientId) {
       setItems([])
       return
@@ -1159,6 +1179,10 @@ export default function ClientDashboard() {
       return row;
     })
   }, [items])
+
+  const expandedRow = useMemo(() => {
+    return (items || []).find(i => i.id === expandedId) || null;
+  }, [items, expandedId]);
 
   // Ping parent when table scope changes (or first load completes)
   useEffect(() => {
@@ -1509,7 +1533,7 @@ export default function ClientDashboard() {
                       {visibleRows.map(r => {
                         const trKey = `${r.latest_interview_id || r.id}:transcript`
                         const pdfKey = `${r.latest_interview_id || r.id}:pdf`
-                        const opened = !!expanded[r.id]
+                        const opened = !!expandedRow && expandedRow.id === r.id
                         return (
                           <FragmentRow
                             key={r.id}
@@ -1929,8 +1953,8 @@ function FragmentRow({
   };
   const perceptionScores = r.perception_scores && typeof r.perception_scores === 'object' ? r.perception_scores : {};
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
-  const analysisPending = !r.is_complete;
-  const analysisStatus = analysisPending ? 'Processing' : null;
+  const analysisPending = r.has_analysis === false;
+  const analysisStatus = analysisPending ? 'Processing' : 'Summary not available';
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
   const handleTranscriptClick = async () => {
@@ -2052,9 +2076,6 @@ function FragmentRow({
                     {analysisSummary
                       ? analysisSummary
                       : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
-                    {analysisSummary && analysisPending && (
-                      <div style={{ marginTop: 6, color: '#6b7280' }}>Processing…</div>
-                    )}
                   </div>
                 </div>
 
