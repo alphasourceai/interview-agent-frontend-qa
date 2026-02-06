@@ -525,6 +525,7 @@ export default function ClientDashboard() {
   const [memberRole, setMemberRole] = useState('member');
   const [membersLoading, setMembersLoading] = useState(false);
   const [selfMember, setSelfMember] = useState(null);
+  const [currentMember, setCurrentMember] = useState(null);
 
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
@@ -595,14 +596,15 @@ export default function ClientDashboard() {
     roleById[clientId] ||
     (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
     'member'
+
+  const effectiveRole = (currentMember?.role || currentRole || 'member').toLowerCase();
+
   const [testerChecked, setTesterChecked] = useState(false);
-  const currentMembership = useMemo(
-    () => (me?.memberships || []).find((m) => m.client_id === clientId) || null,
-    [me?.memberships, clientId]
-  );
-  const canManage = ['manager', 'admin', 'tester'].includes((currentRole || '').toLowerCase());
-  const isTester = (currentRole || '').toLowerCase() === 'tester';
-  const testerAcknowledged = Boolean(currentMembership?.tester_acknowledged_at);
+  const canManage = ['manager', 'admin', 'tester'].includes(effectiveRole);
+  const isTester = effectiveRole === 'tester';
+
+  const testerSplashRole = (currentMember?.role || '').toLowerCase();
+  const testerAcknowledgedAt = currentMember?.tester_acknowledged_at ?? null;
   const [showTesterNda, setShowTesterNda] = useState(false);
   const prefillName =
     selfMember?.name ||
@@ -612,12 +614,36 @@ export default function ClientDashboard() {
   const prefillEmail = me?.user?.email || me?.email || '';
 
   useEffect(() => {
-    if (isTester && !testerAcknowledged) {
-      setShowTesterNda(true);
-    } else {
-      setShowTesterNda(false);
+    setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
+  }, [testerSplashRole, testerAcknowledgedAt, clientId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!clientId || !me?.user?.id) {
+      setCurrentMember(null);
+      return () => {
+        alive = false;
+      };
     }
-  }, [isTester, testerAcknowledged, clientId]);
+    (async () => {
+      try {
+        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        if (!alive) return;
+        const member = (resp && typeof resp.member === 'object' && resp.member) ? resp.member : null;
+        setCurrentMember({
+          role: typeof resp?.role === 'string' ? resp.role : (member?.role || null),
+          tester_acknowledged_at: resp?.tester_acknowledged_at ?? member?.tester_acknowledged_at ?? null,
+          tester_acknowledged_ip: resp?.tester_acknowledged_ip ?? member?.tester_acknowledged_ip ?? null,
+        });
+      } catch (e) {
+        if (!alive) return;
+        setCurrentMember(null);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [clientId, me?.user?.id]);
 
   useEffect(() => {
     if (activeTab === 'roles') return;
@@ -650,9 +676,10 @@ export default function ClientDashboard() {
     let alive = true;
     (async () => {
       try {
-        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(clientId)}`);
         if (!alive) return;
-        if (resp?.item) setSelfMember(resp.item);
+        const item = resp?.member || resp?.item || null;
+        if (item) setSelfMember(item);
       } catch (e) {
         if (!alive) return;
         console.warn('[feedback] me-membership fetch failed', e?.message || e);
@@ -764,7 +791,7 @@ export default function ClientDashboard() {
     setRolesLoading(true);
     try {
       const resp = await apiGet(endpoint);
-      const items = Array.isArray(resp?.roles) ? resp.roles : (resp?.items || []);
+      const items = Array.isArray(resp?.items) ? resp.items : [];
       console.debug('[roles] fetch success', {
         clientId: targetId,
         count: items.length,
@@ -917,14 +944,22 @@ export default function ClientDashboard() {
       return;
     }
     try {
-      await apiPost('/client-members/tester-ack', { client_id: resolvedClientId });
-      setMe((prev) => {
-        if (!prev) return prev;
-        const updatedMemberships = (prev.memberships || []).map((m) =>
-          m.client_id === resolvedClientId ? { ...m, tester_acknowledged_at: new Date().toISOString() } : m
-        );
-        return { ...prev, memberships: updatedMemberships };
-      });
+      await apiPost('/api/client-members/tester-ack', { client_id: resolvedClientId, accepted: true });
+      try {
+        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(resolvedClientId)}`);
+        const member = (resp && typeof resp.member === 'object' && resp.member) ? resp.member : null;
+        setCurrentMember({
+          role: typeof resp?.role === 'string' ? resp.role : (member?.role || 'tester'),
+          tester_acknowledged_at: resp?.tester_acknowledged_at ?? member?.tester_acknowledged_at ?? new Date().toISOString(),
+          tester_acknowledged_ip: resp?.tester_acknowledged_ip ?? member?.tester_acknowledged_ip ?? null,
+        });
+      } catch {
+        setCurrentMember((prev) => ({
+          role: prev?.role || 'tester',
+          tester_acknowledged_at: prev?.tester_acknowledged_at || new Date().toISOString(),
+          tester_acknowledged_ip: prev?.tester_acknowledged_ip || null,
+        }));
+      }
       setShowTesterNda(false);
       showToast('Agreement recorded', 'success');
     } catch (e) {
@@ -1329,7 +1364,7 @@ export default function ClientDashboard() {
                 ))}
               </select>
               <div style={{ color:'#6b7280' }}>
-                Viewing: <strong>{currentName}</strong> · Role: <strong>{currentRole}</strong>
+                Viewing: <strong>{currentName}</strong> · Role: <strong>{effectiveRole}</strong>
               </div>
             </div>
           </div>
@@ -1736,7 +1771,7 @@ export default function ClientDashboard() {
                         </div>
                       );
                     })}
-                    {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                    {roles.length === 0 && <div className="t-empty muted">No roles</div>}
                   </div>
                 </div>
               )}
