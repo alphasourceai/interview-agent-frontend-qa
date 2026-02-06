@@ -59,6 +59,19 @@ function parseAnalysis(a) {
   return null;
 }
 
+function normalizeScoreObject(value) {
+  if (value && typeof value === 'object') return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 function sanitizeFilenamePart(value, fallback) {
   const raw = value == null ? '' : String(value);
   const trimmed = raw.trim();
@@ -263,6 +276,11 @@ export default function ClientDashboard() {
   const [isTranscriptOpen, setIsTranscriptOpen] = useState(false)
   const [activeTranscript, setActiveTranscript] = useState('')
   const [activeTranscriptFilename, setActiveTranscriptFilename] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+
+  const pollRef = useRef({ timer: null, stopAt: 0, active: false, inflight: false })
+  const POLL_INTERVAL_MS = 8000
+  const POLL_MAX_MS = 120000
 
   // --- Row visibility controls (Show more / Show less) ---
   const INITIAL_COUNT = 20;
@@ -281,6 +299,103 @@ export default function ClientDashboard() {
       setToast(t => ({ ...t, visible: false }));
       toastTimerRef.current = null;
     }, ttlMs);
+  }
+
+  const getPerceptionScores = (row) => {
+    return normalizeScoreObject(row?.perception_scores) || {};
+  };
+
+  const getTranscriptScores = (row) => {
+    return normalizeScoreObject(row?.transcript_scores) || {};
+  };
+
+  const isRowComplete = (row) => {
+    const summary = typeof row?.interview_summary === 'string' ? row.interview_summary.trim() : '';
+    const transcriptScores = getTranscriptScores(row);
+    const hasOverall = Number.isFinite(Number(transcriptScores.overall));
+    const perceptionScores = getPerceptionScores(row);
+    const hasPerception =
+      Number.isFinite(Number(perceptionScores.clarity)) ||
+      Number.isFinite(Number(perceptionScores.confidence)) ||
+      Number.isFinite(Number(perceptionScores.engagement)) ||
+      Number.isFinite(Number(perceptionScores.body_language));
+    return !!summary && hasOverall && hasPerception;
+  };
+
+  const countIncompleteRows = (rowsList) => {
+    return (rowsList || []).reduce((acc, row) => acc + (isRowComplete(row) ? 0 : 1), 0);
+  };
+
+  function stopPolling() {
+    const state = pollRef.current;
+    if (state.timer) {
+      clearTimeout(state.timer);
+      state.timer = null;
+    }
+    state.active = false;
+    state.stopAt = 0;
+    state.inflight = false;
+    setRefreshing(false);
+  }
+
+  function scheduleNextPoll() {
+    const state = pollRef.current;
+    if (!state.active) return;
+    if (Date.now() >= state.stopAt) {
+      stopPolling();
+      return;
+    }
+    if (state.timer) clearTimeout(state.timer);
+    state.timer = setTimeout(() => {
+      fetchRows({ silent: true, reason: 'poll' });
+    }, POLL_INTERVAL_MS);
+  }
+
+  function startPolling(reason) {
+    const state = pollRef.current;
+    if (state.active) return;
+    state.active = true;
+    state.stopAt = Date.now() + POLL_MAX_MS;
+    scheduleNextPoll();
+  }
+
+  async function fetchRows({ silent = false, reason = 'manual' } = {}) {
+    if (!clientId) return;
+    const state = pollRef.current;
+    if (state.inflight) return;
+    state.inflight = true;
+    const isManual = silent && reason === 'manual';
+    if (isManual) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    try {
+      const qs = `?client_id=${encodeURIComponent(clientId)}`;
+      const resp = await apiGet('/dashboard/rows' + qs);
+      const raw = resp?.items || [];
+      const scrubbed = (raw || []).filter(r => r && r.id);
+      setItems(scrubbed);
+      const incomplete = countIncompleteRows(scrubbed);
+      if (incomplete > 0) {
+        if (!state.active) startPolling(reason);
+        scheduleNextPoll();
+      } else {
+        stopPolling();
+      }
+    } catch (e) {
+      setError(String(e?.message || e));
+      if (state.active) {
+        scheduleNextPoll();
+      }
+    } finally {
+      state.inflight = false;
+      if (isManual) {
+        setRefreshing(false);
+      } else {
+        setLoading(false);
+      }
+    }
   }
 
   const closeTranscriptModal = () => {
@@ -303,6 +418,10 @@ export default function ClientDashboard() {
     }
 
     showToast('Transcript is not available yet', 'error');
+  };
+
+  const handleManualRefresh = () => {
+    fetchRows({ silent: true, reason: 'manual' });
   };
 
   const downloadTranscript = () => {
@@ -973,32 +1092,21 @@ export default function ClientDashboard() {
 
   // Load candidate-centric rows for selected client
   useEffect(() => {
+    stopPolling()
     if (!clientId) {
       setItems([])
       return
     }
-    let alive = true
-    ;(async () => {
-      try {
-        setLoading(true)
-        const qs = `?client_id=${encodeURIComponent(clientId)}`
-        const resp = await apiGet('/dashboard/rows' + qs)
-        const raw = resp?.items || []
-        const scrubbed = (raw || []).filter(r => r && r.id)
-        if (!alive) return
-        setItems(scrubbed)
-      } catch (e) {
-        setError(String(e?.message || e))
-      } finally {
-        setLoading(false)
-      }
-    })()
-    return () => { alive = false }
+    fetchRows({ silent: false, reason: 'initial' })
+    return () => {
+      stopPolling()
+    }
   }, [clientId])
 
   // Normalize for table
   const rows = useMemo(() => {
-    return (items || []).map(r => ({
+    return (items || []).map(r => {
+      const row = {
       id: r.id,
       created_at: r.created_at,
       latest_interview_id: r.latest_interview_id || null,
@@ -1046,7 +1154,10 @@ export default function ClientDashboard() {
         engagement: r.perception_scores?.engagement ?? r.perception_scores?.body_language ?? null,
         summary: typeof r.interview_summary === 'string' ? r.interview_summary : ''
       },
-    }))
+    };
+      row.is_complete = isRowComplete(row);
+      return row;
+    })
   }, [items])
 
   // Ping parent when table scope changes (or first load completes)
@@ -1413,6 +1524,8 @@ export default function ClientDashboard() {
                             pdfKey={pdfKey}
                             showToast={showToast}
                             onOpenTranscript={openTranscriptModal}
+                            onRefresh={handleManualRefresh}
+                            refreshing={refreshing}
                           />
                         )
                       })}
@@ -1800,7 +1913,7 @@ export default function ClientDashboard() {
 }
 
 function FragmentRow({
-  r, opened, toggleRow, pctText, fmtDate, opening, generatePdfForRow, pdfKey, showToast, onOpenTranscript
+  r, opened, toggleRow, pctText, fmtDate, opening, generatePdfForRow, pdfKey, showToast, onOpenTranscript, onRefresh, refreshing
 }) {
   const videoReady = isUsableRecordingUrl(r.video_url);
   const handleVideoClick = () => {
@@ -1816,7 +1929,7 @@ function FragmentRow({
   };
   const perceptionScores = r.perception_scores && typeof r.perception_scores === 'object' ? r.perception_scores : {};
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
-  const analysisPending = !analysisSummary;
+  const analysisPending = !r.is_complete;
   const analysisStatus = analysisPending ? 'Processing' : null;
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
@@ -1871,6 +1984,16 @@ function FragmentRow({
           <td style={{...td, paddingTop: 0}} colSpan={7}>
             <div style={{ display:'grid', gap: 12 }}>
               <div className="row-actions" style={{ display:'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                <button
+                  onClick={() => {
+                    if (typeof onRefresh === 'function') onRefresh();
+                  }}
+                  className={`btn lilac${refreshing ? ' is-disabled' : ''}`}
+                  style={refreshing ? disabledBtn : undefined}
+                  aria-disabled={!!refreshing}
+                >
+                  {refreshing ? 'Refreshing…' : 'Refresh'}
+                </button>
                 {videoReady && (
                   <button
                     onClick={handleVideoClick}
@@ -1929,6 +2052,9 @@ function FragmentRow({
                     {analysisSummary
                       ? analysisSummary
                       : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
+                    {analysisSummary && analysisPending && (
+                      <div style={{ marginTop: 6, color: '#6b7280' }}>Processing…</div>
+                    )}
                   </div>
                 </div>
 
