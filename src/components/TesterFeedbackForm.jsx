@@ -3,6 +3,10 @@ import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
 import MultiSelect from './MultiSelect.jsx';
 
+const backendBase = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/\+\$/, "");
+const optionsUrl = backendBase ? `/api/feedback/options` : "/api/feedback/options";
+const submitUrl = backendBase ? `/api/feedback/submit` : "/api/feedback/submit";
+
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
 export default function TesterFeedbackForm({ mode = 'standalone', initialName = '', initialEmail = '' }) {
@@ -25,7 +29,8 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiGet('/api/feedback/options');
+        const resp = await fetch(optionsUrl);
+        const data = await resp.json();
         const normIssues = Array.isArray(data?.issues)
           ? data.issues.map((i) => ({ id: i.id, label: i.title || i.name || i.id }))
           : [];
