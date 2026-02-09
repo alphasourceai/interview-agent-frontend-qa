@@ -509,7 +509,7 @@ export default function ClientDashboard() {
   const [rolesLoading, setRolesLoading] = useState(false);
   const fileInputRef = useRef(null);
   const [fileKey, setFileKey] = useState(0);
-  const rolesEndpointBase = '/api/roles';
+  const rolesEndpointBase = "/roles";
   const [openingJd, setOpeningJd] = useState({});
   const [rubricModalOpen, setRubricModalOpen] = useState(false);
   const [rubricRole, setRubricRole] = useState(null);
@@ -627,7 +627,7 @@ export default function ClientDashboard() {
     }
     (async () => {
       try {
-        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
         if (!alive) return;
         const member = (resp && typeof resp.member === 'object' && resp.member) ? resp.member : null;
         setCurrentMember({
@@ -676,7 +676,7 @@ export default function ClientDashboard() {
     let alive = true;
     (async () => {
       try {
-        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
         if (!alive) return;
         const item = resp?.member || resp?.item || null;
         if (item) setSelfMember(item);
@@ -891,7 +891,7 @@ export default function ClientDashboard() {
     setRubricSending(true);
     setRubricError('');
     try {
-      await apiPost(`/api/roles/${encodeURIComponent(rubricRole.id)}/rubric-request-changes`, {
+      await apiPost(`/roles/${encodeURIComponent(rubricRole.id)}/rubric-request-changes`, {
         notes: rubricNotes,
         questions: rubricQuestions,
       });
@@ -912,7 +912,7 @@ export default function ClientDashboard() {
     if (!roleId) return;
     setOpeningJd((prev) => ({ ...prev, [roleId]: true }));
     try {
-      const data = await apiGet(`/api/roles/${encodeURIComponent(roleId)}/jd-signed-url`);
+      const data = await apiGet(`/roles/${encodeURIComponent(roleId)}/jd-signed-url`);
       if (!data?.url) throw new Error('No URL returned');
       window.open(data.url, '_blank', 'noopener,noreferrer');
       showToast('Job description opened', 'success');
@@ -944,9 +944,9 @@ export default function ClientDashboard() {
       return;
     }
     try {
-      await apiPost('/api/client-members/tester-ack', { client_id: resolvedClientId, accepted: true });
+      await apiPost('/client-members/tester-ack', { client_id: resolvedClientId, accepted: true });
       try {
-        const resp = await apiGet(`/api/client-members/me?client_id=${encodeURIComponent(resolvedClientId)}`);
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(resolvedClientId)}`);
         const member = (resp && typeof resp.member === 'object' && resp.member) ? resp.member : null;
         setCurrentMember({
           role: typeof resp?.role === 'string' ? resp.role : (member?.role || 'tester'),
