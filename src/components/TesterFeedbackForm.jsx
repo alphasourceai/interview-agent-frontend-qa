@@ -1,10 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
+import { apiGet, api } from '../lib/api';
 import MultiSelect from './MultiSelect.jsx';
 
-const optionsUrl = "/api/feedback/options";
-const submitUrl = "/api/feedback/submit";
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
@@ -28,8 +27,7 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
   useEffect(() => {
     (async () => {
       try {
-        const resp = await fetch(optionsUrl);
-        const data = await resp.json();
+        const data = await apiGet('/api/feedback/options');
         const normIssues = Array.isArray(data?.issues)
           ? data.issues.map((i) => ({ id: i.id, label: i.title || i.name || i.id }))
           : [];
@@ -118,11 +116,7 @@ export default function TesterFeedbackForm({ mode = 'standalone', initialName = 
       fd.append('newSuggestionText', otherSuggestion || '');
       files.forEach((f) => fd.append('screenshots', f));
 
-      const resp = await fetch(submitUrl, { method: "POST", body: fd });
-      if (!resp.ok) {
-        toast.error("Something went wrong submitting your feedback. Please try again.", { duration: 2500 });
-        return;
-      }
+      await api.upload('/api/feedback/submit', fd);
       toast.success('Thanks for your feedback!', { duration: 1500 });
       resetForm();
     } catch (err) {
