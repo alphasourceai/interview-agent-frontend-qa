@@ -100,6 +100,58 @@ function OtpInline({ email, candidateId, roleId, onVerified, onError }) {
 
 export default function InterviewAccessPage() {
   const pingEmbedSize = () => {
+  // --- Iframe scroll bridge: send wheel/key scroll events to parent if in iframe
+  useEffect(() => {
+    if (window.self === window.top) return;
+
+    const onWheel = (e) => {
+      try {
+        window.parent.postMessage({
+          type: 'IFRAME_SCROLL',
+          deltaY: e.deltaY || 0
+        }, '*');
+      } catch {}
+    };
+
+    const onKey = (e) => {
+      let delta = 0;
+      if (e.key === 'ArrowDown') delta = 60;
+      if (e.key === 'ArrowUp') delta = -60;
+      if (e.key === 'PageDown') delta = window.innerHeight * 0.9;
+      if (e.key === 'PageUp') delta = -window.innerHeight * 0.9;
+      if (!delta) return;
+      try {
+        window.parent.postMessage({
+          type: 'IFRAME_SCROLL',
+          deltaY: delta
+        }, '*');
+      } catch {}
+    };
+
+    window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('keydown', onKey);
+
+    return () => {
+      window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+
+  // --- Iframe scroll bridge: listen for scroll messages from iframe (parent side)
+  useEffect(() => {
+    const onMsg = (e) => {
+      if (!e?.data || e.data.type !== 'IFRAME_SCROLL') return;
+      const dy = Number(e.data.deltaY) || 0;
+      if (!dy) return;
+      try {
+        window.scrollBy({ top: dy, left: 0, behavior: 'auto' });
+      } catch {}
+    };
+
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
     if (typeof window !== 'undefined' && window.__EMBED__ && typeof window.__EMBED__.updateSize === 'function') {
       window.__EMBED__.updateSize();
     }
