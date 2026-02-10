@@ -100,6 +100,11 @@ function OtpInline({ email, candidateId, roleId, onVerified, onError }) {
 
 export default function InterviewAccessPage() {
   const pingEmbedSize = () => {
+    if (typeof window !== 'undefined' && window.__EMBED__ && typeof window.__EMBED__.updateSize === 'function') {
+      window.__EMBED__.updateSize();
+    }
+  };
+
   // --- Iframe scroll bridge: send wheel/key scroll events to parent if in iframe
   useEffect(() => {
     if (window.self === window.top) return;
@@ -151,11 +156,6 @@ export default function InterviewAccessPage() {
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, []);
-
-    if (typeof window !== 'undefined' && window.__EMBED__ && typeof window.__EMBED__.updateSize === 'function') {
-      window.__EMBED__.updateSize();
-    }
-  };
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
@@ -413,7 +413,7 @@ export default function InterviewAccessPage() {
   const noRoom = !roomUrl;
 
   const interviewContent = (
-    <div className="space-y-6">
+    <div className={roomUrl ? "interview-room-shell" : "space-y-6"}>
       {header}
 
       {/* Full-bleed, opaque hallway hero */}
@@ -509,6 +509,23 @@ export default function InterviewAccessPage() {
 
       {/* Page-scoped CSS for the Tavus slot */}
       <style>{`
+        .interview-room-shell {
+          height: 100vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+        }
+        .interview-room-shell .alpha-hero.fullbleed {
+          flex: 1;
+          min-height: 0;
+        }
+        .interview-room-shell .tavus-stage {
+          height: 100%;
+        }
+        .interview-room-shell .tavus-slot {
+          height: 100% !important;
+          max-height: none;
+        }
         .tavus-stage { width: 100%; }
         .tavus-slot {
           position: relative;
