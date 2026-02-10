@@ -107,11 +107,19 @@ export default function InterviewAccessPage() {
   const location = useLocation();
   const navigate = useNavigate();
 useEffect(() => {
+  const appShell = document.querySelector('#root > div');
+  const prevShellOverflow = appShell?.style?.overflow;
+  const prevShellHeight = appShell?.style?.height;
   try {
     document.body.classList.add('alpha-has-header');
     document.documentElement.style.overflowY = 'auto';
     document.body.style.overflowY = 'auto';
     document.body.style.height = 'auto';
+    if (appShell) {
+      appShell.style.overflow = 'auto';
+      appShell.style.height = 'auto';
+      appShell.style.minHeight = '100vh';
+    }
   } catch {}
   return () => {
     try {
@@ -119,6 +127,11 @@ useEffect(() => {
       document.documentElement.style.overflowY = '';
       document.body.style.overflowY = '';
       document.body.style.height = '';
+      if (appShell) {
+        appShell.style.overflow = prevShellOverflow || '';
+        appShell.style.height = prevShellHeight || '';
+        appShell.style.minHeight = '';
+      }
     } catch {}
   };
 }, []);
