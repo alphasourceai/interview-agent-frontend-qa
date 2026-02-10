@@ -467,13 +467,15 @@ export default function InterviewAccessPage() {
           overflow: hidden;
           margin: 0 auto;
           max-width: 1200px;
+          height: calc(100vh - 140px);
+          max-height: 900px;
         }
         @media (min-width: 768px) {
-          .tavus-stage .tavus-slot { height: 520px; }
-          .tavus-stage.prejoin .tavus-slot { height: 650px; }
+          .tavus-stage .tavus-slot { height: calc(100vh - 140px); }
+          .tavus-stage.prejoin .tavus-slot { height: calc(100vh - 140px); }
         }
         @media (max-width: 767px) {
-          .tavus-slot { aspect-ratio: 16 / 9; }
+          .tavus-slot { height: calc(100vh - 140px); }
         }
         .tavus-slot.no-room { height: 690px !important; }
 
