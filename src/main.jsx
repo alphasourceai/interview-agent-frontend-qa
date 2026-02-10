@@ -88,6 +88,16 @@ if (SENTRY_DSN) {
   const root = document.getElementById('root') || document.documentElement;
 
   const postSize = () => {
+    try {
+      const p = window.location.pathname || '';
+      const isInterview = p === '/interview-access' || p.startsWith('/interview-access/');
+      if (isInterview) {
+        const vh = Math.max(600, Math.ceil(window.innerHeight || document.documentElement.clientHeight || 800));
+        window.parent.postMessage({ type: 'EMBED_SIZE', height: vh }, '*');
+        return;
+      }
+    } catch {}
+
     // Use root.scrollHeight so expanded content is included
     const h = Math.max(600, Math.min(6000, Math.ceil(root.scrollHeight)));
     window.parent.postMessage({ type: 'EMBED_SIZE', height: h }, '*');
