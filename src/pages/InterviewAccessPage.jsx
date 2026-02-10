@@ -106,35 +106,44 @@ export default function InterviewAccessPage() {
   };
   const location = useLocation();
   const navigate = useNavigate();
-useEffect(() => {
-  const appShell = document.querySelector('#root > div');
-  const prevShellOverflow = appShell?.style?.overflow;
-  const prevShellHeight = appShell?.style?.height;
-  try {
-    document.body.classList.add('alpha-has-header');
-    document.documentElement.style.overflowY = 'auto';
-    document.body.style.overflowY = 'auto';
-    document.body.style.height = 'auto';
-    if (appShell) {
-      appShell.style.overflow = 'auto';
-      appShell.style.height = 'auto';
-      appShell.style.minHeight = '100vh';
-    }
-  } catch {}
-  return () => {
+  useEffect(() => {
+    const root = document.getElementById('root');
+    const appShell = root && root.firstElementChild ? root.firstElementChild : null;
+
+    const prevDocOverflowY = document.documentElement.style.overflowY;
+    const prevBodyOverflowY = document.body.style.overflowY;
+    const prevBodyHeight = document.body.style.height;
+
+    const prevShellOverflow = appShell ? appShell.style.overflow : '';
+    const prevShellHeight = appShell ? appShell.style.height : '';
+    const prevShellMinHeight = appShell ? appShell.style.minHeight : '';
+
     try {
-      document.body.classList.remove('alpha-has-header');
-      document.documentElement.style.overflowY = '';
-      document.body.style.overflowY = '';
-      document.body.style.height = '';
+      document.body.classList.add('alpha-has-header');
+      document.documentElement.style.overflowY = 'auto';
+      document.body.style.overflowY = 'auto';
+      document.body.style.height = 'auto';
       if (appShell) {
-        appShell.style.overflow = prevShellOverflow || '';
-        appShell.style.height = prevShellHeight || '';
-        appShell.style.minHeight = '';
+        appShell.style.overflow = 'auto';
+        appShell.style.height = 'auto';
+        appShell.style.minHeight = '100vh';
       }
     } catch {}
-  };
-}, []);
+
+    return () => {
+      try {
+        document.body.classList.remove('alpha-has-header');
+        document.documentElement.style.overflowY = prevDocOverflowY || '';
+        document.body.style.overflowY = prevBodyOverflowY || '';
+        document.body.style.height = prevBodyHeight || '';
+        if (appShell) {
+          appShell.style.overflow = prevShellOverflow || '';
+          appShell.style.height = prevShellHeight || '';
+          appShell.style.minHeight = prevShellMinHeight || '';
+        }
+      } catch {}
+    };
+  }, []);
   // Normalize param names for token
   const params = useParams();
   const paramToken = params?.role_token || params?.token || params?.role || params?.id || '';
@@ -448,17 +457,6 @@ useEffect(() => {
 
       {/* Page-scoped CSS for the Tavus slot */}
       <style>{`
-        html, body {
-          height: auto !important;
-          min-height: 100%;
-          overflow-y: auto !important;
-        }
-        .alpha-theme.alpha-page {
-          min-height: 100%;
-        }
-        body.alpha-has-header {
-          overflow-y: auto !important;
-        }
         .tavus-stage { width: 100%; }
         .tavus-slot {
           position: relative;
