@@ -285,6 +285,15 @@ export default function InterviewAccessPage() {
   const [verified, setVerified] = useState(false);
 
   const [roomUrl, setRoomUrl] = useState('');
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const cls = 'interview-room-active';
+    if (roomUrl) document.body.classList.add(cls);
+    else document.body.classList.remove(cls);
+    return () => {
+      try { document.body.classList.remove(cls); } catch {}
+    };
+  }, [roomUrl]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [prejoin, setPrejoin] = useState(false);
@@ -509,8 +518,17 @@ export default function InterviewAccessPage() {
 
       {/* Page-scoped CSS for the Tavus slot */}
       <style>{`
+        html, body { height: 100%; }
+        body.interview-room-active {
+          overflow: hidden !important;
+          height: 100% !important;
+        }
+        body.interview-room-active #root {
+          height: 100% !important;
+          overflow: hidden !important;
+        }
         .interview-room-shell {
-          height: 100vh;
+          height: 100%;
           overflow: hidden;
           display: flex;
           flex-direction: column;
