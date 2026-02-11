@@ -197,11 +197,17 @@ function SessionRecoveryWrapper({ children }) {
   return <>{children}</>
 }
 
+const __PATHNAME__ = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
+const __IS_INTERVIEW_ACCESS__ = __PATHNAME__ === '/interview-access' || __PATHNAME__.startsWith('/interview-access/');
+const __APP_SHELL_STYLE__ = __IS_INTERVIEW_ACCESS__
+  ? { minHeight: '100dvh', overflow: 'auto' }
+  : { height: '100vh', overflow: 'hidden' };
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={<div style={{ padding: 16 }}>Something went wrong. Please refresh and try again.</div>}>
       <SessionRecoveryWrapper>
-        <div style={{ height: '100vh', overflow: 'hidden' }}>
+        <div style={__APP_SHELL_STYLE__}>
           <React.Suspense fallback={<div style={{ padding: 16 }}>Loading…</div>}>
             <Elements stripe={stripePromise}>
               <RouterProvider router={router} />
