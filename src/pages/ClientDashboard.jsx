@@ -1670,14 +1670,14 @@ export default function ClientDashboard() {
                   className="client-dash-row"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(260px, 420px) 170px minmax(280px, 1fr) 110px 110px',
+                    gridTemplateColumns: '280px 150px 320px 100px 100px',
                     gap: 10,
                     alignItems: 'center',
                     width: '100%',
                     marginBottom: 12
                   }}
                 >
-                  <div style={{ minWidth: 0, width: '100%', position: 'relative' }}>
+                  <div style={{ width: 280, maxWidth: 280, minWidth: 280, position: 'relative' }}>
                     <input
                       className={`alpha-input client-dash-input ${roleTitleError ? 'input-error' : ''}`}
                       placeholder="Role title"
@@ -1706,13 +1706,23 @@ export default function ClientDashboard() {
                     className="alpha-input alpha-select client-dash-input"
                     value={interviewType}
                     onChange={e => setInterviewType(e.target.value)}
-                    style={{ flex: '0 0 170px', minWidth: 170, maxWidth: 170 }}
+                    style={{ width: 150, minWidth: 150, maxWidth: 150 }}
                   >
                     <option value="BASIC">BASIC</option>
                     <option value="DETAILED">DETAILED</option>
                     <option value="TECHNICAL">TECHNICAL</option>
                   </select>
-                  <div className="client-dash-file-wrapper" style={{ minWidth: 0, width: '100%', overflow: 'hidden' }}>
+                  <div
+                    className="client-dash-file-wrapper"
+                    style={{
+                      width: 320,
+                      minWidth: 320,
+                      maxWidth: 320,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
                     <CustomFilePicker
                       key={fileKey}
                       accept=".pdf,.doc,.docx,application/pdf"
@@ -1722,11 +1732,20 @@ export default function ClientDashboard() {
                       inputRef={fileInputRef}
                     />
                   </div>
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    style={{ width: 100, whiteSpace: 'nowrap', textAlign: 'center' }}
+                    disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
+                    onClick={createRole}
+                  >
+                    {roleBusy ? 'Creating…' : 'Create'}
+                  </button>
                   {jobFile && (
                     <button
                       type="button"
                       className="btn lilac"
-                      style={{ width: 110, whiteSpace: 'nowrap' }}
+                      style={{ width: 100, whiteSpace: 'nowrap', textAlign: 'center' }}
                       onClick={() => {
                         if (fileInputRef.current) fileInputRef.current.value = '';
                         setJobFile(null);
@@ -1736,15 +1755,6 @@ export default function ClientDashboard() {
                       Clear file
                     </button>
                   )}
-                  <button
-                    type="button"
-                    className="btn lilac client-dash-pill"
-                    style={{ width: 110, whiteSpace: 'nowrap' }}
-                    disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
-                    onClick={createRole}
-                  >
-                    {roleBusy ? 'Creating…' : 'Create'}
-                  </button>
                 </div>
               )}
 
