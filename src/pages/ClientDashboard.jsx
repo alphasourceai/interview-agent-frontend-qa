@@ -785,28 +785,15 @@ export default function ClientDashboard() {
 
   const fetchRolesForClient = async (clientIdArg) => {
     const targetId = clientIdArg || clientId;
-    const userId = me?.user?.id || me?.id || null;
     if (!targetId || !canManage) {
-      console.debug('[roles] fetch skipped', {
-        clientId: targetId,
-        userId,
-        canManage,
-        reason: !targetId ? 'no_client' : 'no_permission'
-      });
       setRoles([]);
       return;
     }
     const endpoint = `${rolesEndpointBase}?client_id=${encodeURIComponent(targetId)}`;
-    console.debug('[roles] fetch start', { clientId: targetId, userId, endpoint });
     setRolesLoading(true);
     try {
       const resp = await apiGet(endpoint);
       const items = Array.isArray(resp?.items) ? resp.items : [];
-      console.debug('[roles] fetch success', {
-        clientId: targetId,
-        count: items.length,
-        keys: Object.keys(resp || {})
-      });
       const sorted = [...items].sort(
         (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
       );
@@ -823,7 +810,6 @@ export default function ClientDashboard() {
       if (requestId) console.error('[roles] request_id', requestId);
       console.error('[roles] fetch error', {
         clientId: targetId,
-        userId,
         endpoint,
         status,
         detail,
@@ -1680,8 +1666,18 @@ export default function ClientDashboard() {
                 <h2>Roles for {currentName}</h2>
               </div>
               {canManage && (
-                <div className="client-dash-row">
-                  <div style={{ width: 320, maxWidth: '100%', flex: '0 0 320px', position: 'relative', paddingBottom: 18 }}>
+                <div
+                  className="client-dash-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(260px, 420px) 170px minmax(280px, 1fr) 110px 110px',
+                    gap: 10,
+                    alignItems: 'center',
+                    width: '100%',
+                    marginBottom: 12
+                  }}
+                >
+                  <div style={{ minWidth: 0, width: '100%', position: 'relative' }}>
                     <input
                       className={`alpha-input client-dash-input ${roleTitleError ? 'input-error' : ''}`}
                       placeholder="Role title"
@@ -1691,16 +1687,19 @@ export default function ClientDashboard() {
                       aria-invalid={roleTitleError ? 'true' : 'false'}
                     />
                     <div
-                      className="input-error-text"
                       style={{
                         position: 'absolute',
-                        left: 0,
-                        bottom: 0,
-                        marginTop: 0,
-                        visibility: roleTitleError ? 'visible' : 'hidden'
+                        right: 12,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: '#ef4444',
+                        visibility: roleTitleError ? 'visible' : 'hidden',
+                        pointerEvents: 'none'
                       }}
                     >
-                      Role title is required.
+                      Required
                     </div>
                   </div>
                   <select
@@ -1713,7 +1712,7 @@ export default function ClientDashboard() {
                     <option value="DETAILED">DETAILED</option>
                     <option value="TECHNICAL">TECHNICAL</option>
                   </select>
-                  <div className="client-dash-file-wrapper">
+                  <div className="client-dash-file-wrapper" style={{ minWidth: 0, width: '100%', overflow: 'hidden' }}>
                     <CustomFilePicker
                       key={fileKey}
                       accept=".pdf,.doc,.docx,application/pdf"
@@ -1727,6 +1726,7 @@ export default function ClientDashboard() {
                     <button
                       type="button"
                       className="btn lilac"
+                      style={{ width: 110, whiteSpace: 'nowrap' }}
                       onClick={() => {
                         if (fileInputRef.current) fileInputRef.current.value = '';
                         setJobFile(null);
@@ -1739,6 +1739,7 @@ export default function ClientDashboard() {
                   <button
                     type="button"
                     className="btn lilac client-dash-pill"
+                    style={{ width: 110, whiteSpace: 'nowrap' }}
                     disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
                     onClick={createRole}
                   >
