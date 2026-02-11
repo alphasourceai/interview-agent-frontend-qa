@@ -613,6 +613,10 @@ export default function ClientDashboard() {
     me?.user?.user_metadata?.name ||
     '';
   const prefillEmail = me?.user?.email || me?.email || '';
+  const validatedSelectedClientId = useMemo(
+    () => (clients.some((c) => c?.client_id === clientId) ? clientId : ''),
+    [clients, clientId]
+  );
 
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
@@ -620,15 +624,20 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     let alive = true;
-    if (!clientId || !me?.user?.id) {
+    if (!me?.user?.id) {
       setCurrentMember(null);
+      return () => {
+        alive = false;
+      };
+    }
+    if (!validatedSelectedClientId) {
       return () => {
         alive = false;
       };
     }
     (async () => {
       try {
-        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(validatedSelectedClientId)}`);
         if (!alive) return;
         const member = (resp && typeof resp.member === 'object' && resp.member) ? resp.member : null;
         setCurrentMember({
@@ -644,7 +653,7 @@ export default function ClientDashboard() {
     return () => {
       alive = false;
     };
-  }, [clientId, me?.user?.id]);
+  }, [validatedSelectedClientId, me?.user?.id]);
 
   useEffect(() => {
     if (activeTab === 'roles') return;
@@ -665,7 +674,7 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     if (!isTester || activeTab !== 'feedback') return;
-    if (!clientId || !me?.user?.id) return;
+    if (!validatedSelectedClientId || !me?.user?.id) return;
     if (selfMember) return;
     const fromMembers = members.find(
       (m) => m.user_id === me.user.id || (m.email && m.email === me.user.email)
@@ -677,7 +686,7 @@ export default function ClientDashboard() {
     let alive = true;
     (async () => {
       try {
-        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(clientId)}`);
+        const resp = await apiGet(`/client-members/me?client_id=${encodeURIComponent(validatedSelectedClientId)}`);
         if (!alive) return;
         const item = resp?.member || resp?.item || null;
         if (item) setSelfMember(item);
@@ -687,7 +696,7 @@ export default function ClientDashboard() {
       }
     })();
     return () => { alive = false; };
-  }, [isTester, activeTab, clientId, me?.user?.id, me?.user?.email, members]);
+  }, [isTester, activeTab, me?.user?.id, me?.user?.email, members, validatedSelectedClientId, selfMember]);
 
   useEffect(() => {
     postSizeSoon();
@@ -837,15 +846,16 @@ export default function ClientDashboard() {
 
   // Fetch members when needed
   useEffect(() => {
-    if (!clientId || !canManage || activeTab !== 'members') {
+    if (!canManage || activeTab !== 'members') {
       setMembers([]);
       return;
     }
+    if (!validatedSelectedClientId) return;
     let alive = true;
     (async () => {
       try {
         setMembersLoading(true);
-        const qs = `?client_id=${encodeURIComponent(clientId)}`;
+        const qs = `?client_id=${encodeURIComponent(validatedSelectedClientId)}`;
         const resp = await apiGet('/client-members' + qs);
         if (!alive) return;
         setMembers(resp?.items || []);
@@ -857,7 +867,7 @@ export default function ClientDashboard() {
       }
     })();
     return () => { alive = false; };
-  }, [clientId, canManage, activeTab]);
+  }, [clientId, canManage, activeTab, validatedSelectedClientId]);
 
   const uploadJDToBackend = async (roleId, file) => {
     const form = new FormData();
@@ -930,9 +940,11 @@ export default function ClientDashboard() {
   };
 
   const resolveClientIdForTesterAck = () => {
-    if (clientId) return clientId;
-    if (me?.default_client_id) return me.default_client_id;
-    const membershipId = (me?.memberships || [])[0]?.client_id || null;
+    if (validatedSelectedClientId) return validatedSelectedClientId;
+    if (me?.default_client_id && clients.some((c) => c?.client_id === me.default_client_id)) return me.default_client_id;
+    const membershipId = (me?.memberships || []).find((m) =>
+      clients.some((c) => c?.client_id === m?.client_id)
+    )?.client_id || null;
     if (membershipId) return membershipId;
     if (clients.length) return clients[0]?.client_id || null;
     return null;
@@ -1078,12 +1090,12 @@ export default function ClientDashboard() {
   };
 
   const addMember = async () => {
-    if (!clientId) return;
+    if (!validatedSelectedClientId) return;
     const e = memberEmail.trim();
     const n = memberName.trim();
     if (!e || !n) return;
     try {
-      const resp = await apiPost('/client-members', { client_id: clientId, email: e, name: n, role: memberRole });
+      const resp = await apiPost('/client-members', { client_id: validatedSelectedClientId, email: e, name: n, role: memberRole });
       if (resp?.item) {
         setMembers([resp.item, ...members]);
         setMemberEmail('');
@@ -1106,8 +1118,9 @@ export default function ClientDashboard() {
   };
 
   const removeMember = async (id) => {
+    if (!validatedSelectedClientId) return;
     try {
-      await apiDelete(`/client-members/${id}?client_id=${encodeURIComponent(clientId)}`);
+      await apiDelete(`/client-members/${id}?client_id=${encodeURIComponent(validatedSelectedClientId)}`);
       setMembers((prev) => prev.filter((m) => m.id !== id));
       postSizeSoon();
       setTimeout(postSizeSoon, 300);
@@ -1136,9 +1149,11 @@ export default function ClientDashboard() {
         setMe(meResp)
         const list = myClients?.items || []
         setClients(list)
+        const listIds = new Set(list.map((c) => c?.client_id).filter(Boolean))
         const first =
-          meResp?.default_client_id ||
+          (meResp?.default_client_id && listIds.has(meResp.default_client_id) ? meResp.default_client_id : '') ||
           list[0]?.client_id ||
+          meResp.memberships?.find((m) => listIds.has(m?.client_id))?.client_id ||
           meResp.memberships?.[0]?.client_id ||
           ''
         setClientId(first)
@@ -1150,6 +1165,16 @@ export default function ClientDashboard() {
     })()
     return () => { alive = false }
   }, [])
+
+  useEffect(() => {
+    if (!clients.length) return;
+    const hasSelected = clients.some((c) => c?.client_id === clientId);
+    if (hasSelected) return;
+    const fallback = clients[0]?.client_id || '';
+    if (fallback && fallback !== clientId) {
+      setClientId(fallback);
+    }
+  }, [clients, clientId]);
 
   // Load candidate-centric rows for selected client
   useEffect(() => {
@@ -1656,7 +1681,7 @@ export default function ClientDashboard() {
               </div>
               {canManage && (
                 <div className="client-dash-row">
-                  <div style={{ display: 'grid', gap: 4, minWidth: 200, flex: '1 1 200px', maxWidth: 520 }}>
+                  <div style={{ width: 320, maxWidth: '100%', flex: '0 0 320px', position: 'relative', paddingBottom: 18 }}>
                     <input
                       className={`alpha-input client-dash-input ${roleTitleError ? 'input-error' : ''}`}
                       placeholder="Role title"
@@ -1665,12 +1690,24 @@ export default function ClientDashboard() {
                       onBlur={() => setRoleTitleTouched(true)}
                       aria-invalid={roleTitleError ? 'true' : 'false'}
                     />
-                    {roleTitleError && <div className="input-error-text">Role title is required.</div>}
+                    <div
+                      className="input-error-text"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        bottom: 0,
+                        marginTop: 0,
+                        visibility: roleTitleError ? 'visible' : 'hidden'
+                      }}
+                    >
+                      Role title is required.
+                    </div>
                   </div>
                   <select
                     className="alpha-input alpha-select client-dash-input"
                     value={interviewType}
                     onChange={e => setInterviewType(e.target.value)}
+                    style={{ flex: '0 0 170px', minWidth: 170, maxWidth: 170 }}
                   >
                     <option value="BASIC">BASIC</option>
                     <option value="DETAILED">DETAILED</option>
@@ -1729,13 +1766,19 @@ export default function ClientDashboard() {
                         <InfoTip text="The job description file used to generate the rubric." />
                       </span>
                     </div>
-                    <div>
-                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                    <div style={{ paddingRight: 8 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                         Interview Link
                         <InfoTip text="Share this link with candidates to start the interview." />
                       </span>
                     </div>
-                    {canManage && <div>Delete</div>}
+                    {canManage && (
+                      <div className="center" style={{ display: 'flex', justifyContent: 'center' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                          Delete
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="t-body">
                     {roles.map(r => {
@@ -1784,7 +1827,7 @@ export default function ClientDashboard() {
                             <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${SHARE_BASE}/${r.slug_or_token}`)}>Copy link</button>
                           </div>
                           {canManage && (
-                            <div className="center">
+                            <div className="center" style={{ display: 'flex', justifyContent: 'center' }}>
                               <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
