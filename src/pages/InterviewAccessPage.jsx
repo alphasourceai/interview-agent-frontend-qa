@@ -104,58 +104,6 @@ export default function InterviewAccessPage() {
       window.__EMBED__.updateSize();
     }
   };
-
-  // --- Iframe scroll bridge: send wheel/key scroll events to parent if in iframe
-  useEffect(() => {
-    if (window.self === window.top) return;
-
-    const onWheel = (e) => {
-      try {
-        window.parent.postMessage({
-          type: 'IFRAME_SCROLL',
-          deltaY: e.deltaY || 0
-        }, '*');
-      } catch {}
-    };
-
-    const onKey = (e) => {
-      let delta = 0;
-      if (e.key === 'ArrowDown') delta = 60;
-      if (e.key === 'ArrowUp') delta = -60;
-      if (e.key === 'PageDown') delta = window.innerHeight * 0.9;
-      if (e.key === 'PageUp') delta = -window.innerHeight * 0.9;
-      if (!delta) return;
-      try {
-        window.parent.postMessage({
-          type: 'IFRAME_SCROLL',
-          deltaY: delta
-        }, '*');
-      } catch {}
-    };
-
-    window.addEventListener('wheel', onWheel, { passive: true });
-    window.addEventListener('keydown', onKey);
-
-    return () => {
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, []);
-
-  // --- Iframe scroll bridge: listen for scroll messages from iframe (parent side)
-  useEffect(() => {
-    const onMsg = (e) => {
-      if (!e?.data || e.data.type !== 'IFRAME_SCROLL') return;
-      const dy = Number(e.data.deltaY) || 0;
-      if (!dy) return;
-      try {
-        window.scrollBy({ top: dy, left: 0, behavior: 'auto' });
-      } catch {}
-    };
-
-    window.addEventListener('message', onMsg);
-    return () => window.removeEventListener('message', onMsg);
-  }, []);
   const location = useLocation();
   const navigate = useNavigate();
   useEffect(() => {
@@ -285,15 +233,6 @@ export default function InterviewAccessPage() {
   const [verified, setVerified] = useState(false);
 
   const [roomUrl, setRoomUrl] = useState('');
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const cls = 'interview-room-active';
-    if (roomUrl) document.body.classList.add(cls);
-    else document.body.classList.remove(cls);
-    return () => {
-      try { document.body.classList.remove(cls); } catch {}
-    };
-  }, [roomUrl]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [prejoin, setPrejoin] = useState(false);
@@ -422,7 +361,7 @@ export default function InterviewAccessPage() {
   const noRoom = !roomUrl;
 
   const interviewContent = (
-    <div className={roomUrl ? "interview-room-shell" : "space-y-6"}>
+    <div className="space-y-6">
       {header}
 
       {/* Full-bleed, opaque hallway hero */}
@@ -518,32 +457,6 @@ export default function InterviewAccessPage() {
 
       {/* Page-scoped CSS for the Tavus slot */}
       <style>{`
-        html, body { height: 100%; }
-        body.interview-room-active {
-          overflow: hidden !important;
-          height: 100% !important;
-        }
-        body.interview-room-active #root {
-          height: 100% !important;
-          overflow: hidden !important;
-        }
-        .interview-room-shell {
-          height: 100%;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-        .interview-room-shell .alpha-hero.fullbleed {
-          flex: 1;
-          min-height: 0;
-        }
-        .interview-room-shell .tavus-stage {
-          height: 100%;
-        }
-        .interview-room-shell .tavus-slot {
-          height: 100% !important;
-          max-height: none;
-        }
         .tavus-stage { width: 100%; }
         .tavus-slot {
           position: relative;
@@ -554,15 +467,13 @@ export default function InterviewAccessPage() {
           overflow: hidden;
           margin: 0 auto;
           max-width: 1200px;
-          height: calc(100vh - 140px);
-          max-height: 900px;
         }
         @media (min-width: 768px) {
-          .tavus-stage .tavus-slot { height: calc(100vh - 140px); }
-          .tavus-stage.prejoin .tavus-slot { height: calc(100vh - 140px); }
+          .tavus-stage .tavus-slot { height: 520px; }
+          .tavus-stage.prejoin .tavus-slot { height: 650px; }
         }
         @media (max-width: 767px) {
-          .tavus-slot { height: calc(100vh - 140px); }
+          .tavus-slot { aspect-ratio: 16 / 9; }
         }
         .tavus-slot.no-room { height: 690px !important; }
 
