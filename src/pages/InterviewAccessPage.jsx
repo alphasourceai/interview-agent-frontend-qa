@@ -285,31 +285,15 @@ export default function InterviewAccessPage() {
   const [verified, setVerified] = useState(false);
 
   const [roomUrl, setRoomUrl] = useState('');
-  const [roomActive, setRoomActive] = useState(false);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-
-    const check = () => {
-      const hasIv = !!document.getElementById('iv');
-      const hasAny = hasIv || !!document.querySelector('.tavus-slot iframe');
-      setRoomActive(hasAny);
-    };
-
-    check();
-    const t = setInterval(check, 250);
-    return () => clearInterval(t);
-  }, []);
-
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const cls = 'interview-room-active';
-    if (roomActive) document.body.classList.add(cls);
+    if (roomUrl) document.body.classList.add(cls);
     else document.body.classList.remove(cls);
     return () => {
       try { document.body.classList.remove(cls); } catch {}
     };
-  }, [roomActive]);
+  }, [roomUrl]);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [prejoin, setPrejoin] = useState(false);
@@ -438,7 +422,7 @@ export default function InterviewAccessPage() {
   const noRoom = !roomUrl;
 
   const interviewContent = (
-    <div className={roomActive ? "interview-room-shell" : "space-y-6"}>
+    <div className={roomUrl ? "interview-room-shell" : "space-y-6"}>
       {header}
 
       {/* Full-bleed, opaque hallway hero */}
