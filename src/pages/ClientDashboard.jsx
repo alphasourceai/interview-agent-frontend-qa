@@ -503,6 +503,7 @@ export default function ClientDashboard() {
   // Roles panel state (for manager/admin client members)
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
+  const [roleTitleTouched, setRoleTitleTouched] = useState(false);
   const [interviewType, setInterviewType] = useState('BASIC');
   const [jobFile, setJobFile] = useState(null);
   const [roleBusy, setRoleBusy] = useState(false);
@@ -1004,7 +1005,10 @@ export default function ClientDashboard() {
   const createRole = async () => {
     if (!clientId) return;
     const title = newRoleTitle.trim();
-    if (!title) return;
+    if (!title) {
+      setRoleTitleTouched(true);
+      return;
+    }
     if (!jobFile) {
       showToast('Please choose a Job Description file (PDF or DOCX) before creating the role.', 'error');
       return;
@@ -1025,6 +1029,7 @@ export default function ClientDashboard() {
       // refresh
       await fetchRolesForClient(clientId);
       setNewRoleTitle('');
+      setRoleTitleTouched(false);
       setJobFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setFileKey((k) => k + 1);
@@ -1052,6 +1057,8 @@ export default function ClientDashboard() {
       setRoleBusy(false);
     }
   };
+
+  const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
 
   const deleteRole = async (id) => {
     try {
@@ -1649,12 +1656,17 @@ export default function ClientDashboard() {
               </div>
               {canManage && (
                 <div className="client-dash-row">
-                  <input
-                    className="alpha-input client-dash-input"
-                    placeholder="Role title"
-                    value={newRoleTitle}
-                    onChange={e => setNewRoleTitle(e.target.value)}
-                  />
+                  <div style={{ display: 'grid', gap: 4, minWidth: 200, flex: '1 1 200px', maxWidth: 520 }}>
+                    <input
+                      className={`alpha-input client-dash-input ${roleTitleError ? 'input-error' : ''}`}
+                      placeholder="Role title"
+                      value={newRoleTitle}
+                      onChange={e => setNewRoleTitle(e.target.value)}
+                      onBlur={() => setRoleTitleTouched(true)}
+                      aria-invalid={roleTitleError ? 'true' : 'false'}
+                    />
+                    {roleTitleError && <div className="input-error-text">Role title is required.</div>}
+                  </div>
                   <select
                     className="alpha-input alpha-select client-dash-input"
                     value={interviewType}
@@ -1669,7 +1681,7 @@ export default function ClientDashboard() {
                       key={fileKey}
                       accept=".pdf,.doc,.docx,application/pdf"
                       onFileSelected={handleRoleFileFromPicker}
-                      label="Drag JD file here or click to browse"
+                      label={jobFile?.name ? jobFile.name : 'Drag JD file here or click to browse'}
                       className="client-dash-input client-dash-file-input"
                       inputRef={fileInputRef}
                     />
@@ -1705,9 +1717,24 @@ export default function ClientDashboard() {
                     <div>Role</div>
                     <div>Created</div>
                     <div>Type</div>
-                    <div className="col-center">Rubric</div>
-                    <div className="col-center">JD</div>
-                    <div>Link</div>
+                    <div className="col-center">
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Rubric
+                        <InfoTip text="The interview question set generated for this role." />
+                      </span>
+                    </div>
+                    <div className="col-center">
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        JD
+                        <InfoTip text="The job description file used to generate the rubric." />
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+                        Interview Link
+                        <InfoTip text="Share this link with candidates to start the interview." />
+                      </span>
+                    </div>
                     {canManage && <div>Delete</div>}
                   </div>
                   <div className="t-body">
