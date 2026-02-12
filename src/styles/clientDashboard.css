@@ -218,6 +218,15 @@
   flex: 1 1 200px;
   max-width: 520px;
 }
+
+/* Roles header: force Role Title input to exact width (matches design + avoids 310px drift) */
+.client-dash-row input.alpha-input.client-dash-input {
+  width: 280px;
+  min-width: 280px;
+  max-width: 280px;
+  flex: 0 0 280px;
+  box-sizing: border-box;
+}
 .client-dash-row button {
   flex: 0 0 auto;
 }
@@ -341,6 +350,7 @@
   line-height: 1.2;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
 }
 .client-dash-card .alpha-input,
 .client-dash-card .alpha-select {
