@@ -1682,7 +1682,7 @@ export default function ClientDashboard() {
                   className="client-dash-row"
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: '280px 150px 320px 100px 100px',
+                    gridTemplateColumns: '280px 150px 320px 52px 90px',
                     gap: 10,
                     alignItems: 'center',
                     width: '100%',
@@ -1697,6 +1697,7 @@ export default function ClientDashboard() {
                       onChange={e => setNewRoleTitle(e.target.value)}
                       onBlur={() => setRoleTitleTouched(true)}
                       aria-invalid={roleTitleError ? 'true' : 'false'}
+                      style={{ width: 280, minWidth: 280, maxWidth: 280 }}
                     />
                     <div
                       style={{
@@ -1744,29 +1745,37 @@ export default function ClientDashboard() {
                       inputRef={fileInputRef}
                     />
                   </div>
+                  {/* Trash/clear button always present, after file picker, before Create */}
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    title={jobFile ? 'Clear file' : 'No file selected'}
+                    aria-label="Clear file"
+                    disabled={!jobFile}
+                    onClick={() => {
+                      if (!jobFile) return;
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                      setJobFile(null);
+                      setFileKey(k => k + 1);
+                    }}
+                    style={!jobFile ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
+                      <path d="M6 6l1 14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-14" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round"/>
+                      <path d="M10 11v6M14 11v6" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
                   <button
                     type="button"
                     className="btn lilac client-dash-pill"
-                    style={{ width: 100, whiteSpace: 'nowrap', textAlign: 'center' }}
+                    style={{ width: 90, whiteSpace: 'nowrap', textAlign: 'center' }}
                     disabled={!clientId || roleBusy || !newRoleTitle.trim() || !jobFile}
                     onClick={createRole}
                   >
                     {roleBusy ? 'Creating…' : 'Create'}
                   </button>
-                  {jobFile && (
-                    <button
-                      type="button"
-                      className="btn lilac"
-                      style={{ width: 100, whiteSpace: 'nowrap', textAlign: 'center' }}
-                      onClick={() => {
-                        if (fileInputRef.current) fileInputRef.current.value = '';
-                        setJobFile(null);
-                        setFileKey(k => k + 1);
-                      }}
-                    >
-                      Clear file
-                    </button>
-                  )}
                 </div>
               )}
 
