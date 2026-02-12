@@ -16,6 +16,7 @@ function normalizeClient(c) {
 
 export function ClientProvider({ children }) {
   const [loading, setLoading] = useState(true);
+  const [isGlobalAdmin, setIsGlobalAdmin] = useState(false);
   const [clients, setClients] = useState([]);       // [{id, name, role}]
   const [currentClientId, setCurrentClientId] = useState(null);
 
@@ -26,8 +27,12 @@ export function ClientProvider({ children }) {
       let list = [];
       try {
         const data = await api.getMyClient(); // GET /clients/my
-        if (Array.isArray(data?.clients)) list = data.clients;
-        else if (Array.isArray(data?.memberships)) {
+        // /clients/my commonly returns { items: [...] }
+        if (Array.isArray(data?.items)) {
+          list = data.items;
+        } else if (Array.isArray(data?.clients)) {
+          list = data.clients;
+        } else if (Array.isArray(data?.memberships)) {
           list = data.memberships.map(m => ({
             id: m.client_id || m.id,
             name: m.name || m.client_name || "",
@@ -43,8 +48,20 @@ export function ClientProvider({ children }) {
       // 2) fallback: /auth/me clientIds → names via Supabase
       if (!list?.length) {
         const me = await api.get('/auth/me'); // still sends cookies
-        const ids = Array.isArray(me?.clientIds) ? me.clientIds : [];
-        list = ids.map(id => ({ id, name: "" }));
+        setIsGlobalAdmin(!!me?.isGlobalAdmin);
+        const scope = me?.client_scope || {};
+        const memberships = Array.isArray(scope?.memberships) ? scope.memberships : [];
+        const ids = Array.isArray(scope?.client_ids) ? scope.client_ids : [];
+
+        if (memberships.length) {
+          list = memberships.map(m => ({
+            id: m.client_id || m.id,
+            name: m.name || "",
+            role: m.role || "member",
+          }));
+        } else {
+          list = ids.map(id => ({ id, name: "" }));
+        }
       }
 
       // 3) normalize + look up missing names from Supabase
@@ -72,6 +89,7 @@ export function ClientProvider({ children }) {
     } catch {
       setClients([]);
       setCurrentClientId(null);
+      setIsGlobalAdmin(false);
     } finally {
       setLoading(false);
     }
@@ -85,6 +103,7 @@ export function ClientProvider({ children }) {
 
   const value = useMemo(() => ({
     loading,
+    isGlobalAdmin,
     clients,
     currentClientId,
     setCurrentClientId,
@@ -94,7 +113,7 @@ export function ClientProvider({ children }) {
     selectedClientId: currentClientId,
     setSelectedClientId: setCurrentClientId,
     loadClients: refreshClients,
-  }), [loading, clients, currentClientId, refreshClients]);
+  }), [loading, isGlobalAdmin, clients, currentClientId, refreshClients]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
