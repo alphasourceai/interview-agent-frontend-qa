@@ -268,6 +268,13 @@ export default function ClientDashboard() {
   const [me, setMe] = useState(null)
   const [clients, setClients] = useState([])
   const [clientId, setClientId] = useState('')
+  const isGlobalAdmin = !!me?.isGlobalAdmin;
+  const scopedMemberships = useMemo(() => {
+    const fromScope = me?.client_scope?.memberships;
+    if (Array.isArray(fromScope)) return fromScope;
+    const legacy = me?.memberships;
+    return Array.isArray(legacy) ? legacy : [];
+  }, [me]);
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -582,7 +589,7 @@ export default function ClientDashboard() {
   const [roleFilter, setRoleFilter] = useState(''); // role title or ''
   const [minOverall, setMinOverall] = useState(''); // numeric (string input)
 
-  const hasMembership = (me?.memberships || []).length > 0
+  const hasMembership = isGlobalAdmin || (clients || []).length > 0 || scopedMemberships.length > 0
 
   const nameById = useMemo(
     () => Object.fromEntries(clients.map(c => [c.client_id, c.name])),
@@ -595,7 +602,7 @@ export default function ClientDashboard() {
   const currentName = nameById[clientId] || clientId
   const currentRole =
     roleById[clientId] ||
-    (me?.memberships || []).find(m => m.client_id === clientId)?.role ||
+    scopedMemberships.find(m => m.client_id === clientId)?.role ||
     'member'
 
   const effectiveRole = (currentMember?.role || currentRole || 'member').toLowerCase();
@@ -927,8 +934,9 @@ export default function ClientDashboard() {
 
   const resolveClientIdForTesterAck = () => {
     if (validatedSelectedClientId) return validatedSelectedClientId;
-    if (me?.default_client_id && clients.some((c) => c?.client_id === me.default_client_id)) return me.default_client_id;
-    const membershipId = (me?.memberships || []).find((m) =>
+    const defaultClientId = me?.client_scope?.default_client_id || me?.default_client_id || null;
+    if (defaultClientId && clients.some((c) => c?.client_id === defaultClientId)) return defaultClientId;
+    const membershipId = scopedMemberships.find((m) =>
       clients.some((c) => c?.client_id === m?.client_id)
     )?.client_id || null;
     if (membershipId) return membershipId;
@@ -1136,11 +1144,15 @@ export default function ClientDashboard() {
         const list = myClients?.items || []
         setClients(list)
         const listIds = new Set(list.map((c) => c?.client_id).filter(Boolean))
+        const defaultClientId = meResp?.client_scope?.default_client_id || meResp?.default_client_id || ''
+        const memberships = Array.isArray(meResp?.client_scope?.memberships)
+          ? meResp.client_scope.memberships
+          : (Array.isArray(meResp?.memberships) ? meResp.memberships : [])
         const first =
-          (meResp?.default_client_id && listIds.has(meResp.default_client_id) ? meResp.default_client_id : '') ||
+          (defaultClientId && listIds.has(defaultClientId) ? defaultClientId : '') ||
           list[0]?.client_id ||
-          meResp.memberships?.find((m) => listIds.has(m?.client_id))?.client_id ||
-          meResp.memberships?.[0]?.client_id ||
+          memberships.find((m) => listIds.has(m?.client_id))?.client_id ||
+          memberships[0]?.client_id ||
           ''
         setClientId(first)
       } catch (e) {
