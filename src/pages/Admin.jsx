@@ -118,6 +118,15 @@ export default function Admin() {
   const [rubricModalOpen, setRubricModalOpen] = useState(false);
   const [rubricRole, setRubricRole] = useState(null);
   const [rubricQuestions, setRubricQuestions] = useState([]);
+  const [candidates, setCandidates] = useState([]);
+  const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesMessage, setCandidatesMessage] = useState('');
+  const [candidateRoleFilter, setCandidateRoleFilter] = useState('');
+  const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+  const [expandedRoleConfigId, setExpandedRoleConfigId] = useState(null);
+  const [roleConfigs, setRoleConfigs] = useState({});
+  const [roleConfigLoading, setRoleConfigLoading] = useState({});
+  const [roleConfigSaving, setRoleConfigSaving] = useState({});
 
   const [members, setMembers] = useState([]);
   const [memberEmail, setMemberEmail] = useState('');
@@ -356,6 +365,102 @@ export default function Admin() {
     setTimeout(postEmbedSize, 300);
   }
 
+  async function refreshCandidates(clientId = selectedClientId, roleId = candidateRoleFilter) {
+    const isAll = clientId === ALL_CLIENTS_VALUE;
+    if (isAll || !clientId) {
+      setCandidates([]);
+      setCandidatesMessage('Select a client to view candidates.');
+      return;
+    }
+    setCandidatesLoading(true);
+    try {
+      const qs = new URLSearchParams({ client_id: clientId });
+      if (roleId) qs.set('role_id', roleId);
+      const resp = await apiGet('/admin/candidates?' + qs.toString());
+      setCandidates(resp?.candidates || []);
+      setCandidatesMessage(resp?.message || '');
+    } catch (e) {
+      setCandidates([]);
+      setCandidatesMessage('');
+      toast.error(e?.message || 'Could not load candidates', { duration: 1600 });
+    } finally {
+      setCandidatesLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
+  async function deleteCandidate(id) {
+    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return;
+    }
+    if (!window.confirm('Delete this candidate? This cannot be undone.')) return;
+    try {
+      await apiDelete(`/admin/candidates/${encodeURIComponent(id)}?client_id=${encodeURIComponent(selectedClientId)}`);
+      toast.success('Candidate deleted', { duration: 1000 });
+      await refreshCandidates(selectedClientId, candidateRoleFilter);
+    } catch (e) {
+      toast.error(e?.message || 'Could not delete candidate.', { duration: 2000 });
+    }
+  }
+
+  async function loadRoleConfig(roleId) {
+    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) return;
+    setRoleConfigLoading((prev) => ({ ...prev, [roleId]: true }));
+    try {
+      const resp = await apiGet(`/admin/roles/${encodeURIComponent(roleId)}/interview-config?client_id=${encodeURIComponent(selectedClientId)}`);
+      const item = resp?.item || {};
+      const prompt = typeof item.tavus_prompt === 'string' ? item.tavus_prompt : '';
+      const questions = Array.isArray(item.rubric_questions)
+        ? item.rubric_questions.filter((q) => typeof q === 'string')
+        : [];
+      setRoleConfigs((prev) => ({ ...prev, [roleId]: { prompt, questions } }));
+    } catch (e) {
+      toast.error(e?.message || 'Could not load role config', { duration: 1800 });
+    } finally {
+      setRoleConfigLoading((prev) => ({ ...prev, [roleId]: false }));
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
+  async function saveRoleConfig(roleId) {
+    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return;
+    }
+    const current = roleConfigs[roleId] || { prompt: '', questions: [] };
+    const rubricQuestions = Array.isArray(current.questions)
+      ? current.questions.map((q) => String(q || '').trim()).filter(Boolean)
+      : [];
+    setRoleConfigSaving((prev) => ({ ...prev, [roleId]: true }));
+    try {
+      const resp = await apiPatch(`/admin/roles/${encodeURIComponent(roleId)}/interview-config?client_id=${encodeURIComponent(selectedClientId)}`, {
+        tavus_prompt: current.prompt || '',
+        rubric_questions: rubricQuestions
+      });
+      const item = resp?.item || {};
+      const prompt = typeof item.tavus_prompt === 'string' ? item.tavus_prompt : (current.prompt || '');
+      const questions = Array.isArray(item.rubric_questions)
+        ? item.rubric_questions.filter((q) => typeof q === 'string')
+        : rubricQuestions;
+      setRoleConfigs((prev) => ({ ...prev, [roleId]: { prompt, questions } }));
+      toast.success('Role config saved', { duration: 1200 });
+    } catch (e) {
+      toast.error(e?.message || 'Could not save role config', { duration: 1800 });
+    } finally {
+      setRoleConfigSaving((prev) => ({ ...prev, [roleId]: false }));
+    }
+  }
+
+  const openRoleConfig = async (roleId) => {
+    setExpandedRoleConfigId((prev) => (prev === roleId ? null : roleId));
+    if (!roleConfigs[roleId]) {
+      await loadRoleConfig(roleId);
+    }
+  };
+
   async function refreshBilling() {
     if (!isAdmin) return;
     setBillingLoading(true);
@@ -415,6 +520,18 @@ export default function Admin() {
     })();
     return () => { alive = false; };
   }, [isAdmin, selectedClientId, clients]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'candidates') return;
+    refreshCandidates(selectedClientId, candidateRoleFilter);
+  }, [isAdmin, activeTab, selectedClientId, candidateRoleFilter]);
+
+  useEffect(() => {
+    setCandidateRoleFilter('');
+    setExpandedCandidateId(null);
+    setExpandedRoleConfigId(null);
+  }, [selectedClientId]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1079,6 +1196,20 @@ export default function Admin() {
             </button>
             <button
               type="button"
+              onClick={() => setActiveTab('candidates')}
+              className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
+            >
+              Candidates
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('role-config')}
+              className={`client-dash-tab ${activeTab === 'role-config' ? 'client-dash-tab--active' : ''}`}
+            >
+              Role Config
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('members')}
               className={`client-dash-tab ${activeTab === 'members' ? 'client-dash-tab--active' : ''}`}
             >
@@ -1271,6 +1402,222 @@ export default function Admin() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'candidates' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Candidates</h2>
+                </div>
+                <div className="client-dash-row">
+                  <select
+                    className="alpha-input alpha-select client-dash-input"
+                    value={candidateRoleFilter}
+                    onChange={(e) => setCandidateRoleFilter(e.target.value)}
+                    disabled={!selectedClientId || isAllClients}
+                  >
+                    <option value="">All roles</option>
+                    {roles.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}
+                  </select>
+                  <button
+                    className="btn lilac client-dash-pill"
+                    onClick={() => refreshCandidates(selectedClientId, candidateRoleFilter)}
+                    disabled={candidatesLoading}
+                  >
+                    {candidatesLoading ? 'Loading…' : 'Refresh'}
+                  </button>
+                </div>
+                {!!candidatesMessage && (
+                  <div className="client-dash-muted" style={{ marginTop: 8 }}>
+                    {candidatesMessage}
+                  </div>
+                )}
+                {!candidatesMessage && (
+                  <div className="card-scroll">
+                    <div className="client-dash-table members members-extended">
+                      <div className="t-head" style={{ gridTemplateColumns: '2.2fr 1.1fr 1.1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
+                        <div>Candidate</div>
+                        <div>Role</div>
+                        <div>Created</div>
+                        <div>Resume</div>
+                        <div>Interview</div>
+                        <div>Overall</div>
+                        <div>Actions</div>
+                        <div>Delete</div>
+                      </div>
+                      <div className="t-body">
+                        {candidates.map((c) => {
+                          const opened = expandedCandidateId === c.id;
+                          const roleTitle = roles.find((r) => r.id === c.role_id)?.title || '—';
+                          const pct = (v) => (typeof v === 'number' && isFinite(v)) ? `${Math.max(0, Math.min(100, Math.round(v)))}%` : '—';
+                          return (
+                            <React.Fragment key={c.id}>
+                              <div className="t-row" style={{ gridTemplateColumns: '2.2fr 1.1fr 1.1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
+                                <div className="grow">
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <button className="btn-icon" onClick={() => setExpandedCandidateId(opened ? null : c.id)} title={opened ? 'Collapse' : 'Expand'}>
+                                      <span style={{ color: '#fff', fontSize: 14 }}>{opened ? '▾' : '▸'}</span>
+                                    </button>
+                                    <div className="title">{c.name || '—'}</div>
+                                  </div>
+                                  <div className="sub">{c.email || '—'}</div>
+                                </div>
+                                <div>{roleTitle}</div>
+                                <div>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</div>
+                                <div>{pct(c.resume_score)}</div>
+                                <div>{pct(c.interview_score)}</div>
+                                <div>{pct(c.overall_score)}</div>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  <button
+                                    className={`btn lilac client-dash-pill ${!c.resume_url ? 'is-disabled' : ''}`}
+                                    onClick={() => c.resume_url && window.open(c.resume_url, '_blank', 'noopener,noreferrer')}
+                                    disabled={!c.resume_url}
+                                  >
+                                    Resume
+                                  </button>
+                                  <button
+                                    className={`btn lilac client-dash-pill ${!c.latest_report_url ? 'is-disabled' : ''}`}
+                                    onClick={() => c.latest_report_url && window.open(c.latest_report_url, '_blank', 'noopener,noreferrer')}
+                                    disabled={!c.latest_report_url}
+                                  >
+                                    Report
+                                  </button>
+                                </div>
+                                <div className="center">
+                                  <button className="btn-icon" onClick={() => deleteCandidate(c.id)} title="Delete candidate">
+                                    <IconTrash size={20} />
+                                  </button>
+                                </div>
+                              </div>
+                              {opened && (
+                                <div className="t-row" style={{ gridTemplateColumns: '1fr', background: 'rgba(15,23,42,0.45)' }}>
+                                  <div>
+                                    <div className="sub">Status: {c.status || c.interview_status || '—'}</div>
+                                    <div className="sub">Report generated: {c.report_generated_at ? new Date(c.report_generated_at).toLocaleString() : '—'}</div>
+                                  </div>
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                        {candidates.length === 0 && <div className="t-empty muted">No candidates found</div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'role-config' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Role Config</h2>
+                </div>
+                {isAllClients ? (
+                  <div className="client-dash-muted">Select a client to view role configs.</div>
+                ) : (
+                  <div className="card-scroll">
+                    <div className="client-dash-table members members-extended">
+                      <div className="t-head" style={{ gridTemplateColumns: '2fr 1fr 0.7fr' }}>
+                        <div>Role</div>
+                        <div>Type</div>
+                        <div>Config</div>
+                      </div>
+                      <div className="t-body">
+                        {roles.map((r) => {
+                          const expanded = expandedRoleConfigId === r.id;
+                          const cfg = roleConfigs[r.id] || { prompt: '', questions: [] };
+                          return (
+                            <React.Fragment key={r.id}>
+                              <div className="t-row" style={{ gridTemplateColumns: '2fr 1fr 0.7fr' }}>
+                                <div className="grow">
+                                  <div className="title">{r.title}</div>
+                                  <div className="sub">{r.slug_or_token || '—'}</div>
+                                </div>
+                                <div>{r.interview_type || '—'}</div>
+                                <div>
+                                  <button className="btn lilac client-dash-pill" onClick={() => openRoleConfig(r.id)}>
+                                    {expanded ? 'Hide' : 'Edit'}
+                                  </button>
+                                </div>
+                              </div>
+                              {expanded && (
+                                <div className="t-row" style={{ gridTemplateColumns: '1fr', background: 'rgba(15,23,42,0.45)' }}>
+                                  {roleConfigLoading[r.id] ? (
+                                    <div className="muted">Loading config…</div>
+                                  ) : (
+                                    <div style={{ display: 'grid', gap: 10 }}>
+                                      <div>
+                                        <div className="sub" style={{ marginBottom: 6 }}>Tavus Prompt</div>
+                                        <textarea
+                                          className="alpha-input"
+                                          rows={5}
+                                          value={cfg.prompt}
+                                          onChange={(e) => setRoleConfigs((prev) => ({ ...prev, [r.id]: { ...(prev[r.id] || {}), prompt: e.target.value } }))}
+                                        />
+                                      </div>
+                                      <div>
+                                        <div className="sub" style={{ marginBottom: 6 }}>Rubric Questions</div>
+                                        {(cfg.questions || []).map((q, idx) => (
+                                          <div key={`${r.id}-q-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                            <textarea
+                                              className="alpha-input"
+                                              rows={2}
+                                              value={q}
+                                              onChange={(e) => setRoleConfigs((prev) => {
+                                                const existing = prev[r.id] || { prompt: '', questions: [] };
+                                                const nextQuestions = Array.isArray(existing.questions) ? [...existing.questions] : [];
+                                                nextQuestions[idx] = e.target.value;
+                                                return { ...prev, [r.id]: { ...existing, questions: nextQuestions } };
+                                              })}
+                                              style={{ flex: 1 }}
+                                            />
+                                            <button
+                                              className="btn-icon"
+                                              title="Remove question"
+                                              onClick={() => setRoleConfigs((prev) => {
+                                                const existing = prev[r.id] || { prompt: '', questions: [] };
+                                                const nextQuestions = (Array.isArray(existing.questions) ? existing.questions : []).filter((_, i) => i !== idx);
+                                                return { ...prev, [r.id]: { ...existing, questions: nextQuestions } };
+                                              })}
+                                            >
+                                              <IconTrash size={18} />
+                                            </button>
+                                          </div>
+                                        ))}
+                                        <button
+                                          className="btn lilac client-dash-pill"
+                                          onClick={() => setRoleConfigs((prev) => {
+                                            const existing = prev[r.id] || { prompt: '', questions: [] };
+                                            const nextQuestions = Array.isArray(existing.questions) ? [...existing.questions, ''] : [''];
+                                            return { ...prev, [r.id]: { ...existing, questions: nextQuestions } };
+                                          })}
+                                        >
+                                          Add question
+                                        </button>
+                                      </div>
+                                      <div>
+                                        <button
+                                          className="btn lilac client-dash-pill"
+                                          onClick={() => saveRoleConfig(r.id)}
+                                          disabled={!!roleConfigSaving[r.id]}
+                                        >
+                                          {roleConfigSaving[r.id] ? 'Saving…' : 'Save'}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                        {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
