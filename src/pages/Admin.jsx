@@ -123,6 +123,7 @@ export default function Admin() {
   const [candidatesMessage, setCandidatesMessage] = useState('');
   const [candidateRoleFilter, setCandidateRoleFilter] = useState('');
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+  const [candidateReportGenerating, setCandidateReportGenerating] = useState({});
   const [expandedRoleConfigId, setExpandedRoleConfigId] = useState(null);
   const [roleConfigs, setRoleConfigs] = useState({});
   const [roleConfigLoading, setRoleConfigLoading] = useState({});
@@ -391,6 +392,40 @@ export default function Admin() {
   }
 
   async function deleteCandidate(id) {
+  async function generateCandidateReport(candidate) {
+    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return;
+    }
+    const candidateId = candidate?.id;
+    if (!candidateId) {
+      toast.error('Missing candidate id', { duration: 1500 });
+      return;
+    }
+    setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: true }));
+    try {
+      const payload = {
+        client_id: selectedClientId,
+        candidate_id: candidateId,
+        role_id: candidate?.role_id || null
+      };
+      const resp = await apiPost('/admin/reports/generate', payload);
+      const url = resp?.url || resp?.report_url || resp?.latest_report_url || resp?.item?.report_url || resp?.item?.latest_report_url || null;
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast.success('Report generated', { duration: 1200 });
+      } else {
+        toast.error('Report generated but no URL returned', { duration: 1800 });
+      }
+      await refreshCandidates(selectedClientId, candidateRoleFilter);
+    } catch (e) {
+      toast.error(e?.message || 'Could not generate report', { duration: 1800 });
+    } finally {
+      setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: false }));
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
     if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
       toast.error('Select a client to perform this action.', { duration: 1500 });
       return;
@@ -1497,11 +1532,11 @@ export default function Admin() {
                                     Resume
                                   </button>
                                   <button
-                                    className={`btn lilac client-dash-pill ${!c.latest_report_url ? 'is-disabled' : ''}`}
-                                    onClick={() => c.latest_report_url && window.open(c.latest_report_url, '_blank', 'noopener,noreferrer')}
-                                    disabled={!c.latest_report_url}
+                                    className={`btn lilac client-dash-pill ${candidateReportGenerating[c.id] ? 'is-disabled' : ''}`}
+                                    onClick={() => generateCandidateReport(c)}
+                                    disabled={!!candidateReportGenerating[c.id]}
                                   >
-                                    Report
+                                    {candidateReportGenerating[c.id] ? 'Generating…' : 'Report'}
                                   </button>
                                 </div>
                                 <div className="center">
