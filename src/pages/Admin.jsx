@@ -1,6 +1,6 @@
 // src/pages/Admin.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { apiGet, apiPost, apiPatch, apiDelete, api } from '../lib/api';
+import { apiGet, apiPost, apiPatch, apiDelete, api, apiDownload } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
@@ -392,40 +392,6 @@ export default function Admin() {
   }
 
   async function deleteCandidate(id) {
-  async function generateCandidateReport(candidate) {
-    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
-      toast.error('Select a client to perform this action.', { duration: 1500 });
-      return;
-    }
-    const candidateId = candidate?.id;
-    if (!candidateId) {
-      toast.error('Missing candidate id', { duration: 1500 });
-      return;
-    }
-    setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: true }));
-    try {
-      const payload = {
-        client_id: selectedClientId,
-        candidate_id: candidateId,
-        role_id: candidate?.role_id || null
-      };
-      const resp = await apiPost('/admin/reports/generate', payload);
-      const url = resp?.url || resp?.report_url || resp?.latest_report_url || resp?.item?.report_url || resp?.item?.latest_report_url || null;
-      if (url) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-        toast.success('Report generated', { duration: 1200 });
-      } else {
-        toast.error('Report generated but no URL returned', { duration: 1800 });
-      }
-      await refreshCandidates(selectedClientId, candidateRoleFilter);
-    } catch (e) {
-      toast.error(e?.message || 'Could not generate report', { duration: 1800 });
-    } finally {
-      setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: false }));
-      postEmbedSize();
-      setTimeout(postEmbedSize, 300);
-    }
-  }
     if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
       toast.error('Select a client to perform this action.', { duration: 1500 });
       return;
@@ -437,6 +403,68 @@ export default function Admin() {
       await refreshCandidates(selectedClientId, candidateRoleFilter);
     } catch (e) {
       toast.error(e?.message || 'Could not delete candidate.', { duration: 2000 });
+    }
+  }
+
+  async function generateCandidateReport(candidate) {
+    if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) {
+      toast.error('Select a client to perform this action.', { duration: 1500 });
+      return;
+    }
+    const candidateId = candidate?.id;
+    if (!candidateId) {
+      toast.error('Missing candidate id', { duration: 1500 });
+      return;
+    }
+
+    const interviewId =
+      candidate?.latest_interview_id ||
+      candidate?.latestInterviewId ||
+      candidate?.latest_interview?.id ||
+      candidate?.interview_id ||
+      null;
+
+    setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: true }));
+    try {
+      const payload = {
+        client_id: selectedClientId,
+        candidate_id: candidateId,
+        role_id: candidate?.role_id || null,
+        interview_id: interviewId
+      };
+
+      const resp = await apiPost('/admin/reports/generate', payload);
+      const url =
+        resp?.signed_url ||
+        resp?.url ||
+        resp?.report_url ||
+        resp?.latest_report_url ||
+        resp?.item?.signed_url ||
+        resp?.item?.url ||
+        resp?.item?.report_url ||
+        resp?.item?.latest_report_url ||
+        null;
+
+      if (url) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast.success('Report generated', { duration: 1200 });
+      } else if (interviewId) {
+        await apiDownload(
+          `/reports/${encodeURIComponent(interviewId)}/download`,
+          `Candidate_Report_${interviewId}.pdf`
+        );
+        toast.success('Report generated', { duration: 1200 });
+      } else {
+        toast.error('Missing interview id for PDF generation', { duration: 1800 });
+      }
+
+      await refreshCandidates(selectedClientId, candidateRoleFilter);
+    } catch (e) {
+      toast.error(e?.message || 'Could not generate report', { duration: 1800 });
+    } finally {
+      setCandidateReportGenerating((prev) => ({ ...prev, [candidateId]: false }));
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
     }
   }
 
