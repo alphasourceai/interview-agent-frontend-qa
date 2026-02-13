@@ -412,9 +412,26 @@ export default function Admin() {
       const resp = await apiGet(`/admin/roles/${encodeURIComponent(roleId)}/interview-config?client_id=${encodeURIComponent(selectedClientId)}`);
       const item = resp?.item || {};
       const prompt = typeof item.tavus_prompt === 'string' ? item.tavus_prompt : '';
-      const questions = Array.isArray(item.rubric_questions)
-        ? item.rubric_questions.filter((q) => typeof q === 'string')
+
+      const directQuestions = Array.isArray(item.rubric_questions)
+        ? item.rubric_questions
+            .map((q) => (typeof q === 'string' ? q.trim() : ''))
+            .filter(Boolean)
         : [];
+
+      let questions = directQuestions;
+
+      if (!questions.length) {
+        questions = extractRubricQuestions(item.rubric);
+      }
+
+      if (!questions.length && typeof item.manual_questions === 'string' && item.manual_questions.trim()) {
+        questions = item.manual_questions
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean);
+      }
+
       setRoleConfigs((prev) => ({ ...prev, [roleId]: { prompt, questions } }));
     } catch (e) {
       toast.error(e?.message || 'Could not load role config', { duration: 1800 });
@@ -431,19 +448,22 @@ export default function Admin() {
       return;
     }
     const current = roleConfigs[roleId] || { prompt: '', questions: [] };
+    const cleanedPrompt = String(current.prompt || '').trim();
     const rubricQuestions = Array.isArray(current.questions)
       ? current.questions.map((q) => String(q || '').trim()).filter(Boolean)
       : [];
     setRoleConfigSaving((prev) => ({ ...prev, [roleId]: true }));
     try {
       const resp = await apiPatch(`/admin/roles/${encodeURIComponent(roleId)}/interview-config?client_id=${encodeURIComponent(selectedClientId)}`, {
-        tavus_prompt: current.prompt || '',
+        tavus_prompt: cleanedPrompt ? cleanedPrompt : null,
         rubric_questions: rubricQuestions
       });
       const item = resp?.item || {};
-      const prompt = typeof item.tavus_prompt === 'string' ? item.tavus_prompt : (current.prompt || '');
+      const prompt = typeof item.tavus_prompt === 'string' ? item.tavus_prompt : (cleanedPrompt || '');
       const questions = Array.isArray(item.rubric_questions)
-        ? item.rubric_questions.filter((q) => typeof q === 'string')
+        ? item.rubric_questions
+            .map((q) => (typeof q === 'string' ? q.trim() : ''))
+            .filter(Boolean)
         : rubricQuestions;
       setRoleConfigs((prev) => ({ ...prev, [roleId]: { prompt, questions } }));
       toast.success('Role config saved', { duration: 1200 });
