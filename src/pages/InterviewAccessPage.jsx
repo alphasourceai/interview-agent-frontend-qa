@@ -221,6 +221,48 @@ export default function InterviewAccessPage() {
   }, [paramToken, navigate]);
 
   const roomRef = useRef(null);
+  const autoEndTimerRef = useRef(null);
+  const [endingSoon, setEndingSoon] = useState(false);
+  useEffect(() => {
+    if (!roomUrl) return;
+
+    const shouldAutoEnd = (payload) => {
+      if (!payload) return false;
+      const s = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      return /call_ended|call-ended|meeting-ended|meeting_ended|room_left|room-left|session_ended|session-ended|conversation_ended|conversation-ended|interview_ended|interview-ended|ended/i.test(s);
+    };
+
+    const startAutoEnd = (reason) => {
+      if (autoEndTimerRef.current) return;
+      setEndingSoon(true);
+      console.log('[interview] auto_end_scheduled', { reason });
+      try { toast.success('Interview complete. Finishing up…', { duration: 1800 }); } catch {}
+      autoEndTimerRef.current = setTimeout(() => {
+        autoEndTimerRef.current = null;
+        setEndingSoon(false);
+        setRoomUrl('');
+        setPrejoin(false);
+        try { navigate('/interview-complete', { replace: true }); } catch { }
+      }, 5000);
+    };
+
+    const onMsg = (e) => {
+      try {
+        const d = e?.data;
+        if (shouldAutoEnd(d)) startAutoEnd('postMessage');
+      } catch {}
+    };
+
+    window.addEventListener('message', onMsg);
+    return () => {
+      window.removeEventListener('message', onMsg);
+      if (autoEndTimerRef.current) {
+        clearTimeout(autoEndTimerRef.current);
+        autoEndTimerRef.current = null;
+      }
+      setEndingSoon(false);
+    };
+  }, [roomUrl, navigate]);
 
   const [submitted, setSubmitted] = useState(null);
   const [verified, setVerified] = useState(false);
@@ -349,14 +391,21 @@ export default function InterviewAccessPage() {
             aria-label="Interview video area"
           >
             {roomUrl ? (
-              <iframe
-                title="Interview"
-                src={roomUrl}
-                loading="lazy"
-                allow="camera; microphone; autoplay; clipboard-read; clipboard-write; display-capture; fullscreen; storage-access"
-                referrerPolicy="no-referrer"
-                allowFullScreen
-              />
+              <>
+                <iframe
+                  title="Interview"
+                  src={roomUrl}
+                  loading="lazy"
+                  allow="camera; microphone; autoplay; clipboard-read; clipboard-write; display-capture; fullscreen; storage-access"
+                  referrerPolicy="no-referrer"
+                  allowFullScreen
+                />
+                {endingSoon && (
+                  <div className="tavus-ending-banner" role="status" aria-live="polite">
+                    Interview complete — closing in a few seconds…
+                  </div>
+                )}
+              </>
             ) : (
               <div className="placeholder">
                 <div className="center-msg">
@@ -467,6 +516,21 @@ export default function InterviewAccessPage() {
           color: rgba(255,255,255,0.85); padding:24px; text-align:center;
         }
         .tavus-slot .center-msg { max-width: 520px; }
+        .tavus-ending-banner {
+          position: absolute;
+          left: 12px;
+          right: 12px;
+          bottom: 12px;
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(0,0,0,0.72);
+          border: 1px solid rgba(255,255,255,0.16);
+          color: rgba(255,255,255,0.92);
+          font-size: 14px;
+          text-align: center;
+          z-index: 5;
+          pointer-events: none;
+        }
       `}</style>
     </div>
   );
