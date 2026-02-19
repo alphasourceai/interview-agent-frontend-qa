@@ -17,7 +17,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   : '';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
-const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})$/.test(String(value || '').trim());
+const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})$/.test(String(value || '').trim());
 const MAX_REQUEST_CHARS = 200;
 
 export default function AccommodationRequestPage() {
@@ -102,7 +102,7 @@ export default function AccommodationRequestPage() {
     }
     setEmailError('');
     if (!isValidPhone(form.candidate_phone)) {
-      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.');
+      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, XXX-XXX-XXXX, or XXX.XXX.XXXX.');
       toast.error('Enter a valid phone number.', { duration: 1500 });
       return;
     }
@@ -204,13 +204,13 @@ export default function AccommodationRequestPage() {
                   name="candidate_phone"
                   value={form.candidate_phone}
                   onChange={onChange}
-                  placeholder="e.g. (555) 123-4567 or 555-123-4567"
+                  placeholder="e.g. (555) 123-4567 or 555-123-4567 or 555.123.4567"
                   className={`alpha-input w-full ${phoneError ? 'input-error' : ''}`}
                   required
                   inputMode="tel"
                   autoComplete="tel"
                   disabled={submitting}
-                  onBlur={() => setPhoneError(form.candidate_phone ? (isValidPhone(form.candidate_phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.') : '')}
+                  onBlur={() => setPhoneError(form.candidate_phone ? (isValidPhone(form.candidate_phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, XXX-XXX-XXXX, or XXX.XXX.XXXX.') : '')}
                 />
                 {phoneError && <div className="input-error-text">{phoneError}</div>}
                 <div className="required-note">Required</div>

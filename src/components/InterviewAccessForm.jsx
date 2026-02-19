@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import CustomFilePicker from './CustomFilePicker';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
-const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4})$/.test(String(value || '').trim());
+const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})$/.test(String(value || '').trim());
 
 function joinUrl(base, path) {
   if (!base) return path;
@@ -55,7 +55,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
     setEmailError('');
 
     if (!isValidPhone(form.phone)) {
-      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.');
+      setPhoneError('Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, XXX-XXX-XXXX, or XXX.XXX.XXXX.');
       toast.error('Enter a valid phone number.', { duration: 1500 });
       return;
     }
@@ -160,13 +160,13 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
           name="phone"
           value={form.phone}
           onChange={onChange}
-          placeholder="e.g. (555) 123-4567 or 555-123-4567"
+          placeholder="e.g. (555) 123-4567, 555-123-4567, or 555.123.4567"
           required
           inputMode="tel"
           autoComplete="tel"
           className="alpha-input w-full"
           disabled={isLocked}
-          onBlur={() => setPhoneError(form.phone ? (isValidPhone(form.phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, or XXX-XXX-XXXX.') : '')}
+          onBlur={() => setPhoneError(form.phone ? (isValidPhone(form.phone) ? '' : 'Enter a valid phone number: XXXXXXXXXX, (XXX) XXX-XXXX, XXX-XXX-XXXX, or XXX.XXX.XXXX.') : '')}
         />
         {phoneError && <div className="input-error-text">{phoneError}</div>}
         <div className="required-note">Required</div>
