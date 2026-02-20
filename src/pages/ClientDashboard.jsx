@@ -192,7 +192,7 @@ function InfoTip({ text }) {
       const el = ref.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const TOOLTIP_W = 340;
+      const TOOLTIP_W = 360;
       const overflowRight = rect.right + TOOLTIP_W + 16 > window.innerWidth;
       setFlip(overflowRight);
     });
@@ -239,8 +239,9 @@ function InfoTip({ text }) {
             border: '1px solid rgba(255,255,255,0.14)',
             borderRadius: 8,
             padding: '8px 10px',
-            whiteSpace: 'normal',
-            width: 'auto',
+            display: 'block',
+            whiteSpace: 'pre-line',
+            width: 360,
             fontSize: 12,
             zIndex: 50,
             maxWidth: 360,
