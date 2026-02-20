@@ -223,6 +223,7 @@ export default function InterviewAccessPage() {
   const roomRef = useRef(null);
   const autoEndTimerRef = useRef(null);
   const [endingSoon, setEndingSoon] = useState(false);
+  const [roomUrl, setRoomUrl] = useState('');
   useEffect(() => {
     if (!roomUrl) return;
 
@@ -266,8 +267,6 @@ export default function InterviewAccessPage() {
 
   const [submitted, setSubmitted] = useState(null);
   const [verified, setVerified] = useState(false);
-
-  const [roomUrl, setRoomUrl] = useState('');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [prejoin, setPrejoin] = useState(false);
