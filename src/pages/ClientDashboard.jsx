@@ -240,10 +240,11 @@ function InfoTip({ text }) {
             borderRadius: 8,
             padding: '8px 10px',
             whiteSpace: 'normal',
+            width: 'auto',
             fontSize: 12,
             zIndex: 50,
-            maxWidth: 340,
-            lineHeight: 1.4,
+            maxWidth: 360,
+            lineHeight: 1.45,
             boxShadow: '0 6px 18px rgba(0,0,0,0.3)'
           }}
         >
