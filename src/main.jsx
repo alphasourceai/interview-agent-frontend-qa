@@ -154,6 +154,20 @@ function RouteErrorFallback() {
 }
 const errorElement = <RouteErrorFallback />
 
+function InterviewComplete() {
+  return (
+    <div style={{ padding: 24, display: 'grid', placeItems: 'center' }}>
+      <div style={{ maxWidth: 640, width: '100%', textAlign: 'center' }}>
+        <h1 style={{ marginBottom: 12 }}>Interview complete</h1>
+        <p style={{ marginBottom: 18 }}>
+          Thank you for completing your interview. You may now close this window.
+        </p>
+        <a href="/interview-access" className="btn lilac">Back to interview page</a>
+      </div>
+    </div>
+  )
+}
+
 const router = createBrowserRouter([
   { path: '/', element: <ProtectedRoute><ClientDashboard /></ProtectedRoute>, errorElement },
 
@@ -163,6 +177,7 @@ const router = createBrowserRouter([
   { path: '/verify-otp', element: <VerifyOtp />, errorElement },
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
+  { path: '/interview-complete', element: <InterviewComplete />, errorElement },
   { path: '/accommodation-request', element: <AccommodationRequestPage />, errorElement },
   { path: '/accommodation-request/:role_token', element: <AccommodationRequestPage />, errorElement },
   { path: '/text-interview/:token', element: <TextInterviewPage />, errorElement },
