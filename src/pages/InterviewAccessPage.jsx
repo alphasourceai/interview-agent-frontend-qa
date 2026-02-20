@@ -224,6 +224,20 @@ export default function InterviewAccessPage() {
   const autoEndTimerRef = useRef(null);
   const [endingSoon, setEndingSoon] = useState(false);
   const [roomUrl, setRoomUrl] = useState('');
+  const [prejoin, setPrejoin] = useState(false);
+  const startAutoEnd = useCallback((reason) => {
+    if (autoEndTimerRef.current) return;
+    setEndingSoon(true);
+    console.log('[interview] auto_end_scheduled', { reason });
+    try { toast.success('Interview complete. Finishing up…', { duration: 1800 }); } catch {}
+    autoEndTimerRef.current = setTimeout(() => {
+      autoEndTimerRef.current = null;
+      setEndingSoon(false);
+      setRoomUrl('');
+      setPrejoin(false);
+      try { navigate('/interview-complete', { replace: true }); } catch { }
+    }, 5000);
+  }, [navigate]);
   useEffect(() => {
     if (!roomUrl) return;
 
@@ -233,23 +247,11 @@ export default function InterviewAccessPage() {
       return /call_ended|call-ended|meeting-ended|meeting_ended|room_left|room-left|session_ended|session-ended|conversation_ended|conversation-ended|interview_ended|interview-ended|ended/i.test(s);
     };
 
-    const startAutoEnd = (reason) => {
-      if (autoEndTimerRef.current) return;
-      setEndingSoon(true);
-      console.log('[interview] auto_end_scheduled', { reason });
-      try { toast.success('Interview complete. Finishing up…', { duration: 1800 }); } catch {}
-      autoEndTimerRef.current = setTimeout(() => {
-        autoEndTimerRef.current = null;
-        setEndingSoon(false);
-        setRoomUrl('');
-        setPrejoin(false);
-        try { navigate('/interview-complete', { replace: true }); } catch { }
-      }, 5000);
-    };
-
     const onMsg = (e) => {
       try {
         const d = e?.data;
+        const dbg = new URL(window.location.href).searchParams.get('autoenddebug') === '1';
+        if (dbg) console.debug('[autoend.debug] message', e?.origin, d);
         if (shouldAutoEnd(d)) startAutoEnd('postMessage');
       } catch {}
     };
@@ -269,7 +271,6 @@ export default function InterviewAccessPage() {
   const [verified, setVerified] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
-  const [prejoin, setPrejoin] = useState(false);
   const [showPreInterviewNotice, setShowPreInterviewNotice] = useState(true);
   const [hasAcknowledgedQuiet, setHasAcknowledgedQuiet] = useState(false);
 
@@ -415,6 +416,18 @@ export default function InterviewAccessPage() {
               </div>
             )}
           </div>
+          {roomUrl && !endingSoon && (
+            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn lilac"
+                title="If the interview has ended, click to finish."
+                onClick={() => startAutoEnd('manual')}
+              >
+                Finish interview
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
