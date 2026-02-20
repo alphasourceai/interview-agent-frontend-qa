@@ -192,7 +192,7 @@ function InfoTip({ text }) {
       const el = ref.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const TOOLTIP_W = 260;
+      const TOOLTIP_W = 340;
       const overflowRight = rect.right + TOOLTIP_W + 16 > window.innerWidth;
       setFlip(overflowRight);
     });
@@ -242,7 +242,8 @@ function InfoTip({ text }) {
             whiteSpace: 'normal',
             fontSize: 12,
             zIndex: 50,
-            maxWidth: 260,
+            maxWidth: 340,
+            lineHeight: 1.4,
             boxShadow: '0 6px 18px rgba(0,0,0,0.3)'
           }}
         >
@@ -2251,7 +2252,7 @@ function FragmentRow({
                     <div className="detail-title">Signals</div>
                     <div style={{ display:'grid', gap: 8, marginTop: 6, color: '#374151' }}>
                       <div style={{ display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap' }}>
-                        <strong>Evidence strength:</strong>
+                        <strong>Evaluation Reliability:</strong>
                         <InfoTip text={TIPS.evidence_strength} />
                         <span>{evidenceStrengthValue === null ? '—' : `${Math.round(evidenceStrengthValue)}%`}</span>
                       </div>
