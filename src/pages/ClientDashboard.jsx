@@ -13,7 +13,9 @@ const TIPS = {
   education: 'Relevance and level of education for the role.',
   clarity: 'How clearly the candidate communicates ideas/use of filler words.',
   confidence: 'Apparent confidence and composure while answering.',
-  engagement: 'Engagement and non-verbal cues such as posture and eye contact.'
+  engagement: 'Engagement and non-verbal cues such as posture and eye contact.',
+  evidence_strength: 'How strongly transcript content supports the evaluation, derived from transcript analysis.',
+  ai_aided_risk: 'Probabilistic signal for potential AI-aided responses; verify with additional evidence.'
 };
 
 function SortIcon({ dir, active }) {
@@ -2089,6 +2091,16 @@ function FragmentRow({
     }
   };
   const perceptionScores = r.perception_scores && typeof r.perception_scores === 'object' ? r.perception_scores : {};
+  const transcriptScores = r.transcript_scores && typeof r.transcript_scores === 'object' ? r.transcript_scores : {};
+  const evidenceStrengthValue = (() => {
+    const raw = transcriptScores?.confidence;
+    if (raw === null || raw === undefined || raw === '') return null;
+    const num = typeof raw === 'number' ? raw : Number(String(raw).replace(/[^\d.-]/g, ''));
+    return Number.isFinite(num) ? num : null;
+  })();
+  const aiAidedRiskRaw = typeof transcriptScores?.ai_aided_risk === 'string' ? transcriptScores.ai_aided_risk.trim().toLowerCase() : '';
+  const aiAidedRiskLabel = aiAidedRiskRaw ? `${aiAidedRiskRaw.charAt(0).toUpperCase()}${aiAidedRiskRaw.slice(1)}` : '—';
+  const aiAidedRiskReason = typeof transcriptScores?.ai_aided_risk_reason === 'string' ? transcriptScores.ai_aided_risk_reason.trim() : '';
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
   const analysisPending = r.has_analysis === false;
   const analysisStatus = analysisPending ? 'Processing' : 'Summary not available';
@@ -2186,47 +2198,70 @@ function FragmentRow({
               </div>
 
               <div style={{ display:'grid', gridTemplateColumns:'repeat(12,1fr)', gap: 12, marginTop: 8 }}>
-                <div className="detail-card" style={{ gridColumn: 'span 6' }}>
-                  <div className="detail-title">Resume Analysis</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
-                    <div><Meter label="Experience" value={r.resume_analysis.experience} /> <InfoTip text={TIPS.experience} /></div>
-                    <div><Meter label="Skills" value={r.resume_analysis.skills} /> <InfoTip text={TIPS.skills} /></div>
-                    <div><Meter label="Education" value={r.resume_analysis.education} /> <InfoTip text={TIPS.education} /></div>
+                <div style={{ gridColumn: 'span 6', display: 'grid', gap: 12 }}>
+                  <div className="detail-card">
+                    <div className="detail-title">Resume Analysis</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
+                      <div><Meter label="Experience" value={r.resume_analysis.experience} /> <InfoTip text={TIPS.experience} /></div>
+                      <div><Meter label="Skills" value={r.resume_analysis.skills} /> <InfoTip text={TIPS.skills} /></div>
+                      <div><Meter label="Education" value={r.resume_analysis.education} /> <InfoTip text={TIPS.education} /></div>
+                    </div>
+                    <div style={{ marginTop: 8, color:'#374151' }}>
+                      <strong>Summary:</strong>{' '}
+                      {r.resume_analysis.summary
+                        ? r.resume_analysis.summary
+                        : <span style={{ color: '#6b7280' }}>Summary not available</span>}
+                    </div>
                   </div>
-                  <div style={{ marginTop: 8, color:'#374151' }}>
-                    <strong>Summary:</strong>{' '}
-                    {r.resume_analysis.summary
-                      ? r.resume_analysis.summary
-                      : <span style={{ color: '#6b7280' }}>Summary not available</span>}
+
+                  <div className="detail-card">
+                    <div className="detail-title">Unanswered questions</div>
+                    {Array.isArray(r.unanswered_candidate_questions) && r.unanswered_candidate_questions.length ? (
+                      <ul style={{ marginTop: 6, paddingLeft: 20, color: '#374151' }}>
+                        {r.unanswered_candidate_questions.map((q, idx) => (
+                          <li key={`${idx}-${q.slice(0, 20)}`}>{q}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div style={{ marginTop: 6, color: '#6b7280' }}>No unanswered questions captured.</div>
+                    )}
                   </div>
                 </div>
 
-                <div className="detail-card" style={{ gridColumn: 'span 6' }}>
-                  <div className="detail-title">Interview Analysis</div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
-                    <div><Meter label="Clarity" value={perceptionScores?.clarity ?? null} /> <InfoTip text={TIPS.clarity} /></div>
-                    <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
-                    <div><Meter label="Engagement" value={perceptionScores?.engagement ?? perceptionScores?.body_language ?? null} /> <InfoTip text={TIPS.engagement} /></div>
+                <div style={{ gridColumn: 'span 6', display: 'grid', gap: 12 }}>
+                  <div className="detail-card">
+                    <div className="detail-title">Interview Analysis</div>
+                    <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
+                      <div><Meter label="Clarity" value={perceptionScores?.clarity ?? null} /> <InfoTip text={TIPS.clarity} /></div>
+                      <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
+                      <div><Meter label="Engagement" value={perceptionScores?.engagement ?? null} /> <InfoTip text={TIPS.engagement} /></div>
+                    </div>
+                    <div style={{ marginTop: 8, color:'#374151' }}>
+                      <strong>Summary:</strong>{' '}
+                      {analysisSummary
+                        ? analysisSummary
+                        : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
+                    </div>
                   </div>
-                  <div style={{ marginTop: 8, color:'#374151' }}>
-                    <strong>Summary:</strong>{' '}
-                    {analysisSummary
-                      ? analysisSummary
-                      : <span style={{ color: '#6b7280' }}>{analysisStatus}</span>}
-                  </div>
-                </div>
 
-                <div className="detail-card" style={{ gridColumn: 'span 12' }}>
-                  <div className="detail-title">Unanswered questions</div>
-                  {Array.isArray(r.unanswered_candidate_questions) && r.unanswered_candidate_questions.length ? (
-                    <ul style={{ marginTop: 6, paddingLeft: 20, color: '#374151' }}>
-                      {r.unanswered_candidate_questions.map((q, idx) => (
-                        <li key={`${idx}-${q.slice(0, 20)}`}>{q}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div style={{ marginTop: 6, color: '#6b7280' }}>No unanswered questions captured.</div>
-                  )}
+                  <div className="detail-card">
+                    <div className="detail-title">Signals</div>
+                    <div style={{ display:'grid', gap: 8, marginTop: 6, color: '#374151' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap' }}>
+                        <strong>Evidence strength:</strong>
+                        <InfoTip text={TIPS.evidence_strength} />
+                        <span>{evidenceStrengthValue === null ? '—' : `${Math.round(evidenceStrengthValue)}%`}</span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap' }}>
+                        <strong>AI-aided interview risk:</strong>
+                        <InfoTip text={TIPS.ai_aided_risk} />
+                        <span>{aiAidedRiskLabel}</span>
+                      </div>
+                      {aiAidedRiskReason && (
+                        <div style={{ color: '#6b7280', fontSize: 12 }}>{aiAidedRiskReason}</div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
