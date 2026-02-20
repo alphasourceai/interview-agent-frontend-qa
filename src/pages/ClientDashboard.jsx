@@ -14,8 +14,11 @@ const TIPS = {
   clarity: 'How clearly the candidate communicates ideas/use of filler words.',
   confidence: 'Apparent confidence and composure while answering.',
   engagement: 'Engagement and non-verbal cues such as posture and eye contact.',
-  evidence_strength: 'How strongly transcript content supports the evaluation, derived from transcript analysis.',
-  ai_aided_risk: 'Probabilistic signal for potential AI-aided responses; verify with additional evidence.'
+  evidence_strength: `Strength of evidence behind the interview score. Higher means more concrete, verifiable detail.
+75–100 → High reliability — proceed with confidence.
+50–74 → Moderate — validate key claims in follow-up.
+<50 → Limited — conduct additional probing.`,
+  ai_aided_risk: 'Probabilistic signal of possible AI-assisted responses. Use as a cue for follow-up, not a verdict.'
 };
 
 function SortIcon({ dir, active }) {
