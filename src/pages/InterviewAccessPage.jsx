@@ -224,6 +224,7 @@ export default function InterviewAccessPage() {
   const autoEndTimerRef = useRef(null);
   const [endingSoon, setEndingSoon] = useState(false);
   const [roomUrl, setRoomUrl] = useState('');
+  const [conversationId, setConversationId] = useState('');
   const [prejoin, setPrejoin] = useState(false);
   const startAutoEnd = useCallback((reason) => {
     if (autoEndTimerRef.current) return;
@@ -238,6 +239,48 @@ export default function InterviewAccessPage() {
       try { navigate('/interview-complete', { replace: true }); } catch { }
     }, 5000);
   }, [navigate]);
+  const finishInterview = useCallback(async () => {
+    const cid = String(conversationId || '').trim();
+    if (!cid) {
+      toast.error('Unable to end interview cleanly (missing conversation ID).');
+      setRoomUrl('');
+      setConversationId('');
+      setPrejoin(false);
+      if (autoEndTimerRef.current) {
+        clearTimeout(autoEndTimerRef.current);
+        autoEndTimerRef.current = null;
+      }
+      setEndingSoon(false);
+      navigate('/interview-complete', { replace: true });
+      return;
+    }
+
+    try {
+      const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: cid }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const msg = data?.detail || data?.error || 'Failed to finish interview.';
+        const rid = data?.request_id ? ` (request_id: ${data.request_id})` : '';
+        toast.error(`${msg}${rid}`);
+      }
+    } catch (e) {
+      toast.error(e?.message || 'Network error ending interview.');
+    } finally {
+      setRoomUrl('');
+      setConversationId('');
+      setPrejoin(false);
+      if (autoEndTimerRef.current) {
+        clearTimeout(autoEndTimerRef.current);
+        autoEndTimerRef.current = null;
+      }
+      setEndingSoon(false);
+      navigate('/interview-complete', { replace: true });
+    }
+  }, [conversationId, navigate]);
   useEffect(() => {
     if (!roomUrl) return;
 
@@ -349,12 +392,15 @@ export default function InterviewAccessPage() {
         return;
       }
       const url = data?.conversation_url || data?.video_url || data?.redirect_url || data?.url || '';
+      const cid = data?.conversation_id || '';
       if (url) {
         setRoomUrl(url);
+        setConversationId(cid ? String(cid) : '');
         setPrejoin(true);
         setTimeout(() => { try { roomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 50);
         setTimeout(pingEmbedSize, 120);
       } else {
+        setConversationId('');
         setError('Interview room is initializing—try again in a moment.');
       }
     } catch {
@@ -422,7 +468,7 @@ export default function InterviewAccessPage() {
                 type="button"
                 className="btn lilac"
                 title="If the interview has ended, click to finish."
-                onClick={() => startAutoEnd('manual')}
+                onClick={finishInterview}
               >
                 Finish interview
               </button>
@@ -441,6 +487,7 @@ export default function InterviewAccessPage() {
                   setSubmitted(payload);
                   setVerified(false);
                   setRoomUrl('');
+                  setConversationId('');
                   setTimeout(pingEmbedSize, 80);
                 }}
               />
