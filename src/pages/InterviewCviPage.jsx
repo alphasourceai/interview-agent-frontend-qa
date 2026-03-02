@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DailyIframe from '@daily-co/daily-js';
@@ -21,6 +21,8 @@ function joinUrl(base, path) {
 const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
+
+let __dailyCallObject = null;
 
 function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, onDone }) {
   const daily = useDaily();
@@ -155,7 +157,9 @@ export default function InterviewCviPage() {
   const conversationId = String(location.state?.conversation_id || '');
   const interviewId = String(location.state?.interview_id || '');
   const roleToken = String(location.state?.role_token || '');
-  const callObject = useMemo(() => DailyIframe.createCallObject(), []);
+  const callObject = conversationUrl
+    ? (__dailyCallObject || (__dailyCallObject = DailyIframe.createCallObject()))
+    : null;
 
   const handleDone = useCallback(() => {
     navigate('/interview-complete', { replace: true });
@@ -169,6 +173,7 @@ export default function InterviewCviPage() {
     return () => {
       callObject.leave().catch(() => {}).finally(() => {
         try { callObject.destroy(); } catch {}
+        __dailyCallObject = null;
       });
     };
   }, [conversationUrl, navigate, callObject]);
