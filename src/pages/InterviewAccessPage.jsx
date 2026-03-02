@@ -225,6 +225,7 @@ export default function InterviewAccessPage() {
   const [endingSoon, setEndingSoon] = useState(false);
   const [roomUrl, setRoomUrl] = useState('');
   const [conversationId, setConversationId] = useState('');
+  const [interviewId, setInterviewId] = useState('');
   const [prejoin, setPrejoin] = useState(false);
   const startAutoEnd = useCallback((reason) => {
     if (autoEndTimerRef.current) return;
@@ -235,6 +236,7 @@ export default function InterviewAccessPage() {
       autoEndTimerRef.current = null;
       setEndingSoon(false);
       setRoomUrl('');
+      setInterviewId('');
       setPrejoin(false);
       try { navigate('/interview-complete', { replace: true }); } catch { }
     }, 5000);
@@ -245,6 +247,7 @@ export default function InterviewAccessPage() {
       toast.error('Unable to end interview cleanly (missing conversation ID).');
       setRoomUrl('');
       setConversationId('');
+      setInterviewId('');
       setPrejoin(false);
       if (autoEndTimerRef.current) {
         clearTimeout(autoEndTimerRef.current);
@@ -272,6 +275,7 @@ export default function InterviewAccessPage() {
     } finally {
       setRoomUrl('');
       setConversationId('');
+      setInterviewId('');
       setPrejoin(false);
       if (autoEndTimerRef.current) {
         clearTimeout(autoEndTimerRef.current);
@@ -281,6 +285,40 @@ export default function InterviewAccessPage() {
       navigate('/interview-complete', { replace: true });
     }
   }, [conversationId, navigate]);
+
+  useEffect(() => {
+    if (!roomUrl || !interviewId || !roleToken) return;
+
+    let active = true;
+    let timer = null;
+
+    const pollStatus = async () => {
+      try {
+        const qs = new URLSearchParams({
+          interview_id: String(interviewId),
+          role_token: String(roleToken)
+        });
+        const resp = await fetch(joinUrl(BK, `/public/interview-status?${qs.toString()}`));
+        const data = await resp.json().catch(() => ({}));
+        if (!active) return;
+        const status = String(data?.status || '');
+        if (resp.ok && (status === 'ending_requested' || status === 'Ended')) {
+          active = false;
+          if (timer) clearInterval(timer);
+          navigate('/interview-complete', { replace: true });
+        }
+      } catch {}
+    };
+
+    pollStatus();
+    timer = setInterval(pollStatus, 2500);
+
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+    };
+  }, [roomUrl, interviewId, roleToken, navigate]);
+
   useEffect(() => {
     if (!roomUrl) return;
 
@@ -393,14 +431,17 @@ export default function InterviewAccessPage() {
       }
       const url = data?.conversation_url || data?.video_url || data?.redirect_url || data?.url || '';
       const cid = data?.conversation_id || '';
+      const iid = data?.interview_id || '';
       if (url) {
         setRoomUrl(url);
         setConversationId(cid ? String(cid) : '');
+        setInterviewId(iid ? String(iid) : '');
         setPrejoin(true);
         setTimeout(() => { try { roomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch {} }, 50);
         setTimeout(pingEmbedSize, 120);
       } else {
         setConversationId('');
+        setInterviewId('');
         setError('Interview room is initializing—try again in a moment.');
       }
     } catch {
@@ -488,6 +529,7 @@ export default function InterviewAccessPage() {
                   setVerified(false);
                   setRoomUrl('');
                   setConversationId('');
+                  setInterviewId('');
                   setTimeout(pingEmbedSize, 80);
                 }}
               />
