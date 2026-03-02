@@ -6,6 +6,7 @@ import {
   DailyAudioTrack,
   DailyProvider,
   DailyVideo,
+  useDaily,
   useDailyEvent,
   useLocalSessionId,
   useParticipantIds,
