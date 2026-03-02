@@ -432,7 +432,20 @@ export default function InterviewAccessPage() {
       const url = data?.conversation_url || data?.video_url || data?.redirect_url || data?.url || '';
       const cid = data?.conversation_id || '';
       const iid = data?.interview_id || '';
+      const isLegacy = new URLSearchParams(location.search).get('legacy') === '1';
       if (url) {
+        if (!isLegacy) {
+          navigate('/interview-cvi', {
+            replace: true,
+            state: {
+              conversation_url: url,
+              conversation_id: cid ? String(cid) : '',
+              interview_id: iid ? String(iid) : '',
+              role_token: roleToken || ''
+            }
+          });
+          return;
+        }
         setRoomUrl(url);
         setConversationId(cid ? String(cid) : '');
         setInterviewId(iid ? String(iid) : '');
@@ -449,7 +462,7 @@ export default function InterviewAccessPage() {
     } finally {
       setStarting(false);
     }
-  }, [canStart, submitted, roleToken]);
+  }, [canStart, submitted, roleToken, location.search, navigate]);
 
   const header = useMemo(
     () => (
