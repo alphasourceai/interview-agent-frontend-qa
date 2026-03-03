@@ -103,49 +103,47 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [conversationId, onDone]);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#081225', color: '#fff', padding: 16 }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ position: 'relative', background: '#000', borderRadius: 16, overflow: 'hidden', minHeight: 520 }}>
-          {remoteSessionId ? (
-            <>
-              <DailyVideo
-                sessionId={remoteSessionId}
-                type="video"
-                autoPlay
-                playsInline
-                style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block', background: '#000' }}
-              />
-              <DailyAudioTrack sessionId={remoteSessionId} type="audio" autoPlay />
-            </>
-          ) : (
-            <div style={{ height: 520, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.8)' }}>
-              Connecting interview…
-            </div>
-          )}
-          {localSessionId && (
-            <div style={{ position: 'absolute', right: 16, bottom: 16, width: 180, height: 120, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#111827' }}>
-              <DailyVideo
-                sessionId={localSessionId}
-                type="video"
-                autoPlay
-                playsInline
-                muted
-                mirror
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#111827' }}
-              />
-            </div>
-          )}
-        </div>
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            type="button"
-            className="btn lilac"
-            title="If the interview has ended, click to finish."
-            onClick={finishInterview}
-          >
-            Finish interview
-          </button>
-        </div>
+    <div className="tavus-stage">
+      <div className="tavus-slot" aria-label="Interview video area">
+        {remoteSessionId ? (
+          <>
+            <DailyVideo
+              sessionId={remoteSessionId}
+              type="video"
+              autoPlay
+              playsInline
+              style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block', background: '#000' }}
+            />
+            <DailyAudioTrack sessionId={remoteSessionId} type="audio" autoPlay />
+          </>
+        ) : (
+          <div style={{ height: 520, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.8)' }}>
+            Connecting interview…
+          </div>
+        )}
+        {localSessionId && (
+          <div style={{ position: 'absolute', right: 16, bottom: 16, width: 180, height: 120, borderRadius: 12, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.15)', background: '#111827' }}>
+            <DailyVideo
+              sessionId={localSessionId}
+              type="video"
+              autoPlay
+              playsInline
+              muted
+              mirror
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#111827' }}
+            />
+          </div>
+        )}
+      </div>
+      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          className="btn lilac"
+          title="If the interview has ended, click to finish."
+          onClick={finishInterview}
+        >
+          Finish interview
+        </button>
       </div>
     </div>
   );
@@ -182,14 +180,18 @@ export default function InterviewCviPage() {
   if (!conversationUrl) return null;
 
   return (
-    <DailyProvider callObject={callObject}>
-      <InterviewCviRoom
-        conversationUrl={conversationUrl}
-        conversationId={conversationId}
-        interviewId={interviewId}
-        roleToken={roleToken}
-        onDone={handleDone}
-      />
-    </DailyProvider>
+    <div className="alpha-theme alpha-page interview-access-page">
+      <div className="space-y-6">
+        <DailyProvider callObject={callObject}>
+          <InterviewCviRoom
+            conversationUrl={conversationUrl}
+            conversationId={conversationId}
+            interviewId={interviewId}
+            roleToken={roleToken}
+            onDone={handleDone}
+          />
+        </DailyProvider>
+      </div>
+    </div>
   );
 }
