@@ -103,8 +103,21 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [conversationId, onDone]);
 
   return (
-    <div className="tavus-stage">
-      <div className="tavus-slot" aria-label="Interview video area">
+    <div className="tavus-stage" style={{ width: '100%' }}>
+      <div
+        className="tavus-slot"
+        aria-label="Interview video area"
+        style={{
+          position: 'relative',
+          width: '100%',
+          borderRadius: 16,
+          border: '1px solid rgba(255,255,255,0.1)',
+          background: 'rgba(0,0,0,0.85)',
+          overflow: 'hidden',
+          margin: '0 auto',
+          maxWidth: 1200,
+        }}
+      >
         {remoteSessionId ? (
           <>
             <DailyVideo
@@ -135,7 +148,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
           </div>
         )}
       </div>
-      <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
           className="btn lilac"
@@ -182,15 +195,25 @@ export default function InterviewCviPage() {
   return (
     <div className="alpha-theme alpha-page interview-access-page">
       <div className="space-y-6">
-        <DailyProvider callObject={callObject}>
-          <InterviewCviRoom
-            conversationUrl={conversationUrl}
-            conversationId={conversationId}
-            interviewId={interviewId}
-            roleToken={roleToken}
-            onDone={handleDone}
-          />
-        </DailyProvider>
+        <header className="alpha-header" role="banner" aria-label="AlphaSource site header">
+          <div className="inner">
+            <div className="brand" aria-label="AlphaSource Home">
+              <img src="/alpha-logo.png" alt="AlphaSource" />
+            </div>
+          </div>
+        </header>
+
+        <div className="alpha-hero fullbleed">
+          <DailyProvider callObject={callObject}>
+            <InterviewCviRoom
+              conversationUrl={conversationUrl}
+              conversationId={conversationId}
+              interviewId={interviewId}
+              roleToken={roleToken}
+              onDone={handleDone}
+            />
+          </DailyProvider>
+        </div>
       </div>
     </div>
   );
