@@ -109,13 +109,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         aria-label="Interview video area"
         style={{
           position: 'relative',
-          width: '100%',
+          width: 1200,
+          height: 690,
           borderRadius: 16,
           border: '1px solid rgba(255,255,255,0.1)',
           background: 'rgba(0,0,0,0.85)',
           overflow: 'hidden',
           margin: '0 auto',
-          maxWidth: 1200,
         }}
       >
         {remoteSessionId ? (
@@ -125,12 +125,12 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
               type="video"
               autoPlay
               playsInline
-              style={{ width: '100%', height: 520, objectFit: 'cover', display: 'block', background: '#000' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
             />
             <DailyAudioTrack sessionId={remoteSessionId} type="audio" autoPlay />
           </>
         ) : (
-          <div style={{ height: 520, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.8)' }}>
+          <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.8)' }}>
             Connecting interview…
           </div>
         )}
