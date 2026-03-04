@@ -32,6 +32,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const remoteSessionId = remoteParticipantIds[0] || null;
   const joinedRef = useRef(false);
   const endTriggeredRef = useRef(false);
+  const sawAppMessageRef = useRef(false);
 
   useDailyEvent('left-meeting', onDone);
 
@@ -79,6 +80,18 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [conversationId, daily, onDone]);
 
   const onAppMessage = useCallback((event) => {
+    if (!sawAppMessageRef.current) {
+      sawAppMessageRef.current = true;
+      let dataPreview = '';
+      try {
+        dataPreview = JSON.stringify(event?.data ?? event).slice(0, 500);
+      } catch {}
+      console.log('[interview-cvi] first app-message received', {
+        event_keys: event && typeof event === 'object' ? Object.keys(event) : [],
+        data_preview: dataPreview
+      });
+    }
+
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
     const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
     if (eventType !== 'conversation.tool_call' && eventType !== 'conversation.toolcall') return;
