@@ -31,6 +31,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
   const remoteSessionId = remoteParticipantIds[0] || null;
   const joinedRef = useRef(false);
+  const endTriggeredRef = useRef(false);
 
   useDailyEvent('left-meeting', onDone);
 
@@ -49,6 +50,34 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     });
   }, [daily, conversationUrl, onDone]);
 
+  const endInterview = useCallback(async (reason) => {
+    if (endTriggeredRef.current) {
+      console.log('[interview-cvi] duplicate end ignored', { reason });
+      return;
+    }
+    endTriggeredRef.current = true;
+    console.log('[interview-cvi] endInterview start', { reason });
+    try {
+      const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation_id: conversationId }),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        const msg = data?.detail || data?.error || 'Failed to finish interview.';
+        const rid = data?.request_id ? ` (request_id: ${data.request_id})` : '';
+        toast.error(`${msg}${rid}`);
+      }
+    } catch (e) {
+      toast.error(e?.message || 'Network error ending interview.');
+    } finally {
+      await daily?.leave?.().catch(() => {})
+      try { daily?.destroy?.() } catch {}
+      onDone();
+    }
+  }, [conversationId, daily, onDone]);
+
   useEffect(() => {
     if (!interviewId || !roleToken) return;
 
@@ -66,9 +95,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         if (!active) return;
         const status = String(data?.status || '');
         if (resp.ok && (status === 'ending_requested' || status === 'Ended')) {
+          console.log('[interview-cvi] polling terminal status', { status });
           active = false;
           if (timer) clearInterval(timer);
-          onDone();
+          endInterview('polling');
         }
       } catch {}
     };
@@ -80,27 +110,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       active = false;
       if (timer) clearInterval(timer);
     };
-  }, [interviewId, roleToken, onDone]);
-
-  const finishInterview = useCallback(async () => {
-    try {
-      const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId }),
-      });
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
-        const msg = data?.detail || data?.error || 'Failed to finish interview.';
-        const rid = data?.request_id ? ` (request_id: ${data.request_id})` : '';
-        toast.error(`${msg}${rid}`);
-      }
-    } catch (e) {
-      toast.error(e?.message || 'Network error ending interview.');
-    } finally {
-      onDone();
-    }
-  }, [conversationId, onDone]);
+  }, [interviewId, roleToken, endInterview]);
 
   return (
     <div className="tavus-stage" style={{ width: '100%' }}>
@@ -153,7 +163,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
           type="button"
           className="btn lilac"
           title="If the interview has ended, click to finish."
-          onClick={finishInterview}
+          onClick={() => endInterview('manual')}
         >
           Finish interview
         </button>
