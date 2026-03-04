@@ -78,6 +78,31 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }
   }, [conversationId, daily, onDone]);
 
+  const onAppMessage = useCallback((event) => {
+    const data = event?.data ?? event?.message ?? event?.payload ?? event;
+    const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
+    if (eventType !== 'conversation.tool_call' && eventType !== 'conversation.toolcall') return;
+
+    const toolName = String(
+      data?.name ??
+      data?.tool?.name ??
+      data?.tool_name ??
+      data?.tool?.function?.name ??
+      data?.function?.name ??
+      ''
+    ).trim().toLowerCase();
+
+    if (toolName === 'end_interview') {
+      console.log('[interview-cvi] tool_call detected', {
+        tool_name: toolName,
+        payload_keys: data && typeof data === 'object' ? Object.keys(data) : []
+      });
+      endInterview('tool_call');
+    }
+  }, [endInterview]);
+
+  useDailyEvent('app-message', onAppMessage);
+
   useEffect(() => {
     if (!interviewId || !roleToken) return;
 
