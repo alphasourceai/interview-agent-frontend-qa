@@ -93,6 +93,19 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }
 
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
+    const et = String(data?.event_type || '').toLowerCase();
+    const role = String(data?.properties?.role || '').toLowerCase();
+    const speech = String(data?.properties?.speech || '');
+    if (
+      et === 'conversation.utterance' &&
+      role === 'replica' &&
+      speech.includes("Thanks for your time today - this concludes the interview. I'm ending the session now.")
+    ) {
+      console.log('[interview-cvi] closing utterance detected');
+      endInterview('closing_utterance');
+      return;
+    }
+
     const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
     if (eventType !== 'conversation.tool_call' && eventType !== 'conversation.toolcall') return;
 
