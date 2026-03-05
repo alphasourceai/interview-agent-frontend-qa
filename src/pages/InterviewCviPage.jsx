@@ -32,7 +32,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const remoteSessionId = remoteParticipantIds[0] || null;
   const joinedRef = useRef(false);
   const endTriggeredRef = useRef(false);
-  const sawAppMessageRef = useRef(false);
   const closeEndTimerRef = useRef(null);
 
   useDailyEvent('left-meeting', onDone);
@@ -63,11 +62,9 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
 
   const endInterview = useCallback(async (reason) => {
     if (endTriggeredRef.current) {
-      console.log('[interview-cvi] duplicate end ignored', { reason });
       return;
     }
     endTriggeredRef.current = true;
-    console.log('[interview-cvi] endInterview start', { reason });
     try {
       const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
         method: 'POST',
@@ -90,18 +87,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [conversationId, daily, onDone]);
 
   const onAppMessage = useCallback((event) => {
-    if (!sawAppMessageRef.current) {
-      sawAppMessageRef.current = true;
-      let dataPreview = '';
-      try {
-        dataPreview = JSON.stringify(event?.data ?? event).slice(0, 500);
-      } catch {}
-      console.log('[interview-cvi] first app-message received', {
-        event_keys: event && typeof event === 'object' ? Object.keys(event) : [],
-        data_preview: dataPreview
-      });
-    }
-
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
     const et = String(data?.event_type || '').toLowerCase();
     const role = String(data?.properties?.role || '').toLowerCase();
@@ -122,7 +107,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       hasWrapUp &&
       hasEnding
     ) {
-      console.log('[interview-cvi] closing utterance detected');
       if (!closeEndTimerRef.current) {
         closeEndTimerRef.current = setTimeout(() => {
           closeEndTimerRef.current = null;
@@ -145,10 +129,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     ).trim().toLowerCase();
 
     if (toolName === 'end_interview') {
-      console.log('[interview-cvi] tool_call detected', {
-        tool_name: toolName,
-        payload_keys: data && typeof data === 'object' ? Object.keys(data) : []
-      });
       endInterview('tool_call');
     }
   }, [endInterview]);
@@ -172,7 +152,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         if (!active) return;
         const status = String(data?.status || '');
         if (resp.ok && (status === 'ending_requested' || status === 'Ended')) {
-          console.log('[interview-cvi] polling terminal status', { status });
           active = false;
           if (timer) clearInterval(timer);
           endInterview('polling');

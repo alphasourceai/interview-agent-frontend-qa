@@ -156,8 +156,6 @@ function RouteErrorFallback() {
 const errorElement = <RouteErrorFallback />
 
 function InterviewComplete() {
-  const [closeBlocked, setCloseBlocked] = React.useState(false)
-
   return (
     <div style={{ padding: 24, display: 'grid', placeItems: 'center' }}>
       <div style={{ maxWidth: 640, width: '100%', textAlign: 'center' }}>
@@ -165,22 +163,6 @@ function InterviewComplete() {
         <p style={{ marginBottom: 18 }}>
           Thank you for completing your interview. You may now close this window.
         </p>
-        <button
-          type="button"
-          className="btn lilac"
-          onClick={() => {
-            setCloseBlocked(false)
-            try { window.close() } catch {}
-            setTimeout(() => setCloseBlocked(true), 200)
-          }}
-        >
-          Close window
-        </button>
-        {closeBlocked && (
-          <div style={{ marginTop: 10, fontSize: 14, opacity: 0.8 }}>
-            You can now close this tab.
-          </div>
-        )}
       </div>
     </div>
   )
