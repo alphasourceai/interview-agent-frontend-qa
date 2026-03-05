@@ -19,7 +19,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
 
-function OtpInline({ email, candidateId, roleId, onVerified, onError }) {
+function OtpInline({ email, candidateId, roleId, onVerified, onError, onInactive }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -45,6 +45,13 @@ function OtpInline({ email, candidateId, roleId, onVerified, onError }) {
       });
       const data = await resp.json();
       if (!resp.ok) {
+        if (data?.code === 'CLIENT_INACTIVE') {
+          onInactive?.({
+            detail: data?.detail || 'Interviewing service is inactive.',
+            hint: data?.hint || ''
+          });
+          return;
+        }
         const m = data?.error || 'Verification failed.';
         setErr(m);
         onError?.(m);
@@ -352,6 +359,7 @@ export default function InterviewAccessPage() {
   const [verified, setVerified] = useState(false);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
+  const [inactiveInfo, setInactiveInfo] = useState(null);
   const [showPreInterviewNotice, setShowPreInterviewNotice] = useState(true);
   const [hasAcknowledgedQuiet, setHasAcknowledgedQuiet] = useState(false);
 
@@ -532,62 +540,78 @@ export default function InterviewAccessPage() {
       </div>
 
       {!roomUrl && (
-        <div className="alpha-form">
-          <div className="alpha-form-grid-3">
-            <div className="alpha-span-2">
-              <InterviewAccessForm
-                roleToken={roleToken}
-                onSubmitted={(payload) => {
-                  setSubmitted(payload);
-                  setVerified(false);
-                  setRoomUrl('');
-                  setConversationId('');
-                  setInterviewId('');
-                  setTimeout(pingEmbedSize, 80);
-                }}
-              />
+        inactiveInfo ? (
+          <div className="alpha-form">
+            <div className="alpha-card" style={{ maxWidth: 760, margin: '0 auto', textAlign: 'center' }}>
+              <h3 style={{ marginBottom: 10 }}>Interview temporarily unavailable</h3>
+              <p style={{ marginBottom: inactiveInfo?.hint ? 8 : 0 }}>{inactiveInfo?.detail}</p>
+              {inactiveInfo?.hint ? <p><strong>Contact:</strong> {inactiveInfo.hint}</p> : null}
+            </div>
+          </div>
+        ) : (
+          <div className="alpha-form">
+            <div className="alpha-form-grid-3">
+              <div className="alpha-span-2">
+                <InterviewAccessForm
+                  roleToken={roleToken}
+                  onSubmitted={(payload) => {
+                    setInactiveInfo(null);
+                    setSubmitted(payload);
+                    setVerified(false);
+                    setRoomUrl('');
+                    setConversationId('');
+                    setInterviewId('');
+                    setTimeout(pingEmbedSize, 80);
+                  }}
+                />
+              </div>
+
+              {submitted ? (
+                <OtpInline
+                  email={submitted.email}
+                  candidateId={submitted.candidate_id}
+                  roleId={submitted.role_id}
+                  onVerified={(info) => {
+                    setVerified(true);
+                    setSubmitted((s) => ({ ...(s || {}), ...info }));
+                    setTimeout(pingEmbedSize, 80);
+                  }}
+                  onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
+                  onInactive={(info) => {
+                    setInactiveInfo(info || { detail: 'Interviewing service is inactive.', hint: '' });
+                    setVerified(false);
+                    setTimeout(pingEmbedSize, 80);
+                  }}
+                />
+              ) : (
+                <div className="alpha-step2"></div>
+              )}
             </div>
 
-            {submitted ? (
-              <OtpInline
-                email={submitted.email}
-                candidateId={submitted.candidate_id}
-                roleId={submitted.role_id}
-                onVerified={(info) => {
-                  setVerified(true);
-                  setSubmitted((s) => ({ ...(s || {}), ...info }));
-                  setTimeout(pingEmbedSize, 80);
-                }}
-                onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
-              />
-            ) : (
-              <div className="alpha-step2"></div>
+            {verified && (
+              <div className="start-block">
+                <button
+                  type="button"
+                  disabled={!canStart || starting}
+                  onClick={startInterview}
+                  className="btn-xl btn-outline-lilac btn-wide"
+                >
+                  {starting ? 'Starting…' : 'Start Interview'}
+                </button>
+              </div>
             )}
-          </div>
 
-          {verified && (
-            <div className="start-block">
-              <button
-                type="button"
-                disabled={!canStart || starting}
-                onClick={startInterview}
-                className="btn-xl btn-outline-lilac btn-wide"
+            {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
+
+            <div className="mt-4 center">
+              <a
+                href={roleToken ? `/accommodation-request/${encodeURIComponent(roleToken)}` : '/accommodation-request'}
               >
-                {starting ? 'Starting…' : 'Start Interview'}
-              </button>
+                Need an accommodation?
+              </a>
             </div>
-          )}
-
-          {error && <p className="text-red-300 text-sm mt-2 center">{error}</p>}
-
-          <div className="mt-4 center">
-            <a
-              href={roleToken ? `/accommodation-request/${encodeURIComponent(roleToken)}` : '/accommodation-request'}
-            >
-              Need an accommodation?
-            </a>
           </div>
-        </div>
+        )
       )}
 
       <style>{`
