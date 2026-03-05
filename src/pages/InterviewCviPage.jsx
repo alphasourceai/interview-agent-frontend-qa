@@ -33,6 +33,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const joinedRef = useRef(false);
   const endTriggeredRef = useRef(false);
   const sawAppMessageRef = useRef(false);
+  const closeEndTimerRef = useRef(null);
 
   useDailyEvent('left-meeting', onDone);
 
@@ -50,6 +51,15 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       onDone();
     });
   }, [daily, conversationUrl, onDone]);
+
+  useEffect(() => {
+    return () => {
+      if (closeEndTimerRef.current) {
+        clearTimeout(closeEndTimerRef.current);
+        closeEndTimerRef.current = null;
+      }
+    };
+  }, []);
 
   const endInterview = useCallback(async (reason) => {
     if (endTriggeredRef.current) {
@@ -113,7 +123,12 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       hasEnding
     ) {
       console.log('[interview-cvi] closing utterance detected');
-      endInterview('closing_utterance');
+      if (!closeEndTimerRef.current) {
+        closeEndTimerRef.current = setTimeout(() => {
+          closeEndTimerRef.current = null;
+          endInterview('closing_utterance');
+        }, 5500);
+      }
       return;
     }
 
