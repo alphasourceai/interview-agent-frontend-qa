@@ -19,6 +19,24 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
 
+function isEmailContact(s) {
+  const v = String(s || '').trim();
+  return v.includes('@') && v.includes('.');
+}
+
+function extractPhoneDigits(s) {
+  const raw = String(s || '').replace(/\D/g, '');
+  if (raw.length === 10) return raw;
+  if (raw.length === 11 && raw.startsWith('1')) return raw.slice(1);
+  return null;
+}
+
+function formatPhone(d10) {
+  const s = String(d10 || '');
+  if (s.length !== 10) return s;
+  return `(${s.slice(0, 3)}) ${s.slice(3, 6)}-${s.slice(6)}`;
+}
+
 function OtpInline({ email, candidateId, roleId, onVerified, onError, onInactive }) {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -486,6 +504,8 @@ export default function InterviewAccessPage() {
   );
 
   const noRoom = !roomUrl;
+  const hintRaw = String(inactiveInfo?.hint || '').trim();
+  const hintPhone = extractPhoneDigits(hintRaw);
 
   const interviewContent = (
     <div className="space-y-6">
@@ -519,7 +539,23 @@ export default function InterviewAccessPage() {
                 <div className="center-msg">
                   {!roleToken
                     ? "You’re almost there—this page needs a role link. Open the invite link you were sent, or contact your recruiter to resend it."
-                    : "Your interview room will appear here after verification."}
+                    : inactiveInfo
+                      ? (
+                        <>
+                          <div>Interview temporarily unavailable</div>
+                          <div>{inactiveInfo.detail}</div>
+                          {hintRaw
+                            ? (
+                              isEmailContact(hintRaw)
+                                ? <div>Contact: <a href={`mailto:${hintRaw}`}>{hintRaw}</a></div>
+                                : hintPhone
+                                  ? <div>Contact: <a href={`tel:+1${hintPhone}`}>{formatPhone(hintPhone)}</a></div>
+                                  : <div>Contact: {hintRaw}</div>
+                            )
+                            : null}
+                        </>
+                      )
+                      : "Your interview room will appear here after verification."}
                 </div>
               </div>
             )}
@@ -539,17 +575,8 @@ export default function InterviewAccessPage() {
         </div>
       </div>
 
-      {!roomUrl && (
-        inactiveInfo ? (
-          <div className="alpha-form">
-            <div className="alpha-card" style={{ maxWidth: 760, margin: '0 auto', textAlign: 'center' }}>
-              <h3 style={{ marginBottom: 10 }}>Interview temporarily unavailable</h3>
-              <p style={{ marginBottom: inactiveInfo?.hint ? 8 : 0 }}>{inactiveInfo?.detail}</p>
-              {inactiveInfo?.hint ? <p><strong>Contact:</strong> {inactiveInfo.hint}</p> : null}
-            </div>
-          </div>
-        ) : (
-          <div className="alpha-form">
+      {!roomUrl && !inactiveInfo && (
+        <div className="alpha-form">
             <div className="alpha-form-grid-3">
               <div className="alpha-span-2">
                 <InterviewAccessForm
@@ -614,8 +641,7 @@ export default function InterviewAccessPage() {
                 Need an accommodation?
               </a>
             </div>
-          </div>
-        )
+        </div>
       )}
 
       <style>{`
