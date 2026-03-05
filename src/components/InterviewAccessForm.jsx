@@ -19,7 +19,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
 
-export default function InterviewAccessForm({ roleToken, onSubmitted }) {
+export default function InterviewAccessForm({ roleToken, onSubmitted, onInactive }) {
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -85,6 +85,13 @@ export default function InterviewAccessForm({ roleToken, onSubmitted }) {
       const data = await resp.json();
 
       if (!resp.ok) {
+        if (data?.code === 'CLIENT_INACTIVE') {
+          onInactive?.({
+            detail: data?.detail || 'Interviewing service is inactive.',
+            hint: data?.hint || ''
+          });
+          return;
+        }
         setError(data?.error || 'Something went wrong.');
         return;
       }

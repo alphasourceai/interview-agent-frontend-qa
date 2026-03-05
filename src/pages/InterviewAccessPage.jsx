@@ -554,6 +554,10 @@ export default function InterviewAccessPage() {
               <div className="alpha-span-2">
                 <InterviewAccessForm
                   roleToken={roleToken}
+                  onInactive={(info) => {
+                    setInactiveInfo(info || { detail: 'Interviewing service is inactive.', hint: '' });
+                    setVerified(false);
+                  }}
                   onSubmitted={(payload) => {
                     setInactiveInfo(null);
                     setSubmitted(payload);
