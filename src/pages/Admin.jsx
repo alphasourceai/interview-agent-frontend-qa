@@ -784,6 +784,7 @@ export default function Admin() {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, {
         billing_cycle,
         return_url: (() => {
+          if (document.referrer) return document.referrer;
           try {
             if (window.top && window.top.location && window.top.location.href) return window.top.location.href;
           } catch {}
