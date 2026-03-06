@@ -783,25 +783,7 @@ export default function Admin() {
     try {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, {
         billing_cycle,
-        return_url: (() => {
-          let raw = '';
-          if (document.referrer) raw = document.referrer;
-          if (!raw) {
-            try {
-              if (window.top && window.top.location && window.top.location.href) raw = window.top.location.href;
-            } catch {}
-          }
-          if (!raw) raw = window.location.href;
-          try {
-            const parsed = new URL(raw);
-            parsed.pathname = '/admin-dashboard';
-            parsed.search = '';
-            parsed.hash = '';
-            return parsed.toString();
-          } catch {
-            return `${window.location.origin}/admin-dashboard`;
-          }
-        })()
+        return_url: `${window.location.origin}/admin-dashboard`
       });
       const url = resp?.url || null;
       if (!url) throw new Error('Missing checkout URL');
