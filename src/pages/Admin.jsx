@@ -781,7 +781,15 @@ export default function Admin() {
     const billing_cycle = clientCheckoutCycles[clientId] === 'annual' ? 'annual' : 'monthly';
     setClientCheckoutBusy((prev) => ({ ...prev, [clientId]: true }));
     try {
-      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, { billing_cycle });
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, {
+        billing_cycle,
+        return_url: (() => {
+          try {
+            if (window.top && window.top.location && window.top.location.href) return window.top.location.href;
+          } catch {}
+          return window.location.href;
+        })()
+      });
       const url = resp?.url || null;
       if (!url) throw new Error('Missing checkout URL');
       try {
