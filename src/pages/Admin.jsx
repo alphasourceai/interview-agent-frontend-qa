@@ -784,7 +784,15 @@ export default function Admin() {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, { billing_cycle });
       const url = resp?.url || null;
       if (!url) throw new Error('Missing checkout URL');
-      window.location.href = url;
+      try {
+        if (window.top && window.top !== window) {
+          window.top.location.href = url;
+        } else {
+          window.location.href = url;
+        }
+      } catch {
+        window.location.href = url;
+      }
       toast.success('Checkout opened', { duration: 1200 });
     } catch (e) {
       const code = e?.data?.code || '';
