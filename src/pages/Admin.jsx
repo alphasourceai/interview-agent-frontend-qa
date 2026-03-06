@@ -784,11 +784,23 @@ export default function Admin() {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, {
         billing_cycle,
         return_url: (() => {
-          if (document.referrer) return document.referrer;
+          let raw = '';
+          if (document.referrer) raw = document.referrer;
+          if (!raw) {
+            try {
+              if (window.top && window.top.location && window.top.location.href) raw = window.top.location.href;
+            } catch {}
+          }
+          if (!raw) raw = window.location.href;
           try {
-            if (window.top && window.top.location && window.top.location.href) return window.top.location.href;
-          } catch {}
-          return window.location.href;
+            const parsed = new URL(raw);
+            parsed.pathname = '/admin-dashboard';
+            parsed.search = '';
+            parsed.hash = '';
+            return parsed.toString();
+          } catch {
+            return `${window.location.origin}/admin-dashboard`;
+          }
         })()
       });
       const url = resp?.url || null;
