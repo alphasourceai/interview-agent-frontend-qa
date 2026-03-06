@@ -106,6 +106,8 @@ export default function Admin() {
   const [newClientAdminName, setNewClientAdminName] = useState('');
   const [newClientAdminEmail, setNewClientAdminEmail] = useState('');
   const [newClientAdminRole, setNewClientAdminRole] = useState('manager');
+  const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
+  const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
 
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
@@ -774,6 +776,28 @@ export default function Admin() {
     return detail || 'Something went wrong';
   };
 
+  const startSubscriptionCheckout = async (clientId) => {
+    if (!clientId) return;
+    const billing_cycle = clientCheckoutCycles[clientId] === 'annual' ? 'annual' : 'monthly';
+    setClientCheckoutBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, { billing_cycle });
+      const url = resp?.url || null;
+      if (!url) throw new Error('Missing checkout URL');
+      window.location.href = url;
+      toast.success('Checkout opened', { duration: 1200 });
+    } catch (e) {
+      const code = e?.data?.code || '';
+      if (code === 'ENTERPRISE_CHECKOUT_NOT_CONFIGURED') {
+        toast.error('Enterprise checkout is not configured.', { duration: 1800 });
+      } else {
+        toast.error(e?.data?.detail || e?.message || 'Could not start checkout.', { duration: 2000 });
+      }
+    } finally {
+      setClientCheckoutBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const createClient = async () => {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
@@ -1331,10 +1355,14 @@ export default function Admin() {
                   <button className="btn lilac client-dash-pill" onClick={createClient}>Create</button>
                 </div>
                 <div className="card-scroll">
-                  <div className="client-dash-table three-cols">
+                  <div className="client-dash-table clients-billing">
                     <div className="t-head">
                       <div>Name</div>
                       <div>Created</div>
+                      <div>Plan tier</div>
+                      <div>Billing status</div>
+                      <div>Billing cycle</div>
+                      <div>Checkout</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
@@ -1345,6 +1373,27 @@ export default function Admin() {
                             <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
                           </div>
                           <div className="muted">{new Date(c.created_at).toLocaleDateString()}</div>
+                          <div className="muted">{c.plan_tier || 'basic'}</div>
+                          <div className="muted">{c.billing_status || 'active'}</div>
+                          <div>
+                            <select
+                              className="alpha-input alpha-select client-dash-input"
+                              value={clientCheckoutCycles[c.id] || 'monthly'}
+                              onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
+                            >
+                              <option value="monthly">Monthly</option>
+                              <option value="annual">Annual</option>
+                            </select>
+                          </div>
+                          <div>
+                            <button
+                              className="btn lilac client-dash-pill"
+                              onClick={() => startSubscriptionCheckout(c.id)}
+                              disabled={!!clientCheckoutBusy[c.id]}
+                            >
+                              {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Subscription Checkout'}
+                            </button>
+                          </div>
                           <div className="center">
                             <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
                               <IconTrash size={24} />
