@@ -87,6 +87,14 @@ const extractRubricQuestions = (rubric) => {
   return questions;
 };
 
+function getClientBillingDisplay(c) {
+  if (c?.manual_active_override === true) return 'active (manual)';
+  const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
+  if (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') return 'active';
+  if (c?.stripe_subscription_id || c?.subscription_status) return 'inactive';
+  return 'inactive';
+}
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -1401,7 +1409,7 @@ export default function Admin() {
                           </div>
                           <div className="muted">{new Date(c.created_at).toLocaleDateString()}</div>
                           <div className="muted">{c.plan_tier || 'basic'}</div>
-                          <div className="muted">{c.billing_status || 'active'}</div>
+                          <div className="muted">{getClientBillingDisplay(c)}</div>
                           <div>
                             <select
                               className="alpha-input alpha-select client-dash-input"
