@@ -783,7 +783,7 @@ export default function Admin() {
     try {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/billing/checkout-session`, {
         billing_cycle,
-        return_url: `${window.location.origin}/admin-dashboard`
+        return_target: 'admin'
       });
       const url = resp?.url || null;
       if (!url) throw new Error('Missing checkout URL');
