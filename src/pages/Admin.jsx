@@ -631,6 +631,22 @@ export default function Admin() {
   }, [isAdmin, activeTab, selectedClientId, accommodationFilter]);
 
   useEffect(() => {
+    if (!isAdmin) return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    const client_id = params.get('client_id');
+    if (checkout !== 'success' && checkout !== 'cancel') return;
+    void client_id;
+    refreshClients();
+    if (checkout === 'success') {
+      toast.success('Subscription checkout completed.', { duration: 1800 });
+    } else {
+      toast('Subscription checkout canceled.', { duration: 1800 });
+    }
+    window.history.replaceState({}, '', window.location.pathname);
+  }, [isAdmin]);
+
+  useEffect(() => {
     const onClickOutside = (e) => {
       if (customerDropdownRef.current && !customerDropdownRef.current.contains(e.target)) {
         setBillingCustomerQuery(billingSelectedCustomerLabel || '');
