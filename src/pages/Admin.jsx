@@ -1482,21 +1482,24 @@ export default function Admin() {
                                 className="btn lilac client-dash-pill"
                                 onClick={() => startSubscriptionCheckout(c.id)}
                                 disabled={!!clientCheckoutBusy[c.id]}
+                                style={{ padding: '6px 10px' }}
                               >
-                                {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Subscription Checkout'}
+                                {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
                               </button>
                             )}
                           </div>
                           <div className="muted">
                             {isClientActivelySubscribed(c) ? (
-                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <label style={{ display: 'inline-flex', alignItems: 'center' }} title="Auto-Renew">
                                 <input
                                   type="checkbox"
                                   checked={c.auto_renew === true}
                                   disabled={!!clientAutoRenewBusy[c.id]}
+                                  aria-label="Auto-Renew"
+                                  title="Auto-Renew"
+                                  style={{ width: 16, height: 16 }}
                                   onChange={(e) => { void updateClientAutoRenew(c.id, e.target.checked); }}
                                 />
-                                <span>Auto-Renew</span>
                               </label>
                             ) : '—'}
                           </div>
