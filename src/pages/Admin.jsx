@@ -130,6 +130,7 @@ export default function Admin() {
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
+  const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
@@ -863,6 +864,27 @@ export default function Admin() {
     }
   };
 
+  const processRenewals = async () => {
+    setProcessRenewalsBusy(true);
+    try {
+      const resp = await apiPost('/admin/contracts/process-renewals', {});
+      const summary = resp?.summary || {};
+      const skipped = (summary.skipped_no_action || 0) + (summary.skipped_manual_override || 0);
+      await refreshClients();
+      toast.success(
+        `Processed: due ${summary.due || 0}, renewed ${summary.renewed || 0}, deactivated ${summary.deactivated || 0}, skipped ${skipped}, errors ${summary.errors || 0}`,
+        { duration: 2200 }
+      );
+      if (Array.isArray(resp?.items)) {
+        console.info('[admin/contracts/process-renewals] items', resp.items);
+      }
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not process renewals.', { duration: 2000 });
+    } finally {
+      setProcessRenewalsBusy(false);
+    }
+  };
+
   const createClient = async () => {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
@@ -1408,6 +1430,13 @@ export default function Admin() {
               <div className="client-dash-card">
                 <div className="client-dash-section-head">
                   <h2>Clients</h2>
+                  <button
+                    className="btn lilac client-dash-pill"
+                    onClick={processRenewals}
+                    disabled={processRenewalsBusy}
+                  >
+                    {processRenewalsBusy ? 'Processing…' : 'Process Renewals'}
+                  </button>
                 </div>
                 <div className="client-dash-row">
                   <input className="alpha-input client-dash-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
