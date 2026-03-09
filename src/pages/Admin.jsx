@@ -1490,14 +1490,14 @@ export default function Admin() {
                           </div>
                           <div className="muted">
                             {isClientActivelySubscribed(c) ? (
-                              <label style={{ display: 'inline-flex', alignItems: 'center' }} title="Auto-Renew">
+                              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }} title="Auto-Renew">
                                 <input
                                   type="checkbox"
                                   checked={c.auto_renew === true}
                                   disabled={!!clientAutoRenewBusy[c.id]}
                                   aria-label="Auto-Renew"
                                   title="Auto-Renew"
-                                  style={{ width: 16, height: 16 }}
+                                  style={{ width: 18, height: 18, accentColor: '#9CA3AF' }}
                                   onChange={(e) => { void updateClientAutoRenew(c.id, e.target.checked); }}
                                 />
                               </label>
