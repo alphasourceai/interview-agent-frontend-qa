@@ -129,6 +129,7 @@ export default function Admin() {
   const [newClientAdminRole, setNewClientAdminRole] = useState('manager');
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
+  const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
 
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
@@ -846,6 +847,22 @@ export default function Admin() {
     }
   };
 
+  const updateClientAutoRenew = async (clientId, nextValue) => {
+    if (!clientId) return;
+    setClientAutoRenewBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPatch(`/admin/clients/${encodeURIComponent(clientId)}/auto-renew`, { auto_renew: nextValue });
+      const updatedValue = typeof resp?.item?.auto_renew === 'boolean' ? resp.item.auto_renew : nextValue;
+      setClients((prev) => prev.map((item) => (
+        item.id === clientId ? { ...item, auto_renew: updatedValue } : item
+      )));
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not update auto-renew.', { duration: 1800 });
+    } finally {
+      setClientAutoRenewBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const createClient = async () => {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
@@ -1406,11 +1423,11 @@ export default function Admin() {
                   <div className="client-dash-table clients-billing">
                     <div className="t-head">
                       <div>Name</div>
-                      <div>Created</div>
                       <div>Plan tier</div>
                       <div>Billing status</div>
                       <div>Billing cycle</div>
                       <div>Subscription</div>
+                      <div>Auto-Renew</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
@@ -1420,7 +1437,6 @@ export default function Admin() {
                             <div className="title">{c.name}</div>
                             <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
                           </div>
-                          <div className="muted">{new Date(c.created_at).toLocaleDateString()}</div>
                           <div className="muted">{c.plan_tier || 'basic'}</div>
                           <div className="muted">{getClientBillingDisplay(c)}</div>
                           <div>
@@ -1460,9 +1476,6 @@ export default function Admin() {
                                 <div className="muted">
                                   Current billing period ends: {formatShortDate(c.current_term_end)}
                                 </div>
-                                <div className="muted">
-                                  Auto-Renew: {c.auto_renew === true ? 'On' : 'Off'}
-                                </div>
                               </div>
                             ) : (
                               <button
@@ -1473,6 +1486,19 @@ export default function Admin() {
                                 {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Subscription Checkout'}
                               </button>
                             )}
+                          </div>
+                          <div className="muted">
+                            {isClientActivelySubscribed(c) ? (
+                              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={c.auto_renew === true}
+                                  disabled={!!clientAutoRenewBusy[c.id]}
+                                  onChange={(e) => { void updateClientAutoRenew(c.id, e.target.checked); }}
+                                />
+                                <span>Auto-Renew</span>
+                              </label>
+                            ) : '—'}
                           </div>
                           <div className="center">
                             <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
