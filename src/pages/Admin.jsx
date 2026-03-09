@@ -95,6 +95,19 @@ function getClientBillingDisplay(c) {
   return 'inactive';
 }
 
+function isClientActivelySubscribed(c) {
+  if (c?.manual_active_override === true) return true;
+  const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
+  return subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
+}
+
+function formatShortDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString();
+}
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -1397,7 +1410,7 @@ export default function Admin() {
                       <div>Plan tier</div>
                       <div>Billing status</div>
                       <div>Billing cycle</div>
-                      <div>Checkout</div>
+                      <div>Subscription</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
@@ -1411,23 +1424,55 @@ export default function Admin() {
                           <div className="muted">{c.plan_tier || 'basic'}</div>
                           <div className="muted">{getClientBillingDisplay(c)}</div>
                           <div>
-                            <select
-                              className="alpha-input alpha-select client-dash-input"
-                              value={clientCheckoutCycles[c.id] || 'monthly'}
-                              onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
-                            >
-                              <option value="monthly">Monthly</option>
-                              <option value="annual">Annual</option>
-                            </select>
+                            {isClientActivelySubscribed(c) ? (
+                              <div className="muted">
+                                {
+                                  c.billing_interval === 'annual'
+                                    ? 'Annual'
+                                    : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
+                                }
+                              </div>
+                            ) : (
+                              <select
+                                className="alpha-input alpha-select client-dash-input"
+                                value={clientCheckoutCycles[c.id] || 'monthly'}
+                                onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
+                              >
+                                <option value="monthly">Monthly</option>
+                                <option value="annual">Annual</option>
+                              </select>
+                            )}
                           </div>
                           <div>
-                            <button
-                              className="btn lilac client-dash-pill"
-                              onClick={() => startSubscriptionCheckout(c.id)}
-                              disabled={!!clientCheckoutBusy[c.id]}
-                            >
-                              {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Subscription Checkout'}
-                            </button>
+                            {isClientActivelySubscribed(c) ? (
+                              <div>
+                                <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
+                                <div className="muted">
+                                  Billing: {
+                                    c.billing_interval === 'annual'
+                                      ? 'Annual'
+                                      : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
+                                  }
+                                </div>
+                                <div className="muted">
+                                  Contract: {formatShortDate(c.contract_start_at)} – {formatShortDate(c.contract_end_at)}
+                                </div>
+                                <div className="muted">
+                                  Current billing period ends: {formatShortDate(c.current_term_end)}
+                                </div>
+                                <div className="muted">
+                                  Auto-Renew: {c.auto_renew === true ? 'On' : 'Off'}
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                className="btn lilac client-dash-pill"
+                                onClick={() => startSubscriptionCheckout(c.id)}
+                                disabled={!!clientCheckoutBusy[c.id]}
+                              >
+                                {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Subscription Checkout'}
+                              </button>
+                            )}
                           </div>
                           <div className="center">
                             <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
