@@ -2139,15 +2139,16 @@ export default function Admin() {
                         {auditRuns.map((run) => {
                           const summary = run?.summary || {};
                           const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
+                          const summaryTitle = `due ${summary?.due || 0}, renewed ${summary?.renewed || 0}, deactivated ${summary?.deactivated || 0}, skipped ${skipped}, errors ${summary?.errors || 0}`;
                           return (
                             <div key={run.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
                               <div>{run.started_at ? new Date(run.started_at).toLocaleString() : (run.created_at ? new Date(run.created_at).toLocaleString() : '—')}</div>
                               <div>{run.trigger_source || '—'}</div>
                               <div>{run.processed_ok === true ? 'success' : (run.processed_ok === false ? 'failed' : '—')}</div>
-                              <div className="muted">
-                                due {summary?.due || 0}, renewed {summary?.renewed || 0}, deactivated {summary?.deactivated || 0}, skipped {skipped}, errors {summary?.errors || 0}
+                              <div className="muted" title={summaryTitle}>errors {summary?.errors || 0}</div>
+                              <div className="muted" title={run.request_id || undefined}>
+                                {run.request_id ? `.....${String(run.request_id).slice(-8)}` : '—'}
                               </div>
-                              <div className="muted">{run.request_id || '—'}</div>
                               <div className="muted">{run.triggered_by_email || '—'}</div>
                               <div className="muted">{run.error || '—'}</div>
                             </div>
