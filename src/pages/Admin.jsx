@@ -190,6 +190,8 @@ export default function Admin() {
   const [accommodationNotes, setAccommodationNotes] = useState({});
   const [accommodationSaving, setAccommodationSaving] = useState({});
   const [accommodationSending, setAccommodationSending] = useState({});
+  const [auditRuns, setAuditRuns] = useState([]);
+  const [auditRunsLoading, setAuditRunsLoading] = useState(false);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
@@ -617,6 +619,22 @@ export default function Admin() {
     }
   }
 
+  async function refreshAuditRuns() {
+    if (!isAdmin) return;
+    setAuditRunsLoading(true);
+    try {
+      const resp = await apiGet('/admin/audit/contract-processing-runs');
+      setAuditRuns(resp?.items || []);
+    } catch (e) {
+      console.warn('[audit-logs] fetch failed', e?.message || e);
+      toast.error('Could not load audit logs', { duration: 1500 });
+    } finally {
+      setAuditRunsLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -652,6 +670,12 @@ export default function Admin() {
     if (activeTab !== 'accommodations') return;
     refreshAccommodations();
   }, [isAdmin, activeTab, selectedClientId, accommodationFilter]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    if (activeTab !== 'audit-logs') return;
+    refreshAuditRuns();
+  }, [isAdmin, activeTab]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -1423,6 +1447,13 @@ export default function Admin() {
             >
               Billing
             </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('audit-logs')}
+              className={`client-dash-tab ${activeTab === 'audit-logs' ? 'client-dash-tab--active' : ''}`}
+            >
+              Audit Logs
+            </button>
           </div>
 
           <div className="dash-scroll">
@@ -2070,6 +2101,59 @@ export default function Admin() {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'audit-logs' && (
+              <div className="client-dash-card">
+                <div className="client-dash-section-head">
+                  <h2>Audit Logs</h2>
+                  <button
+                    className="btn lilac client-dash-pill"
+                    onClick={refreshAuditRuns}
+                    disabled={auditRunsLoading}
+                  >
+                    {auditRunsLoading ? 'Loading…' : 'Refresh'}
+                  </button>
+                </div>
+                {auditRunsLoading && <div className="client-dash-muted">Loading audit logs…</div>}
+                {!auditRunsLoading && auditRuns.length === 0 && (
+                  <div className="client-dash-muted">No audit log runs yet</div>
+                )}
+                {!auditRunsLoading && auditRuns.length > 0 && (
+                  <div className="card-scroll">
+                    <div className="client-dash-table members members-extended">
+                      <div className="t-head" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
+                        <div>Run time</div>
+                        <div>Source</div>
+                        <div>Status</div>
+                        <div>Summary</div>
+                        <div>Request ID</div>
+                        <div>Triggered by</div>
+                        <div>Error</div>
+                      </div>
+                      <div className="t-body">
+                        {auditRuns.map((run) => {
+                          const summary = run?.summary || {};
+                          const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
+                          return (
+                            <div key={run.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
+                              <div>{run.started_at ? new Date(run.started_at).toLocaleString() : (run.created_at ? new Date(run.created_at).toLocaleString() : '—')}</div>
+                              <div>{run.trigger_source || '—'}</div>
+                              <div>{run.processed_ok === true ? 'success' : (run.processed_ok === false ? 'failed' : '—')}</div>
+                              <div className="muted">
+                                due {summary?.due || 0}, renewed {summary?.renewed || 0}, deactivated {summary?.deactivated || 0}, skipped {skipped}, errors {summary?.errors || 0}
+                              </div>
+                              <div className="muted">{run.request_id || '—'}</div>
+                              <div className="muted">{run.triggered_by_email || '—'}</div>
+                              <div className="muted">{run.error || '—'}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
