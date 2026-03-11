@@ -1568,7 +1568,12 @@ export default function Admin() {
                                 <div className="muted">
                                   Current billing period ends: {formatShortDate(c.current_term_end)}
                                 </div>
-                                {c.cancel_at_term_end === true && (
+                                {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && (
+                                  <div className="muted">
+                                    Contract: Will end at contract term
+                                  </div>
+                                )}
+                                {String(c.billing_interval || '').toLowerCase() === 'annual' && c.cancel_at_term_end === true && (
                                   <div className="muted">
                                     Stripe: cancellation at billing period end
                                   </div>
