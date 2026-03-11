@@ -114,6 +114,15 @@ function canResumeClientSubscription(c) {
   return String(c?.billing_status || '').toLowerCase() === 'inactive';
 }
 
+function canCancelAtContractEnd(c) {
+  const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
+  const liveSubscription = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
+  if (!liveSubscription) return false;
+  if (c?.auto_renew === false) return false;
+  if (c?.cancel_at_term_end === true) return false;
+  return true;
+}
+
 function formatShortDate(value) {
   if (!value) return '—';
   const d = new Date(value);
@@ -144,6 +153,7 @@ export default function Admin() {
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
   const [clientResumeBusy, setClientResumeBusy] = useState({});
+  const [clientCancelContractEndBusy, setClientCancelContractEndBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
@@ -940,6 +950,25 @@ export default function Admin() {
     }
   };
 
+  const cancelAtContractEnd = async (clientId) => {
+    if (!clientId) return;
+    setClientCancelContractEndBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/cancel-at-contract-end`, {});
+      const item = resp?.item || null;
+      if (item?.id) {
+        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+      } else {
+        await refreshClients();
+      }
+      toast.success('Set to cancel at contract end.', { duration: 1600 });
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not set contract-end cancellation.', { duration: 2000 });
+    } finally {
+      setClientCancelContractEndBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const processRenewals = async () => {
     setProcessRenewalsBusy(true);
     try {
@@ -1613,6 +1642,18 @@ export default function Admin() {
                                   style={{ padding: '6px 10px' }}
                                 >
                                   {clientResumeBusy[c.id] ? 'Resuming…' : 'Resume Subscription'}
+                                </button>
+                              </div>
+                            )}
+                            {canCancelAtContractEnd(c) && (
+                              <div style={{ marginTop: 6 }}>
+                                <button
+                                  className="btn lilac client-dash-pill"
+                                  onClick={() => cancelAtContractEnd(c.id)}
+                                  disabled={!!clientCancelContractEndBusy[c.id]}
+                                  style={{ padding: '6px 10px' }}
+                                >
+                                  {clientCancelContractEndBusy[c.id] ? 'Saving…' : 'Cancel at Contract End'}
                                 </button>
                               </div>
                             )}
