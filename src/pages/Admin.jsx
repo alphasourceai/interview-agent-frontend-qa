@@ -106,6 +106,14 @@ function isClientActivelySubscribed(c) {
   return subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
 }
 
+function canResumeClientSubscription(c) {
+  if (!c?.stripe_subscription_id) return false;
+  const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
+  if (subscriptionStatus !== 'active' && subscriptionStatus !== 'trialing') return false;
+  if (c?.cancel_at_term_end === true) return true;
+  return String(c?.billing_status || '').toLowerCase() === 'inactive';
+}
+
 function formatShortDate(value) {
   if (!value) return '—';
   const d = new Date(value);
@@ -135,6 +143,7 @@ export default function Admin() {
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
+  const [clientResumeBusy, setClientResumeBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
@@ -912,6 +921,25 @@ export default function Admin() {
     }
   };
 
+  const resumeClientSubscription = async (clientId) => {
+    if (!clientId) return;
+    setClientResumeBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/resume-subscription`, {});
+      const item = resp?.item || null;
+      if (item?.id) {
+        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+      } else {
+        await refreshClients();
+      }
+      toast.success('Subscription resumed.', { duration: 1600 });
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not resume subscription.', { duration: 2000 });
+    } finally {
+      setClientResumeBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const processRenewals = async () => {
     setProcessRenewalsBusy(true);
     try {
@@ -1575,6 +1603,18 @@ export default function Admin() {
                               >
                                 {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
                               </button>
+                            )}
+                            {canResumeClientSubscription(c) && (
+                              <div style={{ marginTop: 6 }}>
+                                <button
+                                  className="btn lilac client-dash-pill"
+                                  onClick={() => resumeClientSubscription(c.id)}
+                                  disabled={!!clientResumeBusy[c.id]}
+                                  style={{ padding: '6px 10px' }}
+                                >
+                                  {clientResumeBusy[c.id] ? 'Resuming…' : 'Resume Subscription'}
+                                </button>
+                              </div>
                             )}
                           </div>
                           <div className="muted">
