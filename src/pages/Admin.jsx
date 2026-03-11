@@ -197,6 +197,8 @@ export default function Admin() {
   const [accommodationSending, setAccommodationSending] = useState({});
   const [auditRuns, setAuditRuns] = useState([]);
   const [auditRunsLoading, setAuditRunsLoading] = useState(false);
+  const [billingReconciliationItems, setBillingReconciliationItems] = useState([]);
+  const [billingReconciliationLoading, setBillingReconciliationLoading] = useState(false);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
@@ -640,6 +642,22 @@ export default function Admin() {
     }
   }
 
+  async function refreshBillingReconciliation() {
+    if (!isAdmin) return;
+    setBillingReconciliationLoading(true);
+    try {
+      const resp = await apiGet('/admin/audit/billing-reconciliation');
+      setBillingReconciliationItems(resp?.items || []);
+    } catch (e) {
+      console.warn('[audit-logs/reconciliation] fetch failed', e?.message || e);
+      toast.error('Could not load billing reconciliation', { duration: 1500 });
+    } finally {
+      setBillingReconciliationLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -680,6 +698,7 @@ export default function Admin() {
     if (!isAdmin) return;
     if (activeTab !== 'audit-logs') return;
     refreshAuditRuns();
+    refreshBillingReconciliation();
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
@@ -2118,57 +2137,102 @@ export default function Admin() {
             )}
 
             {activeTab === 'audit-logs' && (
-              <div className="client-dash-card">
-                <div className="client-dash-section-head">
-                  <h2>Audit Logs</h2>
-                  <button
-                    className="btn lilac client-dash-pill"
-                    onClick={refreshAuditRuns}
-                    disabled={auditRunsLoading}
-                  >
-                    {auditRunsLoading ? 'Loading…' : 'Refresh'}
-                  </button>
-                </div>
-                {auditRunsLoading && <div className="client-dash-muted">Loading audit logs…</div>}
-                {!auditRunsLoading && auditRuns.length === 0 && (
-                  <div className="client-dash-muted">No audit log runs yet</div>
-                )}
-                {!auditRunsLoading && auditRuns.length > 0 && (
-                  <div className="card-scroll">
-                    <div className="client-dash-table members members-extended">
-                      <div className="t-head" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
-                        <div>Run time</div>
-                        <div>Source</div>
-                        <div>Status</div>
-                        <div>Summary</div>
-                        <div>Request ID</div>
-                        <div>Triggered by</div>
-                        <div>Error</div>
-                      </div>
-                      <div className="t-body">
-                        {auditRuns.map((run) => {
-                          const summary = run?.summary || {};
-                          const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
-                          const summaryTitle = `due ${summary?.due || 0}, renewed ${summary?.renewed || 0}, deactivated ${summary?.deactivated || 0}, skipped ${skipped}, errors ${summary?.errors || 0}`;
-                          return (
-                            <div key={run.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
-                              <div>{run.started_at ? new Date(run.started_at).toLocaleString() : (run.created_at ? new Date(run.created_at).toLocaleString() : '—')}</div>
-                              <div>{run.trigger_source || '—'}</div>
-                              <div>{run.processed_ok === true ? 'success' : (run.processed_ok === false ? 'failed' : '—')}</div>
-                              <div className="muted" title={summaryTitle}>errors {summary?.errors || 0}</div>
-                              <div className="muted" title={run.request_id || undefined}>
-                                {run.request_id ? `.....${String(run.request_id).slice(-8)}` : '—'}
+              <>
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Audit Logs</h2>
+                    <button
+                      className="btn lilac client-dash-pill"
+                      onClick={refreshAuditRuns}
+                      disabled={auditRunsLoading}
+                    >
+                      {auditRunsLoading ? 'Loading…' : 'Refresh'}
+                    </button>
+                  </div>
+                  {auditRunsLoading && <div className="client-dash-muted">Loading audit logs…</div>}
+                  {!auditRunsLoading && auditRuns.length === 0 && (
+                    <div className="client-dash-muted">No audit log runs yet</div>
+                  )}
+                  {!auditRunsLoading && auditRuns.length > 0 && (
+                    <div className="card-scroll">
+                      <div className="client-dash-table members members-extended">
+                        <div className="t-head" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
+                          <div>Run time</div>
+                          <div>Source</div>
+                          <div>Status</div>
+                          <div>Summary</div>
+                          <div>Request ID</div>
+                          <div>Triggered by</div>
+                          <div>Error</div>
+                        </div>
+                        <div className="t-body">
+                          {auditRuns.map((run) => {
+                            const summary = run?.summary || {};
+                            const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
+                            const summaryTitle = `due ${summary?.due || 0}, renewed ${summary?.renewed || 0}, deactivated ${summary?.deactivated || 0}, skipped ${skipped}, errors ${summary?.errors || 0}`;
+                            return (
+                              <div key={run.id} className="t-row" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
+                                <div>{run.started_at ? new Date(run.started_at).toLocaleString() : (run.created_at ? new Date(run.created_at).toLocaleString() : '—')}</div>
+                                <div>{run.trigger_source || '—'}</div>
+                                <div>{run.processed_ok === true ? 'success' : (run.processed_ok === false ? 'failed' : '—')}</div>
+                                <div className="muted" title={summaryTitle}>errors {summary?.errors || 0}</div>
+                                <div className="muted" title={run.request_id || undefined}>
+                                  {run.request_id ? `.....${String(run.request_id).slice(-8)}` : '—'}
+                                </div>
+                                <div className="muted">{run.triggered_by_email || '—'}</div>
+                                <div className="muted">{run.error || '—'}</div>
                               </div>
-                              <div className="muted">{run.triggered_by_email || '—'}</div>
-                              <div className="muted">{run.error || '—'}</div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
+                  )}
+                </div>
+
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Billing Reconciliation</h2>
+                    <button
+                      className="btn lilac client-dash-pill"
+                      onClick={refreshBillingReconciliation}
+                      disabled={billingReconciliationLoading}
+                    >
+                      {billingReconciliationLoading ? 'Loading…' : 'Refresh'}
+                    </button>
                   </div>
-                )}
-              </div>
+                  {billingReconciliationLoading && <div className="client-dash-muted">Loading billing reconciliation…</div>}
+                  {!billingReconciliationLoading && billingReconciliationItems.length === 0 && (
+                    <div className="client-dash-muted">No billing mismatches found</div>
+                  )}
+                  {!billingReconciliationLoading && billingReconciliationItems.length > 0 && (
+                    <div className="card-scroll">
+                      <div className="client-dash-table members members-extended">
+                        <div className="t-head" style={{ gridTemplateColumns: '1.6fr 0.9fr 0.9fr 0.9fr 1.1fr 1.6fr' }}>
+                          <div>Client</div>
+                          <div>App status</div>
+                          <div>Stripe status</div>
+                          <div>Cancel at term end</div>
+                          <div>Contract end</div>
+                          <div>Reason</div>
+                        </div>
+                        <div className="t-body">
+                          {billingReconciliationItems.map((item) => (
+                            <div key={`${item.id}-${item.reason}`} className="t-row" style={{ gridTemplateColumns: '1.6fr 0.9fr 0.9fr 0.9fr 1.1fr 1.6fr' }}>
+                              <div>{item.name || '—'}</div>
+                              <div>{item.manual_active_override === true ? `${item.billing_status || '—'} (manual)` : (item.billing_status || '—')}</div>
+                              <div>{item.subscription_status || '—'}</div>
+                              <div>{item.cancel_at_term_end === true ? 'true' : 'false'}</div>
+                              <div>{item.contract_end_at ? new Date(item.contract_end_at).toLocaleString() : '—'}</div>
+                              <div className="muted">{item.reason || '—'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
 
             {activeTab === 'billing' && (
