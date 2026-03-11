@@ -112,6 +112,7 @@ function isLiveStripeSubscription(c) {
 }
 
 function canCancelContractNow(c) {
+  if (String(c?.billing_status || '').toLowerCase() === 'inactive') return false;
   return !!c?.stripe_subscription_id && isLiveStripeSubscription(c);
 }
 
@@ -960,7 +961,7 @@ export default function Admin() {
       const resp = await apiPost(`/admin/clients/${encodeURIComponent(cancelContractClientId)}/cancel-contract`, payload);
       const item = resp?.item || null;
       if (item?.id) {
-        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item, subscription_status: 'canceled' } : row)));
       } else {
         await refreshClients();
       }
@@ -1625,7 +1626,7 @@ export default function Admin() {
                                 <div className="muted">
                                   Current billing period ends: {formatShortDate(c.current_term_end)}
                                 </div>
-                                {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && (
+                                {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && String(c.billing_status || '').toLowerCase() !== 'inactive' && (
                                   <div className="muted">
                                     Contract: Will end at contract term
                                   </div>
