@@ -106,21 +106,9 @@ function isClientActivelySubscribed(c) {
   return subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
 }
 
-function canResumeClientSubscription(c) {
-  if (!c?.stripe_subscription_id) return false;
+function isLiveStripeSubscription(c) {
   const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
-  if (subscriptionStatus !== 'active' && subscriptionStatus !== 'trialing') return false;
-  if (c?.cancel_at_term_end === true) return true;
-  return String(c?.billing_status || '').toLowerCase() === 'inactive';
-}
-
-function canCancelAtContractEnd(c) {
-  const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
-  const liveSubscription = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
-  if (!liveSubscription) return false;
-  if (c?.auto_renew === false) return false;
-  if (c?.cancel_at_term_end === true) return false;
-  return true;
+  return subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
 }
 
 function formatShortDate(value) {
@@ -152,8 +140,6 @@ export default function Admin() {
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
-  const [clientResumeBusy, setClientResumeBusy] = useState({});
-  const [clientCancelContractEndBusy, setClientCancelContractEndBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
@@ -921,51 +907,16 @@ export default function Admin() {
     try {
       const resp = await apiPatch(`/admin/clients/${encodeURIComponent(clientId)}/auto-renew`, { auto_renew: nextValue });
       const updatedValue = typeof resp?.item?.auto_renew === 'boolean' ? resp.item.auto_renew : nextValue;
+      const updatedCancelAtTermEnd = typeof resp?.item?.cancel_at_term_end === 'boolean'
+        ? resp.item.cancel_at_term_end
+        : (updatedValue ? false : true);
       setClients((prev) => prev.map((item) => (
-        item.id === clientId ? { ...item, auto_renew: updatedValue } : item
+        item.id === clientId ? { ...item, auto_renew: updatedValue, cancel_at_term_end: updatedCancelAtTermEnd } : item
       )));
     } catch (e) {
       toast.error(e?.data?.detail || e?.message || 'Could not update auto-renew.', { duration: 1800 });
     } finally {
       setClientAutoRenewBusy((prev) => ({ ...prev, [clientId]: false }));
-    }
-  };
-
-  const resumeClientSubscription = async (clientId) => {
-    if (!clientId) return;
-    setClientResumeBusy((prev) => ({ ...prev, [clientId]: true }));
-    try {
-      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/resume-subscription`, {});
-      const item = resp?.item || null;
-      if (item?.id) {
-        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
-      } else {
-        await refreshClients();
-      }
-      toast.success('Subscription resumed.', { duration: 1600 });
-    } catch (e) {
-      toast.error(e?.data?.detail || e?.message || 'Could not resume subscription.', { duration: 2000 });
-    } finally {
-      setClientResumeBusy((prev) => ({ ...prev, [clientId]: false }));
-    }
-  };
-
-  const cancelAtContractEnd = async (clientId) => {
-    if (!clientId) return;
-    setClientCancelContractEndBusy((prev) => ({ ...prev, [clientId]: true }));
-    try {
-      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/cancel-at-contract-end`, {});
-      const item = resp?.item || null;
-      if (item?.id) {
-        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
-      } else {
-        await refreshClients();
-      }
-      toast.success('Set to cancel at contract end.', { duration: 1600 });
-    } catch (e) {
-      toast.error(e?.data?.detail || e?.message || 'Could not set contract-end cancellation.', { duration: 2000 });
-    } finally {
-      setClientCancelContractEndBusy((prev) => ({ ...prev, [clientId]: false }));
     }
   };
 
@@ -1633,33 +1584,9 @@ export default function Admin() {
                                 {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
                               </button>
                             )}
-                            {canResumeClientSubscription(c) && (
-                              <div style={{ marginTop: 6 }}>
-                                <button
-                                  className="btn lilac client-dash-pill"
-                                  onClick={() => resumeClientSubscription(c.id)}
-                                  disabled={!!clientResumeBusy[c.id]}
-                                  style={{ padding: '6px 10px' }}
-                                >
-                                  {clientResumeBusy[c.id] ? 'Resuming…' : 'Resume Subscription'}
-                                </button>
-                              </div>
-                            )}
-                            {canCancelAtContractEnd(c) && (
-                              <div style={{ marginTop: 6 }}>
-                                <button
-                                  className="btn lilac client-dash-pill"
-                                  onClick={() => cancelAtContractEnd(c.id)}
-                                  disabled={!!clientCancelContractEndBusy[c.id]}
-                                  style={{ padding: '6px 10px' }}
-                                >
-                                  {clientCancelContractEndBusy[c.id] ? 'Saving…' : 'Cancel at Contract End'}
-                                </button>
-                              </div>
-                            )}
                           </div>
                           <div className="muted">
-                            {isClientActivelySubscribed(c) ? (
+                            {isLiveStripeSubscription(c) ? (
                               <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }} title="Auto-Renew">
                                 <input
                                   type="checkbox"
