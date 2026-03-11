@@ -111,6 +111,10 @@ function isLiveStripeSubscription(c) {
   return subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
 }
 
+function canCancelContractNow(c) {
+  return !!c?.stripe_subscription_id && isLiveStripeSubscription(c);
+}
+
 function formatShortDate(value) {
   if (!value) return '—';
   const d = new Date(value);
@@ -204,6 +208,12 @@ export default function Admin() {
   const [auditRunsLoading, setAuditRunsLoading] = useState(false);
   const [billingReconciliationItems, setBillingReconciliationItems] = useState([]);
   const [billingReconciliationLoading, setBillingReconciliationLoading] = useState(false);
+  const [cancelContractModalOpen, setCancelContractModalOpen] = useState(false);
+  const [cancelContractClientId, setCancelContractClientId] = useState('');
+  const [cancelContractClientName, setCancelContractClientName] = useState('');
+  const [cancelContractFinalInvoiceAmount, setCancelContractFinalInvoiceAmount] = useState('');
+  const [cancelContractNote, setCancelContractNote] = useState('');
+  const [cancelContractSubmitBusy, setCancelContractSubmitBusy] = useState(false);
 
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
@@ -920,6 +930,53 @@ export default function Admin() {
     }
   };
 
+  const openCancelContractModal = (client) => {
+    setCancelContractClientId(client?.id || '');
+    setCancelContractClientName(client?.name || '');
+    setCancelContractFinalInvoiceAmount('');
+    setCancelContractNote('');
+    setCancelContractSubmitBusy(false);
+    setCancelContractModalOpen(true);
+  };
+
+  const closeCancelContractModal = () => {
+    if (cancelContractSubmitBusy) return;
+    setCancelContractModalOpen(false);
+    setCancelContractClientId('');
+    setCancelContractClientName('');
+    setCancelContractFinalInvoiceAmount('');
+    setCancelContractNote('');
+  };
+
+  const confirmCancelContract = async () => {
+    if (!cancelContractClientId) return;
+    setCancelContractSubmitBusy(true);
+    try {
+      const payload = {};
+      const amountRaw = String(cancelContractFinalInvoiceAmount || '').trim();
+      if (amountRaw) payload.final_invoice_amount = amountRaw;
+      const noteRaw = String(cancelContractNote || '').trim();
+      if (noteRaw) payload.note = noteRaw;
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(cancelContractClientId)}/cancel-contract`, payload);
+      const item = resp?.item || null;
+      if (item?.id) {
+        setClients((prev) => prev.map((row) => (row.id === item.id ? { ...row, ...item } : row)));
+      } else {
+        await refreshClients();
+      }
+      setCancelContractSubmitBusy(false);
+      setCancelContractModalOpen(false);
+      setCancelContractClientId('');
+      setCancelContractClientName('');
+      setCancelContractFinalInvoiceAmount('');
+      setCancelContractNote('');
+      toast.success('Contract canceled.', { duration: 1800 });
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not cancel contract.', { duration: 2200 });
+      setCancelContractSubmitBusy(false);
+    }
+  };
+
   const processRenewals = async () => {
     setProcessRenewalsBusy(true);
     try {
@@ -1576,6 +1633,18 @@ export default function Admin() {
                                 {String(c.billing_interval || '').toLowerCase() === 'annual' && c.cancel_at_term_end === true && (
                                   <div className="muted">
                                     Stripe: cancellation at billing period end
+                                  </div>
+                                )}
+                                {canCancelContractNow(c) && (
+                                  <div style={{ marginTop: 8 }}>
+                                    <button
+                                      className="btn lilac client-dash-pill"
+                                      onClick={() => openCancelContractModal(c)}
+                                      disabled={cancelContractSubmitBusy && cancelContractClientId === c.id}
+                                      style={{ padding: '6px 10px' }}
+                                    >
+                                      {cancelContractSubmitBusy && cancelContractClientId === c.id ? 'Canceling…' : 'Cancel Contract'}
+                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -2462,6 +2531,60 @@ export default function Admin() {
             <div className="rubric-modal-actions">
               <button type="button" className="btn lilac client-dash-pill" onClick={closeRubricModal}>
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cancelContractModalOpen && (
+        <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
+          <div className="rubric-modal-card" style={{ maxWidth: 560 }}>
+            <div className="rubric-modal-head">
+              <h2>Cancel Contract</h2>
+            </div>
+            <div className="rubric-modal-body">
+              <div className="muted" style={{ marginBottom: 8 }}>{cancelContractClientName || 'Client'}</div>
+              <p style={{ marginTop: 0 }}>
+                <strong>Contract ends immediately. App access turns off immediately. Stripe subscription is canceled immediately. This action is permanent.</strong>
+              </p>
+              <label style={{ display: 'block', marginBottom: 6 }}>Final invoice amount</label>
+              <input
+                className="alpha-input client-dash-input"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Optional"
+                value={cancelContractFinalInvoiceAmount}
+                onChange={(e) => setCancelContractFinalInvoiceAmount(e.target.value)}
+                disabled={cancelContractSubmitBusy}
+              />
+              <label style={{ display: 'block', marginTop: 10, marginBottom: 6 }}>Note</label>
+              <textarea
+                className="alpha-input"
+                rows={3}
+                placeholder="Optional"
+                value={cancelContractNote}
+                onChange={(e) => setCancelContractNote(e.target.value)}
+                disabled={cancelContractSubmitBusy}
+              />
+            </div>
+            <div className="rubric-modal-actions">
+              <button
+                type="button"
+                className="btn lilac client-dash-pill"
+                onClick={closeCancelContractModal}
+                disabled={cancelContractSubmitBusy}
+              >
+                Keep Contract
+              </button>
+              <button
+                type="button"
+                className="btn lilac client-dash-pill"
+                onClick={confirmCancelContract}
+                disabled={cancelContractSubmitBusy}
+              >
+                {cancelContractSubmitBusy ? 'Canceling…' : 'Confirm Cancellation'}
               </button>
             </div>
           </div>
