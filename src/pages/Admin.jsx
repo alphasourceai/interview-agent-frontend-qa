@@ -90,7 +90,9 @@ const extractRubricQuestions = (rubric) => {
 function getClientBillingDisplay(c) {
   if (c?.manual_active_override === true) return 'active (manual)';
   const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
-  if (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') return 'active';
+  const activeForDisplay = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
+  if (activeForDisplay && c?.cancel_at_term_end === true) return 'active — canceling';
+  if (activeForDisplay) return 'active';
   if (c?.stripe_subscription_id || c?.subscription_status) return 'inactive';
   return 'inactive';
 }
@@ -1536,6 +1538,11 @@ export default function Admin() {
                                 <div className="muted">
                                   Current billing period ends: {formatShortDate(c.current_term_end)}
                                 </div>
+                                {c.cancel_at_term_end === true && (
+                                  <div className="muted">
+                                    Stripe cancellation: At billing period end
+                                  </div>
+                                )}
                               </div>
                             ) : (
                               <button
