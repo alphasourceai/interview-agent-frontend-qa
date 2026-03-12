@@ -88,7 +88,6 @@ const extractRubricQuestions = (rubric) => {
 };
 
 function getClientBillingDisplay(c) {
-  if (c?.manual_active_override === true) return 'active (manual)';
   const billingStatus = String(c?.billing_status || '').toLowerCase();
   const subscriptionStatus = String(c?.subscription_status || '').toLowerCase();
   const activeForDisplay = subscriptionStatus === 'active' || subscriptionStatus === 'trialing';
@@ -1688,9 +1687,12 @@ export default function Admin() {
                                     <div><strong>Subscription details</strong></div>
                                     {isClientActivelySubscribed(c) ? (
                                       <div>
-                                        <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
+                                        <div><strong>Billing status:</strong> {getClientBillingDisplay(c)}</div>
                                         <div className="muted">
-                                          Billing: {
+                                          Stripe subscription: {c.subscription_status || '—'}
+                                        </div>
+                                        <div className="muted">
+                                          Billing cycle: {
                                             c.billing_interval === 'annual'
                                               ? 'Annual'
                                               : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
@@ -1701,6 +1703,9 @@ export default function Admin() {
                                         </div>
                                         <div className="muted">
                                           Current billing period ends: {formatShortDate(c.current_term_end)}
+                                        </div>
+                                        <div className="muted">
+                                          Renewal: {c.auto_renew === true ? 'Auto-renew on' : 'Auto-renew off'}
                                         </div>
                                         {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && String(c.billing_status || '').toLowerCase() !== 'inactive' && (
                                           <div className="muted">
@@ -1715,7 +1720,26 @@ export default function Admin() {
                                       </div>
                                     ) : (
                                       <div>
-                                        <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
+                                        <div><strong>Billing status:</strong> {getClientBillingDisplay(c)}</div>
+                                        <div className="muted">
+                                          Stripe subscription: {c.subscription_status || '—'}
+                                        </div>
+                                        <div className="muted">
+                                          Billing cycle: {
+                                            c.billing_interval === 'annual'
+                                              ? 'Annual'
+                                              : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
+                                          }
+                                        </div>
+                                        <div className="muted">
+                                          Contract: {formatShortDate(c.contract_start_at)} – {formatShortDate(c.contract_end_at)}
+                                        </div>
+                                        <div className="muted">
+                                          Current billing period ends: {formatShortDate(c.current_term_end)}
+                                        </div>
+                                        <div className="muted">
+                                          Renewal: {c.auto_renew === true ? 'Auto-renew on' : 'Auto-renew off'}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
