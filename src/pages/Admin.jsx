@@ -215,6 +215,8 @@ export default function Admin() {
   const [accommodationSending, setAccommodationSending] = useState({});
   const [auditRuns, setAuditRuns] = useState([]);
   const [auditRunsLoading, setAuditRunsLoading] = useState(false);
+  const [contractCancellationRuns, setContractCancellationRuns] = useState([]);
+  const [contractCancellationRunsLoading, setContractCancellationRunsLoading] = useState(false);
   const [billingReconciliationItems, setBillingReconciliationItems] = useState([]);
   const [billingReconciliationLoading, setBillingReconciliationLoading] = useState(false);
   const [cancelContractModalOpen, setCancelContractModalOpen] = useState(false);
@@ -682,6 +684,22 @@ export default function Admin() {
     }
   }
 
+  async function refreshContractCancellationRuns() {
+    if (!isAdmin) return;
+    setContractCancellationRunsLoading(true);
+    try {
+      const resp = await apiGet('/admin/audit/contract-cancellation-runs');
+      setContractCancellationRuns(resp?.items || []);
+    } catch (e) {
+      console.warn('[audit-logs/contract-cancellations] fetch failed', e?.message || e);
+      toast.error('Could not load contract cancellation runs', { duration: 1500 });
+    } finally {
+      setContractCancellationRunsLoading(false);
+      postEmbedSize();
+      setTimeout(postEmbedSize, 300);
+    }
+  }
+
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -723,6 +741,7 @@ export default function Admin() {
     if (activeTab !== 'audit-logs') return;
     refreshAuditRuns();
     refreshBillingReconciliation();
+    refreshContractCancellationRuns();
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
@@ -2352,6 +2371,55 @@ export default function Admin() {
                               <div>{item.cancel_at_term_end === true ? 'true' : 'false'}</div>
                               <div>{item.contract_end_at ? new Date(item.contract_end_at).toLocaleString() : '—'}</div>
                               <div className="muted">{item.reason || '—'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="client-dash-card">
+                  <div className="client-dash-section-head">
+                    <h2>Contract Cancellation Runs</h2>
+                    <button
+                      className="btn lilac client-dash-pill"
+                      onClick={refreshContractCancellationRuns}
+                      disabled={contractCancellationRunsLoading}
+                    >
+                      {contractCancellationRunsLoading ? 'Loading…' : 'Refresh'}
+                    </button>
+                  </div>
+                  {contractCancellationRunsLoading && <div className="client-dash-muted">Loading contract cancellation runs…</div>}
+                  {!contractCancellationRunsLoading && contractCancellationRuns.length === 0 && (
+                    <div className="client-dash-muted">No contract cancellation runs yet</div>
+                  )}
+                  {!contractCancellationRunsLoading && contractCancellationRuns.length > 0 && (
+                    <div className="card-scroll">
+                      <div className="client-dash-table members members-extended">
+                        <div className="t-head" style={{ gridTemplateColumns: '1.2fr 0.8fr 1fr 1fr 1fr 0.9fr 1fr 1.2fr 1.2fr' }}>
+                          <div>Client</div>
+                          <div>Status</div>
+                          <div>Triggered by</div>
+                          <div>Started</div>
+                          <div>Completed</div>
+                          <div>Final invoice</div>
+                          <div>Stripe invoice</div>
+                          <div>Note</div>
+                          <div>Error</div>
+                        </div>
+                        <div className="t-body">
+                          {contractCancellationRuns.map((run) => (
+                            <div key={run.id} className="t-row" style={{ gridTemplateColumns: '1.2fr 0.8fr 1fr 1fr 1fr 0.9fr 1fr 1.2fr 1.2fr' }}>
+                              <div>{run.client_name || '—'}</div>
+                              <div>{run.status || '—'}</div>
+                              <div className="muted">{run.triggered_by_email || '—'}</div>
+                              <div className="muted">{run.started_at ? new Date(run.started_at).toLocaleString() : '—'}</div>
+                              <div className="muted">{run.completed_at ? new Date(run.completed_at).toLocaleString() : '—'}</div>
+                              <div className="muted">{run.final_invoice_amount != null ? String(run.final_invoice_amount) : '—'}</div>
+                              <div className="muted">{run.stripe_invoice_id || '—'}</div>
+                              <div className="muted">{run.note || '—'}</div>
+                              <div className="muted">{run.error || '—'}</div>
                             </div>
                           ))}
                         </div>
