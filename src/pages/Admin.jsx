@@ -1655,14 +1655,7 @@ export default function Admin() {
                                     }
                                   </div>
                                 ) : (
-                                  <select
-                                    className="alpha-input alpha-select client-dash-input"
-                                    value={clientCheckoutCycles[c.id] || 'monthly'}
-                                    onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
-                                  >
-                                    <option value="monthly">Monthly</option>
-                                    <option value="annual">Annual</option>
-                                  </select>
+                                  <div className="muted">—</div>
                                 )}
                               </div>
                               <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
@@ -1728,14 +1721,25 @@ export default function Admin() {
                                   </div>
                                   <div>
                                     {!isClientActivelySubscribed(c) && (
-                                      <button
-                                        className="btn lilac client-dash-pill"
-                                        onClick={() => startSubscriptionCheckout(c.id)}
-                                        disabled={!!clientCheckoutBusy[c.id]}
-                                        style={{ padding: '6px 10px' }}
-                                      >
-                                        {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
-                                      </button>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <select
+                                          className="alpha-input alpha-select client-dash-input"
+                                          value={clientCheckoutCycles[c.id] || 'monthly'}
+                                          onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
+                                          style={{ maxWidth: 140 }}
+                                        >
+                                          <option value="monthly">Monthly</option>
+                                          <option value="annual">Annual</option>
+                                        </select>
+                                        <button
+                                          className="btn lilac client-dash-pill"
+                                          onClick={() => startSubscriptionCheckout(c.id)}
+                                          disabled={!!clientCheckoutBusy[c.id]}
+                                          style={{ padding: '6px 10px' }}
+                                        >
+                                          {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
+                                        </button>
+                                      </div>
                                     )}
                                     {canCancelContractNow(c) && (
                                       <div style={{ marginTop: 8 }}>
@@ -1758,6 +1762,7 @@ export default function Admin() {
                                         value={String(c.access_override_mode || 'inherit').toLowerCase()}
                                         onChange={(e) => { void updateClientAccessOverride(c.id, e.target.value); }}
                                         disabled={!!clientAccessOverrideBusy[c.id]}
+                                        style={{ maxWidth: 180 }}
                                       >
                                         <option value="inherit">Inherit</option>
                                         <option value="force_active">Force Active</option>
