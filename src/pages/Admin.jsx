@@ -1616,8 +1616,8 @@ export default function Admin() {
                   </select>
                   <button className="btn lilac client-dash-pill" onClick={createClient}>Create</button>
                 </div>
-                <div className="card-scroll">
-                  <div className="client-dash-table clients-billing">
+                <div className="card-scroll" style={{ overflowY: 'visible', maxHeight: 'none' }}>
+                  <div className="client-dash-table clients-billing" style={{ overflowY: 'visible', maxHeight: 'none' }}>
                     <div className="t-head" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr' }}>
                       <div>Name</div>
                       <div>Plan tier</div>
