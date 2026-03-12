@@ -171,6 +171,7 @@ export default function Admin() {
   const [candidatesMessage, setCandidatesMessage] = useState('');
   const [candidateRoleFilter, setCandidateRoleFilter] = useState('');
   const [expandedCandidateId, setExpandedCandidateId] = useState(null);
+  const [expandedClientId, setExpandedClientId] = useState(null);
   const [candidateReportGenerating, setCandidateReportGenerating] = useState({});
   const [expandedRoleConfigId, setExpandedRoleConfigId] = useState(null);
   const [roleConfigs, setRoleConfigs] = useState({});
@@ -1617,132 +1618,159 @@ export default function Admin() {
                 </div>
                 <div className="card-scroll">
                   <div className="client-dash-table clients-billing">
-                    <div className="t-head">
+                    <div className="t-head" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr' }}>
                       <div>Name</div>
                       <div>Plan tier</div>
                       <div>Billing status</div>
                       <div>Billing cycle</div>
-                      <div>Subscription</div>
                       <div>Auto-Renew</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
-                      {clients.map(c => (
-                        <div key={c.id} className="t-row">
-                          <div className="grow">
-                            <div className="title">{c.name}</div>
-                            <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
-                          </div>
-                          <div className="muted">{c.plan_tier || 'basic'}</div>
-                          <div className="muted">{getClientBillingDisplay(c)}</div>
-                          <div>
-                            {isClientActivelySubscribed(c) ? (
-                              <div className="muted">
-                                {
-                                  c.billing_interval === 'annual'
-                                    ? 'Annual'
-                                    : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
-                                }
+                      {clients.map(c => {
+                        const expanded = expandedClientId === c.id;
+                        return (
+                          <React.Fragment key={c.id}>
+                            <div className="t-row" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr' }}>
+                              <div className="grow">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <button className="btn-icon" onClick={() => setExpandedClientId(expanded ? null : c.id)} title={expanded ? 'Collapse' : 'Expand'}>
+                                    <span style={{ color: '#fff', fontSize: 14 }}>{expanded ? '▾' : '▸'}</span>
+                                  </button>
+                                  <div>
+                                    <div className="title">{c.name}</div>
+                                    <div className="sub">Created {new Date(c.created_at).toLocaleString()}</div>
+                                  </div>
+                                </div>
                               </div>
-                            ) : (
-                              <select
-                                className="alpha-input alpha-select client-dash-input"
-                                value={clientCheckoutCycles[c.id] || 'monthly'}
-                                onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
-                              >
-                                <option value="monthly">Monthly</option>
-                                <option value="annual">Annual</option>
-                              </select>
-                            )}
-                          </div>
-                          <div>
-                            {isClientActivelySubscribed(c) ? (
-                              <div>
-                                <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
-                                <div className="muted">
-                                  Billing: {
-                                    c.billing_interval === 'annual'
-                                      ? 'Annual'
-                                      : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
-                                  }
-                                </div>
-                                <div className="muted">
-                                  Contract: {formatShortDate(c.contract_start_at)} – {formatShortDate(c.contract_end_at)}
-                                </div>
-                                <div className="muted">
-                                  Current billing period ends: {formatShortDate(c.current_term_end)}
-                                </div>
-                                {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && String(c.billing_status || '').toLowerCase() !== 'inactive' && (
+                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{c.plan_tier || 'basic'}</div>
+                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{getClientBillingDisplay(c)}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                {isClientActivelySubscribed(c) ? (
                                   <div className="muted">
-                                    Contract: Will end at contract term
+                                    {
+                                      c.billing_interval === 'annual'
+                                        ? 'Annual'
+                                        : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
+                                    }
                                   </div>
-                                )}
-                                {String(c.billing_interval || '').toLowerCase() === 'annual' && c.cancel_at_term_end === true && (
-                                  <div className="muted">
-                                    Stripe: cancellation at billing period end
-                                  </div>
-                                )}
-                                {canCancelContractNow(c) && (
-                                  <div style={{ marginTop: 8 }}>
-                                    <button
-                                      className="btn lilac client-dash-pill"
-                                      onClick={() => openCancelContractModal(c)}
-                                      disabled={cancelContractSubmitBusy && cancelContractClientId === c.id}
-                                      style={{ padding: '6px 10px' }}
-                                    >
-                                      {cancelContractSubmitBusy && cancelContractClientId === c.id ? 'Canceling…' : 'Cancel Contract'}
-                                    </button>
-                                  </div>
+                                ) : (
+                                  <select
+                                    className="alpha-input alpha-select client-dash-input"
+                                    value={clientCheckoutCycles[c.id] || 'monthly'}
+                                    onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
+                                  >
+                                    <option value="monthly">Monthly</option>
+                                    <option value="annual">Annual</option>
+                                  </select>
                                 )}
                               </div>
-                            ) : (
-                              <button
-                                className="btn lilac client-dash-pill"
-                                onClick={() => startSubscriptionCheckout(c.id)}
-                                disabled={!!clientCheckoutBusy[c.id]}
-                                style={{ padding: '6px 10px' }}
-                              >
-                                {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
-                              </button>
+                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                {isLiveStripeSubscription(c) ? (
+                                  <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }} title="Auto-Renew">
+                                    <input
+                                      type="checkbox"
+                                      checked={c.auto_renew === true}
+                                      disabled={!!clientAutoRenewBusy[c.id]}
+                                      aria-label="Auto-Renew"
+                                      title="Auto-Renew"
+                                      style={{ width: 18, height: 18, accentColor: '#9CA3AF' }}
+                                      onChange={(e) => { void updateClientAutoRenew(c.id, e.target.checked); }}
+                                    />
+                                  </label>
+                                ) : (
+                                  <div style={{ width: '100%', textAlign: 'center' }}>—</div>
+                                )}
+                              </div>
+                              <div className="center" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
+                                  <IconTrash size={24} />
+                                </button>
+                              </div>
+                            </div>
+                            {expanded && (
+                              <div className="t-row" style={{ gridTemplateColumns: '1fr', background: 'rgba(15,23,42,0.45)' }}>
+                                <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(280px,1.3fr) minmax(240px,1fr)' }}>
+                                  <div>
+                                    <div><strong>Subscription details</strong></div>
+                                    {isClientActivelySubscribed(c) ? (
+                                      <div>
+                                        <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
+                                        <div className="muted">
+                                          Billing: {
+                                            c.billing_interval === 'annual'
+                                              ? 'Annual'
+                                              : (c.billing_interval === 'monthly' ? 'Monthly' : '—')
+                                          }
+                                        </div>
+                                        <div className="muted">
+                                          Contract: {formatShortDate(c.contract_start_at)} – {formatShortDate(c.contract_end_at)}
+                                        </div>
+                                        <div className="muted">
+                                          Current billing period ends: {formatShortDate(c.current_term_end)}
+                                        </div>
+                                        {String(c.billing_interval || '').toLowerCase() === 'monthly' && c.auto_renew === false && String(c.billing_status || '').toLowerCase() !== 'inactive' && (
+                                          <div className="muted">
+                                            Contract: Will end at contract term
+                                          </div>
+                                        )}
+                                        {String(c.billing_interval || '').toLowerCase() === 'annual' && c.cancel_at_term_end === true && (
+                                          <div className="muted">
+                                            Stripe: cancellation at billing period end
+                                          </div>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div><strong>Status:</strong> {getClientBillingDisplay(c)}</div>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div>
+                                    {!isClientActivelySubscribed(c) && (
+                                      <button
+                                        className="btn lilac client-dash-pill"
+                                        onClick={() => startSubscriptionCheckout(c.id)}
+                                        disabled={!!clientCheckoutBusy[c.id]}
+                                        style={{ padding: '6px 10px' }}
+                                      >
+                                        {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
+                                      </button>
+                                    )}
+                                    {canCancelContractNow(c) && (
+                                      <div style={{ marginTop: 8 }}>
+                                        <button
+                                          className="btn lilac client-dash-pill"
+                                          onClick={() => openCancelContractModal(c)}
+                                          disabled={cancelContractSubmitBusy && cancelContractClientId === c.id}
+                                          style={{ padding: '6px 10px' }}
+                                        >
+                                          {cancelContractSubmitBusy && cancelContractClientId === c.id ? 'Canceling…' : 'Cancel Contract'}
+                                        </button>
+                                      </div>
+                                    )}
+                                    <div className="muted" style={{ marginTop: 8 }}>
+                                      Access override: {getAccessOverrideModeLabel(c.access_override_mode)}
+                                    </div>
+                                    <div style={{ marginTop: 8 }}>
+                                      <select
+                                        className="alpha-input alpha-select client-dash-input"
+                                        value={String(c.access_override_mode || 'inherit').toLowerCase()}
+                                        onChange={(e) => { void updateClientAccessOverride(c.id, e.target.value); }}
+                                        disabled={!!clientAccessOverrideBusy[c.id]}
+                                      >
+                                        <option value="inherit">Inherit</option>
+                                        <option value="force_active">Force Active</option>
+                                        <option value="force_inactive">Force Inactive</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             )}
-                            <div className="muted" style={{ marginTop: 6 }}>
-                              Access override: {getAccessOverrideModeLabel(c.access_override_mode)}
-                            </div>
-                            <div style={{ marginTop: 8 }}>
-                              <select
-                                className="alpha-input alpha-select client-dash-input"
-                                value={String(c.access_override_mode || 'inherit').toLowerCase()}
-                                onChange={(e) => { void updateClientAccessOverride(c.id, e.target.value); }}
-                                disabled={!!clientAccessOverrideBusy[c.id]}
-                              >
-                                <option value="inherit">Inherit</option>
-                                <option value="force_active">Force Active</option>
-                                <option value="force_inactive">Force Inactive</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="muted">
-                            {isLiveStripeSubscription(c) ? (
-                              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }} title="Auto-Renew">
-                                <input
-                                  type="checkbox"
-                                  checked={c.auto_renew === true}
-                                  disabled={!!clientAutoRenewBusy[c.id]}
-                                  aria-label="Auto-Renew"
-                                  title="Auto-Renew"
-                                  style={{ width: 18, height: 18, accentColor: '#9CA3AF' }}
-                                  onChange={(e) => { void updateClientAutoRenew(c.id, e.target.checked); }}
-                                />
-                              </label>
-                            ) : '—'}
-                          </div>
-                          <div className="center">
-                            <button className="btn-icon" onClick={() => setConfirmClient({ open: true, id: c.id })} title="Delete client">
-                              <IconTrash size={24} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                          </React.Fragment>
+                        );
+                      })}
                       {clients.length === 0 && <div className="t-empty muted">No clients yet</div>}
                     </div>
                   </div>
