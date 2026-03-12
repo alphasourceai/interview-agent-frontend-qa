@@ -152,6 +152,11 @@ export default function Admin() {
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
   const [clientAccessOverrideBusy, setClientAccessOverrideBusy] = useState({});
+  const [clientInvoicePlanTiers, setClientInvoicePlanTiers] = useState({});
+  const [clientInvoiceIntervals, setClientInvoiceIntervals] = useState({});
+  const [clientInvoicePlatformFees, setClientInvoicePlatformFees] = useState({});
+  const [clientInvoicePerRoleFees, setClientInvoicePerRoleFees] = useState({});
+  const [clientSubscriptionInvoiceBusy, setClientSubscriptionInvoiceBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
@@ -977,6 +982,31 @@ export default function Admin() {
     }
   };
 
+  const sendClientSubscriptionInvoice = async (clientId, fallbackPlanTier, fallbackBillingInterval) => {
+    if (!clientId) return;
+    const plan_tier = String(clientInvoicePlanTiers[clientId] || fallbackPlanTier || 'basic').toLowerCase();
+    const billing_interval = String(clientInvoiceIntervals[clientId] || fallbackBillingInterval || 'monthly').toLowerCase() === 'annual' ? 'annual' : 'monthly';
+    const payload = { plan_tier, billing_interval };
+    if (plan_tier === 'enterprise') {
+      payload.platform_fee = String(clientInvoicePlatformFees[clientId] ?? '').trim();
+      payload.per_role_fee = String(clientInvoicePerRoleFees[clientId] ?? '').trim();
+    }
+
+    setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/subscription-invoice`, payload);
+      const hostedUrl = resp?.invoice?.hosted_invoice_url || null;
+      if (hostedUrl) {
+        try { window.open(hostedUrl, '_blank', 'noopener,noreferrer'); } catch {}
+      }
+      toast.success('Invoice sent.', { duration: 1600 });
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not send invoice.', { duration: 2000 });
+    } finally {
+      setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const openCancelContractModal = (client) => {
     setCancelContractClientId(client?.id || '');
     setCancelContractClientName(client?.name || '');
@@ -1628,6 +1658,16 @@ export default function Admin() {
                     <div className="t-body">
                       {clients.map(c => {
                         const expanded = expandedClientId === c.id;
+                        const invoicePlanTier = String(
+                          clientInvoicePlanTiers[c.id] ||
+                          (['basic', 'pro', 'enterprise'].includes(String(c.plan_tier || '').toLowerCase())
+                            ? String(c.plan_tier || '').toLowerCase()
+                            : 'basic')
+                        ).toLowerCase();
+                        const invoiceBillingInterval = String(
+                          clientInvoiceIntervals[c.id] ||
+                          (String(c.billing_interval || '').toLowerCase() === 'annual' ? 'annual' : 'monthly')
+                        ).toLowerCase() === 'annual' ? 'annual' : 'monthly';
                         return (
                           <React.Fragment key={c.id}>
                             <div className="t-row" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr' }}>
@@ -1792,6 +1832,68 @@ export default function Admin() {
                                         <option value="force_active">Force Active</option>
                                         <option value="force_inactive">Force Inactive</option>
                                       </select>
+                                    </div>
+                                    <div style={{ marginTop: 12 }}>
+                                      <div><strong>Subscription Invoice</strong></div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                                        <select
+                                          className="alpha-input alpha-select client-dash-input"
+                                          value={invoicePlanTier}
+                                          onChange={(e) => setClientInvoicePlanTiers((prev) => ({ ...prev, [c.id]: String(e.target.value || 'basic').toLowerCase() }))}
+                                          disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                          style={{ maxWidth: 130 }}
+                                        >
+                                          <option value="basic">Basic</option>
+                                          <option value="pro">Pro</option>
+                                          <option value="enterprise">Enterprise</option>
+                                        </select>
+                                        <select
+                                          className="alpha-input alpha-select client-dash-input"
+                                          value={invoiceBillingInterval}
+                                          onChange={(e) => setClientInvoiceIntervals((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
+                                          disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                          style={{ maxWidth: 130 }}
+                                        >
+                                          <option value="monthly">Monthly</option>
+                                          <option value="annual">Annual</option>
+                                        </select>
+                                      </div>
+                                      {invoicePlanTier === 'enterprise' && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                                          <input
+                                            className="alpha-input client-dash-input"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Platform fee"
+                                            value={clientInvoicePlatformFees[c.id] ?? ''}
+                                            onChange={(e) => setClientInvoicePlatformFees((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                            disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                            style={{ maxWidth: 130 }}
+                                          />
+                                          <input
+                                            className="alpha-input client-dash-input"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            placeholder="Per-role fee"
+                                            value={clientInvoicePerRoleFees[c.id] ?? ''}
+                                            onChange={(e) => setClientInvoicePerRoleFees((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                            disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                            style={{ maxWidth: 130 }}
+                                          />
+                                        </div>
+                                      )}
+                                      <div style={{ marginTop: 8 }}>
+                                        <button
+                                          className="btn lilac client-dash-pill"
+                                          onClick={() => sendClientSubscriptionInvoice(c.id, c.plan_tier, c.billing_interval)}
+                                          disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                          style={{ padding: '6px 10px' }}
+                                        >
+                                          {clientSubscriptionInvoiceBusy[c.id] ? 'Sending…' : 'Send Invoice'}
+                                        </button>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
