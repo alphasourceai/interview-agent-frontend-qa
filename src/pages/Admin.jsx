@@ -145,6 +145,7 @@ export default function Admin() {
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
   const [clientAutoRenewBusy, setClientAutoRenewBusy] = useState({});
+  const [clientAccessOverrideBusy, setClientAccessOverrideBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
   const [roles, setRoles] = useState([]);
@@ -931,6 +932,25 @@ export default function Admin() {
     }
   };
 
+  const updateClientAccessOverride = async (clientId, nextMode) => {
+    if (!clientId) return;
+    const normalizedMode = String(nextMode || '').toLowerCase();
+    if (!['inherit', 'force_active', 'force_inactive'].includes(normalizedMode)) return;
+    setClientAccessOverrideBusy((prev) => ({ ...prev, [clientId]: true }));
+    try {
+      const resp = await apiPatch(`/admin/clients/${encodeURIComponent(clientId)}/access-override`, { access_override_mode: normalizedMode });
+      const updatedMode = String(resp?.item?.access_override_mode || normalizedMode).toLowerCase();
+      setClients((prev) => prev.map((item) => (
+        item.id === clientId ? { ...item, access_override_mode: updatedMode } : item
+      )));
+      toast.success('Access override updated.', { duration: 1400 });
+    } catch (e) {
+      toast.error(e?.data?.detail || e?.message || 'Could not update access override.', { duration: 2000 });
+    } finally {
+      setClientAccessOverrideBusy((prev) => ({ ...prev, [clientId]: false }));
+    }
+  };
+
   const openCancelContractModal = (client) => {
     setCancelContractClientId(client?.id || '');
     setCancelContractClientName(client?.name || '');
@@ -1659,6 +1679,18 @@ export default function Admin() {
                                 {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
                               </button>
                             )}
+                            <div style={{ marginTop: 8 }}>
+                              <select
+                                className="alpha-input alpha-select client-dash-input"
+                                value={String(c.access_override_mode || 'inherit').toLowerCase()}
+                                onChange={(e) => { void updateClientAccessOverride(c.id, e.target.value); }}
+                                disabled={!!clientAccessOverrideBusy[c.id]}
+                              >
+                                <option value="inherit">Inherit</option>
+                                <option value="force_active">Force Active</option>
+                                <option value="force_inactive">Force Inactive</option>
+                              </select>
+                            </div>
                           </div>
                           <div className="muted">
                             {isLiveStripeSubscription(c) ? (
