@@ -123,6 +123,13 @@ function formatShortDate(value) {
   return d.toLocaleDateString();
 }
 
+function getAccessOverrideModeLabel(value) {
+  const mode = String(value || 'inherit').toLowerCase();
+  if (mode === 'force_active') return 'Force Active';
+  if (mode === 'force_inactive') return 'Force Inactive';
+  return 'Inherit';
+}
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -1679,6 +1686,9 @@ export default function Admin() {
                                 {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
                               </button>
                             )}
+                            <div className="muted" style={{ marginTop: 6 }}>
+                              Access override: {getAccessOverrideModeLabel(c.access_override_mode)}
+                            </div>
                             <div style={{ marginTop: 8 }}>
                               <select
                                 className="alpha-input alpha-select client-dash-input"
@@ -2323,9 +2333,10 @@ export default function Admin() {
                   {!billingReconciliationLoading && billingReconciliationItems.length > 0 && (
                     <div className="card-scroll">
                       <div className="client-dash-table members members-extended">
-                        <div className="t-head" style={{ gridTemplateColumns: '1.6fr 0.9fr 0.9fr 0.9fr 1.1fr 1.6fr' }}>
+                        <div className="t-head" style={{ gridTemplateColumns: '1.5fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 1.5fr' }}>
                           <div>Client</div>
                           <div>App status</div>
+                          <div>Access override</div>
                           <div>Stripe status</div>
                           <div>Cancel at term end</div>
                           <div>Contract end</div>
@@ -2333,9 +2344,10 @@ export default function Admin() {
                         </div>
                         <div className="t-body">
                           {billingReconciliationItems.map((item) => (
-                            <div key={`${item.id}-${item.reason}`} className="t-row" style={{ gridTemplateColumns: '1.6fr 0.9fr 0.9fr 0.9fr 1.1fr 1.6fr' }}>
+                            <div key={`${item.id}-${item.reason}`} className="t-row" style={{ gridTemplateColumns: '1.5fr 0.9fr 0.9fr 0.9fr 0.9fr 1.1fr 1.5fr' }}>
                               <div>{item.name || '—'}</div>
                               <div>{item.manual_active_override === true ? `${item.billing_status || '—'} (manual)` : (item.billing_status || '—')}</div>
+                              <div>{item.access_override_mode || 'inherit'}</div>
                               <div>{item.subscription_status || '—'}</div>
                               <div>{item.cancel_at_term_end === true ? 'true' : 'false'}</div>
                               <div>{item.contract_end_at ? new Date(item.contract_end_at).toLocaleString() : '—'}</div>
