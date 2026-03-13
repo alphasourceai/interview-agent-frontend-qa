@@ -994,11 +994,7 @@ export default function Admin() {
 
     setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: true }));
     try {
-      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/subscription-invoice`, payload);
-      const hostedUrl = resp?.invoice?.hosted_invoice_url || null;
-      if (hostedUrl) {
-        try { window.open(hostedUrl, '_blank', 'noopener,noreferrer'); } catch {}
-      }
+      await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/subscription-invoice`, payload);
       toast.success('Invoice sent.', { duration: 1600 });
     } catch (e) {
       toast.error(e?.data?.detail || e?.message || 'Could not send invoice.', { duration: 2000 });
@@ -1784,27 +1780,6 @@ export default function Admin() {
                                     )}
                                   </div>
                                   <div>
-                                    {!isClientActivelySubscribed(c) && (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <select
-                                          className="alpha-input alpha-select client-dash-input"
-                                          value={clientCheckoutCycles[c.id] || 'monthly'}
-                                          onChange={(e) => setClientCheckoutCycles((prev) => ({ ...prev, [c.id]: e.target.value === 'annual' ? 'annual' : 'monthly' }))}
-                                          style={{ maxWidth: 140 }}
-                                        >
-                                          <option value="monthly">Monthly</option>
-                                          <option value="annual">Annual</option>
-                                        </select>
-                                        <button
-                                          className="btn lilac client-dash-pill"
-                                          onClick={() => startSubscriptionCheckout(c.id)}
-                                          disabled={!!clientCheckoutBusy[c.id]}
-                                          style={{ padding: '6px 10px' }}
-                                        >
-                                          {clientCheckoutBusy[c.id] ? 'Starting…' : 'Start Checkout'}
-                                        </button>
-                                      </div>
-                                    )}
                                     {canCancelContractNow(c) && (
                                       <div style={{ marginTop: 8 }}>
                                         <button
