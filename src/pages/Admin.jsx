@@ -994,10 +994,16 @@ export default function Admin() {
 
     setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: true }));
     try {
-      await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/subscription-invoice`, payload);
-      toast.success('Invoice sent.', { duration: 1600 });
+      const resp = await apiPost(`/admin/clients/${encodeURIComponent(clientId)}/subscription-checkout`, payload);
+      const clientEmail = String(resp?.client_email || '').trim();
+      if (resp?.email_sent === true) {
+        toast.success(clientEmail ? `Checkout link emailed to ${clientEmail}.` : 'Checkout link emailed.', { duration: 1800 });
+      } else {
+        const fallbackDetail = String(resp?.email_error || '').trim();
+        toast(fallbackDetail ? `Checkout link created. Email not confirmed (${fallbackDetail}).` : 'Checkout link created. Email not confirmed.', { duration: 2200 });
+      }
     } catch (e) {
-      toast.error(e?.data?.detail || e?.message || 'Could not send invoice.', { duration: 2000 });
+      toast.error(e?.data?.detail || e?.message || 'Could not create checkout link.', { duration: 2000 });
     } finally {
       setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: false }));
     }
@@ -1809,7 +1815,7 @@ export default function Admin() {
                                       </select>
                                     </div>
                                     <div style={{ marginTop: 12 }}>
-                                      <div><strong>Subscription Invoice</strong></div>
+                                      <div><strong>Subscription Checkout Link</strong></div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                                         <select
                                           className="alpha-input alpha-select client-dash-input"
@@ -1866,7 +1872,7 @@ export default function Admin() {
                                           disabled={!!clientSubscriptionInvoiceBusy[c.id]}
                                           style={{ padding: '6px 10px' }}
                                         >
-                                          {clientSubscriptionInvoiceBusy[c.id] ? 'Sending…' : 'Send Invoice'}
+                                          {clientSubscriptionInvoiceBusy[c.id] ? 'Sending…' : 'Send Checkout Link'}
                                         </button>
                                       </div>
                                     </div>
