@@ -1684,10 +1684,12 @@ export default function Admin() {
                                   </div>
                                 </div>
                               </div>
-                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{c.plan_tier || 'basic'}</div>
+                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                                {isClientActivelySubscribed(c) ? (c.plan_tier || '—') : '—'}
+                              </div>
                               <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{getClientBillingDisplay(c)}</div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                                {isClientActivelySubscribed(c) ? (
+                                {String(c.billing_status || '').toLowerCase() === 'active' ? (
                                   <div className="muted">
                                     {
                                       c.billing_interval === 'annual'
