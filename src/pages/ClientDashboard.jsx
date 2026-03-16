@@ -1111,6 +1111,18 @@ export default function ClientDashboard() {
       const resp = await apiPost('/clients/roles/checkout-session', payload);
       const url = resp?.url;
       if (!url) throw new Error('Missing checkout URL');
+      if (window?.parent && window.parent !== window) {
+        try {
+          if (window.top) {
+            window.top.location.href = url;
+            return;
+          }
+        } catch (_) {
+          // fallback below
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
       window.location.assign(url);
     } catch (e) {
       const status = e?.status || e?.response?.status;
