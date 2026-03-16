@@ -156,6 +156,8 @@ export default function Admin() {
   const [clientInvoiceIntervals, setClientInvoiceIntervals] = useState({});
   const [clientInvoicePlatformFees, setClientInvoicePlatformFees] = useState({});
   const [clientInvoicePerRoleFees, setClientInvoicePerRoleFees] = useState({});
+  const [clientInvoiceIncludedInterviewsPerRole, setClientInvoiceIncludedInterviewsPerRole] = useState({});
+  const [clientInvoiceAdditionalInterviewFees, setClientInvoiceAdditionalInterviewFees] = useState({});
   const [clientSubscriptionInvoiceBusy, setClientSubscriptionInvoiceBusy] = useState({});
   const [processRenewalsBusy, setProcessRenewalsBusy] = useState(false);
 
@@ -990,6 +992,8 @@ export default function Admin() {
     if (plan_tier === 'enterprise') {
       payload.platform_fee = String(clientInvoicePlatformFees[clientId] ?? '').trim();
       payload.per_role_fee = String(clientInvoicePerRoleFees[clientId] ?? '').trim();
+      payload.included_interviews_per_role = String(clientInvoiceIncludedInterviewsPerRole[clientId] ?? '').trim();
+      payload.additional_interview_fee = String(clientInvoiceAdditionalInterviewFees[clientId] ?? '').trim();
     }
 
     setClientSubscriptionInvoiceBusy((prev) => ({ ...prev, [clientId]: true }));
@@ -1865,6 +1869,28 @@ export default function Admin() {
                                               onChange={(e) => setClientInvoicePerRoleFees((prev) => ({ ...prev, [c.id]: e.target.value }))}
                                               disabled={!!clientSubscriptionInvoiceBusy[c.id]}
                                               style={{ maxWidth: 130 }}
+                                            />
+                                            <input
+                                              className="alpha-input client-dash-input"
+                                              type="number"
+                                              min="0"
+                                              step="1"
+                                              placeholder="Included interviews/role"
+                                              value={clientInvoiceIncludedInterviewsPerRole[c.id] ?? ''}
+                                              onChange={(e) => setClientInvoiceIncludedInterviewsPerRole((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                              disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                              style={{ maxWidth: 180 }}
+                                            />
+                                            <input
+                                              className="alpha-input client-dash-input"
+                                              type="number"
+                                              min="0"
+                                              step="0.01"
+                                              placeholder="Additional interview fee"
+                                              value={clientInvoiceAdditionalInterviewFees[c.id] ?? ''}
+                                              onChange={(e) => setClientInvoiceAdditionalInterviewFees((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                                              disabled={!!clientSubscriptionInvoiceBusy[c.id]}
+                                              style={{ maxWidth: 180 }}
                                             />
                                           </div>
                                         )}
