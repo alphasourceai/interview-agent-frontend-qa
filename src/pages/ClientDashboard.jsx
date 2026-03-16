@@ -542,6 +542,9 @@ export default function ClientDashboard() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [selfMember, setSelfMember] = useState(null);
   const [currentMember, setCurrentMember] = useState(null);
+  const [selectedClientBillingSummary, setSelectedClientBillingSummary] = useState(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingPortalBusy, setBillingPortalBusy] = useState(false);
 
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
@@ -571,7 +574,7 @@ export default function ClientDashboard() {
   }
 
   // Tab selector
-  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | feedback
+  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | billing | feedback
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -632,10 +635,47 @@ export default function ClientDashboard() {
     () => (clients.some((c) => c?.client_id === clientId) ? clientId : ''),
     [clients, clientId]
   );
+  const selectedClientAccessOverrideMode = String(selectedClientBillingSummary?.access_override_mode || '').toLowerCase();
+  const selectedClientBillingStatus = String(selectedClientBillingSummary?.billing_status || '').toLowerCase();
+  const selectedClientIsEffectivelyInactive = useMemo(() => {
+    if (!validatedSelectedClientId) return false;
+    if (selectedClientAccessOverrideMode === 'force_inactive') return true;
+    if (selectedClientAccessOverrideMode === 'force_active') return false;
+    return selectedClientBillingStatus !== 'active';
+  }, [validatedSelectedClientId, selectedClientAccessOverrideMode, selectedClientBillingStatus]);
 
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
   }, [testerSplashRole, testerAcknowledgedAt, clientId]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!validatedSelectedClientId) {
+      setSelectedClientBillingSummary(null);
+      setBillingLoading(false);
+      return () => {
+        alive = false;
+      };
+    }
+    (async () => {
+      try {
+        setBillingLoading(true);
+        const qs = `?client_id=${encodeURIComponent(validatedSelectedClientId)}`;
+        const resp = await apiGet('/clients/billing/summary' + qs);
+        if (!alive) return;
+        const item = Array.isArray(resp?.items) ? (resp.items[0] || null) : null;
+        setSelectedClientBillingSummary(item);
+      } catch (e) {
+        if (!alive) return;
+        setSelectedClientBillingSummary(null);
+      } finally {
+        if (alive) setBillingLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [validatedSelectedClientId]);
 
   useEffect(() => {
     let alive = true;
@@ -673,9 +713,16 @@ export default function ClientDashboard() {
   useEffect(() => {
     if (activeTab === 'roles') return;
     if (!canManage && activeTab === 'members') {
-      setActiveTab('candidates');
+      setActiveTab(selectedClientIsEffectivelyInactive ? 'billing' : 'candidates');
     }
-  }, [canManage, activeTab]);
+  }, [canManage, activeTab, selectedClientIsEffectivelyInactive]);
+
+  useEffect(() => {
+    if (!selectedClientIsEffectivelyInactive) return;
+    if (activeTab === 'roles' || activeTab === 'candidates') {
+      setActiveTab(canManage ? 'members' : 'billing');
+    }
+  }, [selectedClientIsEffectivelyInactive, activeTab, canManage]);
 
   useEffect(() => {
     if (activeTab === 'feedback' && !isTester) {
@@ -1013,6 +1060,21 @@ export default function ClientDashboard() {
         console.warn('Copy failed:', err);
         showToast('Could not copy link', 'error');
       }
+    }
+  };
+
+  const manageBilling = async () => {
+    if (!validatedSelectedClientId || billingPortalBusy) return;
+    try {
+      setBillingPortalBusy(true);
+      const resp = await apiPost('/clients/billing/portal-session', { client_id: validatedSelectedClientId });
+      const url = resp?.url;
+      if (!url) throw new Error('No billing portal URL returned');
+      window.location.assign(url);
+    } catch (e) {
+      showToast(String(e?.message || 'Could not open billing portal'), 'error');
+    } finally {
+      setBillingPortalBusy(false);
     }
   };
 
@@ -1447,20 +1509,24 @@ export default function ClientDashboard() {
 
         {hasMembership && (
           <div className="dash-tabs">
-            <button
-              type="button"
-              onClick={() => setActiveTab('roles')}
-              className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
-            >
-              Roles
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('candidates')}
-              className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
-            >
-              Candidates
-            </button>
+            {!selectedClientIsEffectivelyInactive && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('roles')}
+                className={`client-dash-tab ${activeTab === 'roles' ? 'client-dash-tab--active' : ''}`}
+              >
+                Roles
+              </button>
+            )}
+            {!selectedClientIsEffectivelyInactive && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('candidates')}
+                className={`client-dash-tab ${activeTab === 'candidates' ? 'client-dash-tab--active' : ''}`}
+              >
+                Candidates
+              </button>
+            )}
             {canManage && (
               <button
                 type="button"
@@ -1470,6 +1536,13 @@ export default function ClientDashboard() {
                 Members
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('billing')}
+              className={`client-dash-tab ${activeTab === 'billing' ? 'client-dash-tab--active' : ''}`}
+            >
+              Billing
+            </button>
             {isTester && (
               <button
                 type="button"
@@ -1497,7 +1570,7 @@ export default function ClientDashboard() {
         )}
 
         <div className="dash-scroll">
-          {activeTab === 'candidates' && (
+          {activeTab === 'candidates' && !selectedClientIsEffectivelyInactive && (
             <div className="client-dash-card">
               {/* Filters: Role + Min Overall */}
               <div className="filters">
@@ -1680,7 +1753,7 @@ export default function ClientDashboard() {
             </div>
           )}
 
-          {activeTab === 'roles' && (
+          {activeTab === 'roles' && !selectedClientIsEffectivelyInactive && (
             <div className="client-dash-card">
               <div className="client-dash-section-head">
                 <h2>Roles for {currentName}</h2>
@@ -1967,6 +2040,62 @@ export default function ClientDashboard() {
                 You don’t have permission to manage members for this client.
               </div>
             )
+          )}
+
+          {activeTab === 'billing' && (
+            <div className="client-dash-card">
+              <div className="client-dash-section-head">
+                <h2>Billing for {currentName}</h2>
+              </div>
+              {billingLoading ? (
+                <div className="client-dash-muted">Loading billing summary…</div>
+              ) : (
+                <div className="client-dash-row" style={{ alignItems: 'stretch' }}>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Plan Tier</div>
+                    <div>{selectedClientBillingSummary?.plan_tier || '—'}</div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Billing Status</div>
+                    <div>{selectedClientBillingSummary?.billing_status || '—'}</div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Billing Cycle</div>
+                    <div>{selectedClientBillingSummary?.billing_interval || '—'}</div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Auto-Renew</div>
+                    <div>
+                      {selectedClientBillingSummary?.auto_renew === true
+                        ? 'Yes'
+                        : (selectedClientBillingSummary?.auto_renew === false ? 'No' : '—')}
+                    </div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Current Term End</div>
+                    <div>
+                      {selectedClientBillingSummary?.current_term_end
+                        ? new Date(selectedClientBillingSummary.current_term_end).toLocaleDateString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Subscription Status</div>
+                    <div>{selectedClientBillingSummary?.subscription_status || '—'}</div>
+                  </div>
+                </div>
+              )}
+              <div style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  className="btn lilac client-dash-pill"
+                  disabled={!validatedSelectedClientId || billingPortalBusy || selectedClientBillingSummary?.has_stripe_customer === false}
+                  onClick={manageBilling}
+                >
+                  {billingPortalBusy ? 'Opening…' : 'Manage Billing'}
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
