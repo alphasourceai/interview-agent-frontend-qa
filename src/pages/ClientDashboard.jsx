@@ -1097,33 +1097,21 @@ export default function ClientDashboard() {
       setRoleTitleTouched(true);
       return;
     }
+    if (!interviewType) {
+      showToast('Please choose an interview type before creating the role.', 'error');
+      return;
+    }
     if (!jobFile) {
       showToast('Please choose a Job Description file (PDF or DOCX) before creating the role.', 'error');
       return;
     }
     setRoleBusy(true);
     try {
-      const payload = { client_id: clientId, title, interview_type: interviewType };
-      const resp = await apiPost(rolesEndpointBase, payload);
-      const role = resp?.role;
-      if (!role) { showToast('Role create failed', 'error'); return; }
-      try {
-        const out = await uploadJDToBackend(role.id, jobFile);
-        if (out?.parsed_text_preview) console.log('[JD preview]', out.parsed_text_preview);
-      } catch (e) {
-        console.error('uploadJDToBackend error', e);
-        showToast('Role created, but JD processing failed: ' + e.message, 'error');
-      }
-      // refresh
-      await fetchRolesForClient(clientId);
-      setNewRoleTitle('');
-      setRoleTitleTouched(false);
-      setJobFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      setFileKey((k) => k + 1);
-      postSizeSoon();
-      setTimeout(postSizeSoon, 300);
-      showToast('Role created', 'success');
+      const payload = { client_id: clientId, role_title: title, interview_type: interviewType };
+      const resp = await apiPost('/clients/roles/checkout-session', payload);
+      const url = resp?.url;
+      if (!url) throw new Error('Missing checkout URL');
+      window.location.assign(url);
     } catch (e) {
       const status = e?.status || e?.response?.status;
       const requestId = e?.data?.request_id || e?.response?.data?.request_id;
@@ -1132,15 +1120,15 @@ export default function ClientDashboard() {
         e?.response?.data?.detail ||
         e?.data?.message ||
         e?.message ||
-        'Failed to create role';
+        'Failed to start role checkout';
       if (requestId) console.error('[roles] request_id', requestId);
-      console.error('[roles] create error', {
+      console.error('[roles] checkout error', {
         clientId,
         status,
         detail,
         request_id: requestId || null
       });
-      showToast(detail || 'Failed to create role', 'error');
+      showToast(detail || 'Failed to start role checkout', 'error');
     } finally {
       setRoleBusy(false);
     }
