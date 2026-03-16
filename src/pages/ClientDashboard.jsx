@@ -521,6 +521,20 @@ export default function ClientDashboard() {
   const [roleTitleTouched, setRoleTitleTouched] = useState(false);
   const [interviewType, setInterviewType] = useState('BASIC');
   const [jobFile, setJobFile] = useState(null);
+  const [checkoutSuccessActive, setCheckoutSuccessActive] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const params = new URLSearchParams(window.location.search || '');
+    return String(params.get('role_checkout') || '').trim().toLowerCase() === 'success';
+  });
+  const [checkoutSuccessClientId, setCheckoutSuccessClientId] = useState(() => {
+    if (typeof window === 'undefined') return '';
+    const params = new URLSearchParams(window.location.search || '');
+    if (String(params.get('role_checkout') || '').trim().toLowerCase() !== 'success') return '';
+    return String(params.get('client_id') || '').trim();
+  });
+  const [checkoutSuccessRoleJdFile, setCheckoutSuccessRoleJdFile] = useState(null);
+  const [checkoutSuccessRoleJdFileKey, setCheckoutSuccessRoleJdFileKey] = useState(0);
+  const [checkoutSuccessRoleJdBusy, setCheckoutSuccessRoleJdBusy] = useState(false);
   const [roleBusy, setRoleBusy] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -637,6 +651,20 @@ export default function ClientDashboard() {
   );
   const selectedClientAccessOverrideMode = String(selectedClientBillingSummary?.access_override_mode || '').toLowerCase();
   const selectedClientBillingStatus = String(selectedClientBillingSummary?.billing_status || '').toLowerCase();
+  const showCheckoutSuccessPrompt =
+    checkoutSuccessActive &&
+    !!clientId &&
+    (!checkoutSuccessClientId || checkoutSuccessClientId === clientId);
+  const checkoutSuccessRoleToComplete = useMemo(() => {
+    if (!showCheckoutSuccessPrompt) return null;
+    return (
+      roles.find((role) => {
+        const hasRubric = extractRubricQuestions(role?.rubric).length > 0;
+        const hasJd = !!role?.job_description_url;
+        return !hasRubric && !hasJd;
+      }) || null
+    );
+  }, [showCheckoutSuccessPrompt, roles]);
   const selectedClientIsEffectivelyInactive = useMemo(() => {
     if (!validatedSelectedClientId) return false;
     if (selectedClientAccessOverrideMode === 'force_inactive') return true;
@@ -1147,6 +1175,37 @@ export default function ClientDashboard() {
   };
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
+
+  const finishCheckoutSuccessRoleSetup = async () => {
+    const roleId = checkoutSuccessRoleToComplete?.id;
+    if (!roleId || !checkoutSuccessRoleJdFile || !clientId) return;
+    setCheckoutSuccessRoleJdBusy(true);
+    try {
+      await uploadJDToBackend(roleId, checkoutSuccessRoleJdFile);
+      await fetchRolesForClient(clientId);
+      setCheckoutSuccessRoleJdFile(null);
+      setCheckoutSuccessRoleJdFileKey((k) => k + 1);
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('role_checkout');
+        url.searchParams.delete('client_id');
+        window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
+      }
+      setCheckoutSuccessActive(false);
+      setCheckoutSuccessClientId('');
+      showToast('Job Description uploaded. Role setup complete.', 'success');
+    } catch (e) {
+      const detail =
+        e?.data?.detail ||
+        e?.response?.data?.detail ||
+        e?.data?.message ||
+        e?.message ||
+        'Could not upload Job Description';
+      showToast(detail, 'error');
+    } finally {
+      setCheckoutSuccessRoleJdBusy(false);
+    }
+  };
 
   const deleteRole = async (id) => {
     try {
@@ -1868,6 +1927,41 @@ export default function ClientDashboard() {
                     onClick={createRole}
                   >
                     {roleBusy ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
+              )}
+
+              {canManage && checkoutSuccessRoleToComplete && (
+                <div
+                  className="client-dash-row"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 320px 150px',
+                    gap: 10,
+                    alignItems: 'center',
+                    width: '100%',
+                    marginBottom: 12
+                  }}
+                >
+                  <div className="client-dash-muted">
+                    Payment completed. Role <strong>{checkoutSuccessRoleToComplete.title || 'Untitled Role'}</strong> was created.
+                    Upload the Job Description to finish setup.
+                  </div>
+                  <CustomFilePicker
+                    key={checkoutSuccessRoleJdFileKey}
+                    accept=".pdf,.doc,.docx,application/pdf"
+                    onFileSelected={(file) => setCheckoutSuccessRoleJdFile(file || null)}
+                    label={checkoutSuccessRoleJdFile?.name ? checkoutSuccessRoleJdFile.name : 'Select JD file to finish setup'}
+                    className="client-dash-input client-dash-file-input"
+                  />
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    style={{ width: 150, whiteSpace: 'nowrap', textAlign: 'center' }}
+                    disabled={!checkoutSuccessRoleJdFile || checkoutSuccessRoleJdBusy}
+                    onClick={finishCheckoutSuccessRoleSetup}
+                  >
+                    {checkoutSuccessRoleJdBusy ? 'Uploading…' : 'Upload & Finish'}
                   </button>
                 </div>
               )}
