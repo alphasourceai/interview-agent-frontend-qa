@@ -1070,6 +1070,18 @@ export default function ClientDashboard() {
       const resp = await apiPost('/clients/billing/portal-session', { client_id: validatedSelectedClientId });
       const url = resp?.url;
       if (!url) throw new Error('No billing portal URL returned');
+      if (window?.parent && window.parent !== window) {
+        try {
+          if (window.top) {
+            window.top.location.href = url;
+            return;
+          }
+        } catch (_) {
+          // fallback below
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
       window.location.assign(url);
     } catch (e) {
       showToast(String(e?.message || 'Could not open billing portal'), 'error');
