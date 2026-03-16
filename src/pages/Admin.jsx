@@ -122,6 +122,12 @@ function formatShortDate(value) {
   return d.toLocaleDateString();
 }
 
+function formatCurrency(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return `$${n.toFixed(2)}`;
+}
+
 function getAccessOverrideModeLabel(value) {
   const mode = String(value || 'inherit').toLowerCase();
   if (mode === 'force_active') return 'Force Active';
@@ -1788,6 +1794,13 @@ export default function Admin() {
                                         <div className="muted">
                                           Renewal: {c.auto_renew === true ? 'Auto-renew on' : 'Auto-renew off'}
                                         </div>
+                                      </div>
+                                    )}
+                                    {String(c.plan_tier || '').toLowerCase() === 'enterprise' && (
+                                      <div style={{ marginTop: 8 }}>
+                                        <div className="muted">Per-role fee: {formatCurrency(c.plan_settings_per_role_fee)}</div>
+                                        <div className="muted">Additional interview fee: {formatCurrency(c.plan_settings_additional_interview_fee)}</div>
+                                        <div className="muted">Included interviews per role: {c.plan_settings_included_interviews_per_role ?? '—'}</div>
                                       </div>
                                     )}
                                   </div>
