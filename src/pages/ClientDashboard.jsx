@@ -657,12 +657,16 @@ export default function ClientDashboard() {
     (!checkoutSuccessClientId || checkoutSuccessClientId === clientId);
   const checkoutSuccessRoleToComplete = useMemo(() => {
     if (!showCheckoutSuccessPrompt) return null;
+    const incompleteRoles = roles.filter((role) => {
+      const hasRubric = extractRubricQuestions(role?.rubric).length > 0;
+      const hasJd = !!role?.job_description_url;
+      return !hasRubric && !hasJd;
+    });
+    if (!incompleteRoles.length) return null;
     return (
-      roles.find((role) => {
-        const hasRubric = extractRubricQuestions(role?.rubric).length > 0;
-        const hasJd = !!role?.job_description_url;
-        return !hasRubric && !hasJd;
-      }) || null
+      [...incompleteRoles].sort(
+        (a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
+      )[0] || null
     );
   }, [showCheckoutSuccessPrompt, roles]);
   const selectedClientIsEffectivelyInactive = useMemo(() => {
@@ -1209,7 +1213,7 @@ export default function ClientDashboard() {
 
   const deleteRole = async (id) => {
     try {
-      const url = `${rolesEndpointBase}?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
+      const url = `${rolesEndpointBase}/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
       await apiDelete(url);
       setRoles((prev) => prev.filter((r) => r.id !== id));
       postSizeSoon();
