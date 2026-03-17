@@ -521,20 +521,6 @@ export default function ClientDashboard() {
   const [roleTitleTouched, setRoleTitleTouched] = useState(false);
   const [interviewType, setInterviewType] = useState('BASIC');
   const [jobFile, setJobFile] = useState(null);
-  const [checkoutSuccessActive, setCheckoutSuccessActive] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search || '');
-    return String(params.get('role_checkout') || '').trim().toLowerCase() === 'success';
-  });
-  const [checkoutSuccessClientId, setCheckoutSuccessClientId] = useState(() => {
-    if (typeof window === 'undefined') return '';
-    const params = new URLSearchParams(window.location.search || '');
-    if (String(params.get('role_checkout') || '').trim().toLowerCase() !== 'success') return '';
-    return String(params.get('client_id') || '').trim();
-  });
-  const [checkoutSuccessRoleJdFile, setCheckoutSuccessRoleJdFile] = useState(null);
-  const [checkoutSuccessRoleJdFileKey, setCheckoutSuccessRoleJdFileKey] = useState(0);
-  const [checkoutSuccessRoleJdBusy, setCheckoutSuccessRoleJdBusy] = useState(false);
   const [roleBusy, setRoleBusy] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(false);
   const fileInputRef = useRef(null);
@@ -651,24 +637,6 @@ export default function ClientDashboard() {
   );
   const selectedClientAccessOverrideMode = String(selectedClientBillingSummary?.access_override_mode || '').toLowerCase();
   const selectedClientBillingStatus = String(selectedClientBillingSummary?.billing_status || '').toLowerCase();
-  const showCheckoutSuccessPrompt =
-    checkoutSuccessActive &&
-    !!validatedSelectedClientId &&
-    (!checkoutSuccessClientId || checkoutSuccessClientId === validatedSelectedClientId);
-  const checkoutSuccessRoleToComplete = useMemo(() => {
-    if (!showCheckoutSuccessPrompt) return null;
-    const incompleteRoles = roles.filter((role) => {
-      const hasRubric = extractRubricQuestions(role?.rubric).length > 0;
-      const hasJd = !!role?.job_description_url;
-      return !hasRubric && !hasJd;
-    });
-    if (!incompleteRoles.length) return null;
-    return (
-      [...incompleteRoles].sort(
-        (a, b) => new Date(b?.created_at || 0) - new Date(a?.created_at || 0)
-      )[0] || null
-    );
-  }, [showCheckoutSuccessPrompt, roles]);
   const selectedClientIsEffectivelyInactive = useMemo(() => {
     if (!validatedSelectedClientId) return false;
     if (selectedClientAccessOverrideMode === 'force_inactive') return true;
@@ -679,26 +647,6 @@ export default function ClientDashboard() {
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
   }, [testerSplashRole, testerAcknowledgedAt, clientId]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search || '');
-    const isCheckoutSuccess = String(params.get('role_checkout') || '').trim().toLowerCase() === 'success';
-    if (!isCheckoutSuccess) return;
-    setCheckoutSuccessActive(true);
-    setCheckoutSuccessClientId(String(params.get('client_id') || '').trim());
-  }, []);
-
-  useEffect(() => {
-    if (!checkoutSuccessActive) return;
-    if (!checkoutSuccessClientId) return;
-    if (!Array.isArray(clients) || !clients.length) return;
-    const matchingClientId = clients.find((c) => String(c?.client_id || '') === checkoutSuccessClientId)?.client_id || '';
-    if (!matchingClientId) return;
-    if (clientId !== matchingClientId) {
-      setClientId(matchingClientId);
-    }
-  }, [checkoutSuccessActive, checkoutSuccessClientId, clients, clientId]);
 
   useEffect(() => {
     let alive = true;
@@ -1159,8 +1107,12 @@ export default function ClientDashboard() {
     }
     setRoleBusy(true);
     try {
-      const payload = { client_id: clientId, role_title: title, interview_type: interviewType };
-      const resp = await apiPost('/clients/roles/checkout-session', payload);
+      const form = new FormData();
+      form.append('client_id', clientId);
+      form.append('role_title', title);
+      form.append('interview_type', interviewType);
+      form.append('file', jobFile);
+      const resp = await api.upload('/clients/roles/checkout-session', form);
       const url = resp?.url;
       if (!url) throw new Error('Missing checkout URL');
       if (window?.parent && window.parent !== window) {
@@ -1199,37 +1151,6 @@ export default function ClientDashboard() {
   };
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
-
-  const finishCheckoutSuccessRoleSetup = async () => {
-    const roleId = checkoutSuccessRoleToComplete?.id;
-    if (!roleId || !checkoutSuccessRoleJdFile || !clientId) return;
-    setCheckoutSuccessRoleJdBusy(true);
-    try {
-      await uploadJDToBackend(roleId, checkoutSuccessRoleJdFile);
-      await fetchRolesForClient(clientId);
-      setCheckoutSuccessRoleJdFile(null);
-      setCheckoutSuccessRoleJdFileKey((k) => k + 1);
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('role_checkout');
-        url.searchParams.delete('client_id');
-        window.history.replaceState({}, document.title, `${url.pathname}${url.search}${url.hash}`);
-      }
-      setCheckoutSuccessActive(false);
-      setCheckoutSuccessClientId('');
-      showToast('Job Description uploaded. Role setup complete.', 'success');
-    } catch (e) {
-      const detail =
-        e?.data?.detail ||
-        e?.response?.data?.detail ||
-        e?.data?.message ||
-        e?.message ||
-        'Could not upload Job Description';
-      showToast(detail, 'error');
-    } finally {
-      setCheckoutSuccessRoleJdBusy(false);
-    }
-  };
 
   const deleteRole = async (id) => {
     try {
@@ -1951,41 +1872,6 @@ export default function ClientDashboard() {
                     onClick={createRole}
                   >
                     {roleBusy ? 'Creating…' : 'Create'}
-                  </button>
-                </div>
-              )}
-
-              {canManage && checkoutSuccessRoleToComplete && (
-                <div
-                  className="client-dash-row"
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 320px 150px',
-                    gap: 10,
-                    alignItems: 'center',
-                    width: '100%',
-                    marginBottom: 12
-                  }}
-                >
-                  <div className="client-dash-muted">
-                    Payment completed. Role <strong>{checkoutSuccessRoleToComplete.title || 'Untitled Role'}</strong> was created.
-                    Upload the Job Description to finish setup.
-                  </div>
-                  <CustomFilePicker
-                    key={checkoutSuccessRoleJdFileKey}
-                    accept=".pdf,.doc,.docx,application/pdf"
-                    onFileSelected={(file) => setCheckoutSuccessRoleJdFile(file || null)}
-                    label={checkoutSuccessRoleJdFile?.name ? checkoutSuccessRoleJdFile.name : 'Select JD file to finish setup'}
-                    className="client-dash-input client-dash-file-input"
-                  />
-                  <button
-                    type="button"
-                    className="btn lilac client-dash-pill"
-                    style={{ width: 150, whiteSpace: 'nowrap', textAlign: 'center' }}
-                    disabled={!checkoutSuccessRoleJdFile || checkoutSuccessRoleJdBusy}
-                    onClick={finishCheckoutSuccessRoleSetup}
-                  >
-                    {checkoutSuccessRoleJdBusy ? 'Uploading…' : 'Upload & Finish'}
                   </button>
                 </div>
               )}
