@@ -1833,7 +1833,7 @@ export default function Admin() {
                                         <option value="force_inactive">Force Inactive</option>
                                       </select>
                                     </div>
-                                    {String(c.billing_status || '').toLowerCase() !== 'active' && (
+                                    {!isLiveStripeSubscription(c) && (
                                       <div style={{ marginTop: 12 }}>
                                         <div><strong>Subscription Checkout Link</strong></div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
