@@ -653,8 +653,8 @@ export default function ClientDashboard() {
   const selectedClientBillingStatus = String(selectedClientBillingSummary?.billing_status || '').toLowerCase();
   const showCheckoutSuccessPrompt =
     checkoutSuccessActive &&
-    !!clientId &&
-    (!checkoutSuccessClientId || checkoutSuccessClientId === clientId);
+    !!validatedSelectedClientId &&
+    (!checkoutSuccessClientId || checkoutSuccessClientId === validatedSelectedClientId);
   const checkoutSuccessRoleToComplete = useMemo(() => {
     if (!showCheckoutSuccessPrompt) return null;
     const incompleteRoles = roles.filter((role) => {
@@ -679,6 +679,26 @@ export default function ClientDashboard() {
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
   }, [testerSplashRole, testerAcknowledgedAt, clientId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search || '');
+    const isCheckoutSuccess = String(params.get('role_checkout') || '').trim().toLowerCase() === 'success';
+    if (!isCheckoutSuccess) return;
+    setCheckoutSuccessActive(true);
+    setCheckoutSuccessClientId(String(params.get('client_id') || '').trim());
+  }, []);
+
+  useEffect(() => {
+    if (!checkoutSuccessActive) return;
+    if (!checkoutSuccessClientId) return;
+    if (!Array.isArray(clients) || !clients.length) return;
+    const matchingClientId = clients.find((c) => String(c?.client_id || '') === checkoutSuccessClientId)?.client_id || '';
+    if (!matchingClientId) return;
+    if (clientId !== matchingClientId) {
+      setClientId(matchingClientId);
+    }
+  }, [checkoutSuccessActive, checkoutSuccessClientId, clients, clientId]);
 
   useEffect(() => {
     let alive = true;
