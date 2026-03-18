@@ -551,6 +551,22 @@ export default function ClientDashboard() {
   const [selectedClientBillingSummary, setSelectedClientBillingSummary] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingPortalBusy, setBillingPortalBusy] = useState(false);
+  const urlBillingPrefill = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return { wantsBilling: false, clientId: '', roleId: '' };
+    }
+    const params = new URLSearchParams(window.location.search || '');
+    const tab = String(params.get('tab') || '').trim().toLowerCase();
+    const intent = String(params.get('intent') || '').trim().toLowerCase();
+    const clientIdParam = String(params.get('client_id') || '').trim();
+    const roleIdParam = String(params.get('role_id') || '').trim();
+    const wantsBilling = tab === 'billing' || intent === 'billing' || intent === 'role_capacity' || !!roleIdParam;
+    return {
+      wantsBilling,
+      clientId: clientIdParam,
+      roleId: roleIdParam,
+    };
+  }, []);
 
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
@@ -581,6 +597,7 @@ export default function ClientDashboard() {
 
   // Tab selector
   const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | billing | feedback
+  const [billingRoleId, setBillingRoleId] = useState(() => urlBillingPrefill.roleId || '');
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -898,6 +915,13 @@ export default function ClientDashboard() {
     fetchRolesForClient(clientId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, canManage, activeTab]);
+
+  useEffect(() => {
+    if (activeTab !== 'billing') return;
+    if (!validatedSelectedClientId || !canManage) return;
+    fetchRolesForClient(validatedSelectedClientId, { silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, validatedSelectedClientId, canManage]);
 
   // Fetch members when needed
   useEffect(() => {
@@ -1219,6 +1243,11 @@ export default function ClientDashboard() {
   const rolesTableGridTemplate = canManage
     ? 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px 88px'
     : 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px';
+  const selectedBillingRole = useMemo(
+    () => roles.find((r) => String(r?.id) === String(billingRoleId)) || null,
+    [roles, billingRoleId]
+  );
+  const billingRoleSelectValue = selectedBillingRole ? String(selectedBillingRole.id) : '';
 
   const deleteRole = async (id) => {
     try {
@@ -1314,16 +1343,22 @@ export default function ClientDashboard() {
         setClients(list)
         const listIds = new Set(list.map((c) => c?.client_id).filter(Boolean))
         const defaultClientId = meResp?.client_scope?.default_client_id || meResp?.default_client_id || ''
+        const urlClientId = urlBillingPrefill.clientId && listIds.has(urlBillingPrefill.clientId)
+          ? urlBillingPrefill.clientId
+          : ''
         const memberships = Array.isArray(meResp?.client_scope?.memberships)
           ? meResp.client_scope.memberships
           : (Array.isArray(meResp?.memberships) ? meResp.memberships : [])
         const first =
+          urlClientId ||
           (defaultClientId && listIds.has(defaultClientId) ? defaultClientId : '') ||
           list[0]?.client_id ||
           memberships.find((m) => listIds.has(m?.client_id))?.client_id ||
           memberships[0]?.client_id ||
           ''
         setClientId(first)
+        if (urlBillingPrefill.wantsBilling) setActiveTab('billing')
+        if (urlBillingPrefill.roleId) setBillingRoleId(urlBillingPrefill.roleId)
       } catch (e) {
         setError(String(e?.message || e))
       } finally {
@@ -2233,6 +2268,37 @@ export default function ClientDashboard() {
                   />
                 </div>
               )}
+              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'end' }}>
+                <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260, maxWidth: 480 }}>
+                  <div className="client-dash-muted">Role</div>
+                  <select
+                    className="alpha-input alpha-select client-dash-input"
+                    value={billingRoleSelectValue}
+                    onChange={(e) => setBillingRoleId(e.target.value)}
+                    disabled={!canManage || !validatedSelectedClientId || rolesLoading}
+                    style={{ width: '100%', marginTop: 8 }}
+                  >
+                    <option value="">
+                      {canManage ? (rolesLoading ? 'Loading roles…' : 'Select a role') : 'Unavailable'}
+                    </option>
+                    {roles.map((role) => (
+                      <option key={role.id} value={String(role.id)}>
+                        {role.title || 'Untitled role'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    disabled
+                    title="Purchase flow coming soon"
+                  >
+                    Purchase Additional Interviews
+                  </button>
+                </div>
+              </div>
               <div style={{ marginTop: 12 }}>
                 <button
                   type="button"
