@@ -2002,6 +2002,14 @@ export default function ClientDashboard() {
                       const rubricQuestions = extractRubricQuestions(r.rubric);
                       const hasRubric = rubricQuestions.length > 0;
                       const hasJD = !!r.job_description_url;
+                      const remainingRaw = r?.remaining_interviews;
+                      const remainingNum = Number.isFinite(Number(remainingRaw)) ? Number(remainingRaw) : null;
+                      const lowRemaining = remainingNum != null && remainingNum > 0 && remainingNum <= 3;
+                      const exhausted = remainingNum === 0;
+                      const usagePrimaryColor = exhausted ? '#fca5a5' : (lowRemaining ? '#fde68a' : 'inherit');
+                      const lowRemainingDetail = lowRemaining
+                        ? `This role has only ${remainingNum} interview${remainingNum === 1 ? '' : 's'} remaining.`
+                        : '';
                       return (
                         <div key={r.id} className="t-row" style={{ gridTemplateColumns: rolesTableGridTemplate }}>
                           <div>
@@ -2010,8 +2018,23 @@ export default function ClientDashboard() {
                           </div>
                           <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>{r.interview_type || '—'}</div>
                           <div style={{ fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 2, justifyItems: 'start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
-                            <div style={{ whiteSpace: 'nowrap' }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
+                            <div style={{ whiteSpace: 'nowrap', color: usagePrimaryColor, fontWeight: exhausted || lowRemaining ? 700 : 600 }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
                             <div className="sub" style={{ whiteSpace: 'nowrap', marginTop: 0 }}>{`${r?.used_interviews ?? '—'} used`}</div>
+                            {lowRemaining && !exhausted ? (
+                              <>
+                                <div className="sub" style={{ marginTop: 0, whiteSpace: 'normal', color: '#fcd34d', fontWeight: 600 }}>
+                                  Low interview availability
+                                </div>
+                                <div className="sub" style={{ marginTop: 0, maxWidth: 180, whiteSpace: 'normal', color: '#fef3c7' }}>
+                                  {lowRemainingDetail}
+                                </div>
+                              </>
+                            ) : null}
+                            {exhausted ? (
+                              <div className="sub" style={{ marginTop: 0, maxWidth: 180, whiteSpace: 'normal' }}>
+                                Additional interview capacity is required before new interviews can start.
+                              </div>
+                            ) : null}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                             {hasRubric ? (
