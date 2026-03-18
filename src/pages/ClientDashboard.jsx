@@ -1217,8 +1217,8 @@ export default function ClientDashboard() {
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
   const rolesTableGridTemplate = canManage
-    ? '2.4fr 0.9fr 0.6fr 0.6fr 0.6fr 0.5fr 0.5fr 0.9fr 0.8fr'
-    : '2.4fr 0.9fr 0.6fr 0.6fr 0.6fr 0.5fr 0.5fr 0.9fr';
+    ? '2.4fr 0.9fr 1.6fr 0.5fr 0.5fr 0.9fr 0.8fr'
+    : '2.4fr 0.9fr 1.6fr 0.5fr 0.5fr 0.9fr';
 
   const deleteRole = async (id) => {
     try {
@@ -1965,9 +1965,7 @@ export default function ClientDashboard() {
                   <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: rolesTableGridTemplate }}>
                     <div>Role</div>
                     <div>Type</div>
-                    <div className="col-center" style={{ whiteSpace: 'nowrap' }}>Included</div>
-                    <div className="col-center" style={{ whiteSpace: 'nowrap' }}>Used</div>
-                    <div className="col-center" style={{ whiteSpace: 'nowrap' }}>Left</div>
+                    <div style={{ whiteSpace: 'nowrap' }}>Usage</div>
                     <div className="col-center">
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         Rubric
@@ -2006,9 +2004,9 @@ export default function ClientDashboard() {
                             <div className="sub">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                           </div>
                           <div>{r.interview_type || '—'}</div>
-                          <div className="col-center" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r?.included_interviews_per_role ?? '—'}</div>
-                          <div className="col-center" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r?.used_interviews ?? '—'}</div>
-                          <div className="col-center" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{r?.remaining_interviews ?? '—'}</div>
+                          <div style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                            {`${r?.included_interviews_per_role ?? '—'} included / ${r?.used_interviews ?? '—'} used / ${r?.remaining_interviews ?? '—'} left`}
+                          </div>
                           <div className="col-center">
                             {hasRubric ? (
                               <button
