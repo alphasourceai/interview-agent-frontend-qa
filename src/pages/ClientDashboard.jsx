@@ -1971,13 +1971,13 @@ export default function ClientDashboard() {
                         <InfoTip text="Shows how many interviews this role has used and how many are left." />
                       </span>
                     </div>
-                    <div className="col-center" style={{ justifyContent: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         Rubric
                         <InfoTip text="The interview question set generated for this role." />
                       </span>
                     </div>
-                    <div className="col-center" style={{ justifyContent: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         JD
                         <InfoTip text="The job description file used to generate the rubric." />
@@ -2013,7 +2013,7 @@ export default function ClientDashboard() {
                             <div style={{ whiteSpace: 'nowrap' }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
                             <div className="sub" style={{ whiteSpace: 'nowrap', marginTop: 0 }}>{`${r?.used_interviews ?? '—'} used`}</div>
                           </div>
-                          <div className="col-center" style={{ justifyContent: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
                             {hasRubric ? (
                               <button
                                 className="btn-icon"
@@ -2027,7 +2027,7 @@ export default function ClientDashboard() {
                               <span className="muted">—</span>
                             )}
                           </div>
-                          <div className="col-center" style={{ justifyContent: 'flex-start' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
                             {hasJD ? (
                               <button
                                 className="btn-icon"
