@@ -1964,20 +1964,20 @@ export default function ClientDashboard() {
                 <div className="client-dash-table">
                   <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: rolesTableGridTemplate }}>
                     <div>Role</div>
-                    <div>Type</div>
-                    <div>
+                    <div style={{ textAlign: 'left' }}>Type</div>
+                    <div style={{ textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                         Usage
                         <InfoTip text="Shows how many interviews this role has used and how many are left." />
                       </span>
                     </div>
-                    <div className="col-center">
+                    <div className="col-center" style={{ justifyContent: 'flex-start' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         Rubric
                         <InfoTip text="The interview question set generated for this role." />
                       </span>
                     </div>
-                    <div className="col-center">
+                    <div className="col-center" style={{ justifyContent: 'flex-start' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         JD
                         <InfoTip text="The job description file used to generate the rubric." />
