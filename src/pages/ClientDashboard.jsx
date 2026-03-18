@@ -1965,7 +1965,12 @@ export default function ClientDashboard() {
                   <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: rolesTableGridTemplate }}>
                     <div>Role</div>
                     <div>Type</div>
-                    <div style={{ whiteSpace: 'nowrap' }}>Usage</div>
+                    <div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                        Usage
+                        <InfoTip text="Shows how many interviews this role has used and how many are left." />
+                      </span>
+                    </div>
                     <div className="col-center">
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         Rubric
@@ -2008,7 +2013,7 @@ export default function ClientDashboard() {
                             <div style={{ whiteSpace: 'nowrap' }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
                             <div className="sub" style={{ whiteSpace: 'nowrap', marginTop: 0 }}>{`${r?.used_interviews ?? '—'} used`}</div>
                           </div>
-                          <div className="col-center">
+                          <div className="col-center" style={{ justifyContent: 'flex-start' }}>
                             {hasRubric ? (
                               <button
                                 className="btn-icon"
@@ -2022,7 +2027,7 @@ export default function ClientDashboard() {
                               <span className="muted">—</span>
                             )}
                           </div>
-                          <div className="col-center">
+                          <div className="col-center" style={{ justifyContent: 'flex-start' }}>
                             {hasJD ? (
                               <button
                                 className="btn-icon"
