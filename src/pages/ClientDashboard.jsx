@@ -2125,6 +2125,16 @@ export default function ClientDashboard() {
                     <div className="client-dash-muted">Subscription Status</div>
                     <div>{selectedClientBillingSummary?.subscription_status || '—'}</div>
                   </div>
+                  <div
+                    className="client-dash-card"
+                    aria-hidden="true"
+                    style={{ marginBottom: 0, flex: 1, minWidth: 260, visibility: 'hidden' }}
+                  />
+                  <div
+                    className="client-dash-card"
+                    aria-hidden="true"
+                    style={{ marginBottom: 0, flex: 1, minWidth: 260, visibility: 'hidden' }}
+                  />
                 </div>
               )}
               <div style={{ marginTop: 12 }}>
