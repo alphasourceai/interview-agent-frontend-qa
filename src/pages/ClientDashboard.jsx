@@ -1964,20 +1964,20 @@ export default function ClientDashboard() {
                 <div className="client-dash-table">
                   <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: rolesTableGridTemplate }}>
                     <div>Role</div>
-                    <div style={{ textAlign: 'left' }}>Type</div>
-                    <div style={{ textAlign: 'left' }}>
+                    <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>Type</div>
+                    <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                         Usage
                         <InfoTip text="Shows how many interviews this role has used and how many are left." />
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         Rubric
                         <InfoTip text="The interview question set generated for this role." />
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center' }}>
                         JD
                         <InfoTip text="The job description file used to generate the rubric." />
@@ -2008,12 +2008,12 @@ export default function ClientDashboard() {
                             <div className="title">{r.title}</div>
                             <div className="sub">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                           </div>
-                          <div>{r.interview_type || '—'}</div>
-                          <div style={{ fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 2, justifyItems: 'start' }}>
+                          <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>{r.interview_type || '—'}</div>
+                          <div style={{ fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 2, justifyItems: 'start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                             <div style={{ whiteSpace: 'nowrap' }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
                             <div className="sub" style={{ whiteSpace: 'nowrap', marginTop: 0 }}>{`${r?.used_interviews ?? '—'} used`}</div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                             {hasRubric ? (
                               <button
                                 className="btn-icon"
@@ -2027,7 +2027,7 @@ export default function ClientDashboard() {
                               <span className="muted">—</span>
                             )}
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', textAlign: 'left' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                             {hasJD ? (
                               <button
                                 className="btn-icon"
