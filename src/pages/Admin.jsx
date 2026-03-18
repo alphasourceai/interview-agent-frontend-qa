@@ -439,14 +439,15 @@ export default function Admin() {
     setTimeout(postEmbedSize, 300);
   }
 
-  async function refreshCandidates(clientId = selectedClientId, roleId = candidateRoleFilter) {
+  async function refreshCandidates(clientId = selectedClientId, roleId = candidateRoleFilter, options = {}) {
+    const silent = options?.silent === true;
     const isAll = clientId === ALL_CLIENTS_VALUE;
     if (isAll || !clientId) {
       setCandidates([]);
       setCandidatesMessage('Select a client to view candidates.');
       return;
     }
-    setCandidatesLoading(true);
+    if (!silent) setCandidatesLoading(true);
     try {
       const qs = new URLSearchParams({ client_id: clientId });
       if (roleId) qs.set('role_id', roleId);
@@ -456,9 +457,9 @@ export default function Admin() {
     } catch (e) {
       setCandidates([]);
       setCandidatesMessage('');
-      toast.error(e?.message || 'Could not load candidates', { duration: 1600 });
+      if (!silent) toast.error(e?.message || 'Could not load candidates', { duration: 1600 });
     } finally {
-      setCandidatesLoading(false);
+      if (!silent) setCandidatesLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
@@ -617,9 +618,10 @@ export default function Admin() {
     }
   };
 
-  async function refreshBilling() {
+  async function refreshBilling(options = {}) {
+    const silent = options?.silent === true;
     if (!isAdmin) return;
-    setBillingLoading(true);
+    if (!silent) setBillingLoading(true);
     try {
       const [cust, inv] = await Promise.all([
         apiGet('/admin/billing/customers'),
@@ -629,17 +631,18 @@ export default function Admin() {
       setBillingInvoices(inv?.items || []);
     } catch (e) {
       console.warn('[billing] fetch failed', e?.message || e);
-      toast.error('Could not load billing data', { duration: 1500 });
+      if (!silent) toast.error('Could not load billing data', { duration: 1500 });
     } finally {
-      setBillingLoading(false);
+      if (!silent) setBillingLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
   }
 
-  async function refreshAccommodations() {
+  async function refreshAccommodations(options = {}) {
+    const silent = options?.silent === true;
     if (!isAdmin) return;
-    setAccommodationsLoading(true);
+    if (!silent) setAccommodationsLoading(true);
     try {
       const params = new URLSearchParams();
       if (accommodationFilter) params.set('status', accommodationFilter);
@@ -657,57 +660,60 @@ export default function Admin() {
       setAccommodationNotes(notes);
     } catch (e) {
       console.warn('[accommodations] fetch failed', e?.message || e);
-      toast.error('Could not load accommodation requests', { duration: 1500 });
+      if (!silent) toast.error('Could not load accommodation requests', { duration: 1500 });
     } finally {
-      setAccommodationsLoading(false);
+      if (!silent) setAccommodationsLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
   }
 
-  async function refreshAuditRuns() {
+  async function refreshAuditRuns(options = {}) {
+    const silent = options?.silent === true;
     if (!isAdmin) return;
-    setAuditRunsLoading(true);
+    if (!silent) setAuditRunsLoading(true);
     try {
       const resp = await apiGet('/admin/audit/contract-processing-runs');
       setAuditRuns(resp?.items || []);
     } catch (e) {
       console.warn('[audit-logs] fetch failed', e?.message || e);
-      toast.error('Could not load audit logs', { duration: 1500 });
+      if (!silent) toast.error('Could not load audit logs', { duration: 1500 });
     } finally {
-      setAuditRunsLoading(false);
+      if (!silent) setAuditRunsLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
   }
 
-  async function refreshBillingReconciliation() {
+  async function refreshBillingReconciliation(options = {}) {
+    const silent = options?.silent === true;
     if (!isAdmin) return;
-    setBillingReconciliationLoading(true);
+    if (!silent) setBillingReconciliationLoading(true);
     try {
       const resp = await apiGet('/admin/audit/billing-reconciliation');
       setBillingReconciliationItems(resp?.items || []);
     } catch (e) {
       console.warn('[audit-logs/reconciliation] fetch failed', e?.message || e);
-      toast.error('Could not load billing reconciliation', { duration: 1500 });
+      if (!silent) toast.error('Could not load billing reconciliation', { duration: 1500 });
     } finally {
-      setBillingReconciliationLoading(false);
+      if (!silent) setBillingReconciliationLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
   }
 
-  async function refreshContractCancellationRuns() {
+  async function refreshContractCancellationRuns(options = {}) {
+    const silent = options?.silent === true;
     if (!isAdmin) return;
-    setContractCancellationRunsLoading(true);
+    if (!silent) setContractCancellationRunsLoading(true);
     try {
       const resp = await apiGet('/admin/audit/contract-cancellation-runs');
       setContractCancellationRuns(resp?.items || []);
     } catch (e) {
       console.warn('[audit-logs/contract-cancellations] fetch failed', e?.message || e);
-      toast.error('Could not load contract cancellation runs', { duration: 1500 });
+      if (!silent) toast.error('Could not load contract cancellation runs', { duration: 1500 });
     } finally {
-      setContractCancellationRunsLoading(false);
+      if (!silent) setContractCancellationRunsLoading(false);
       postEmbedSize();
       setTimeout(postEmbedSize, 300);
     }
@@ -772,6 +778,63 @@ export default function Admin() {
     }
     window.history.replaceState({}, '', window.location.pathname);
   }, [isAdmin]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    let lastRefreshAt = 0;
+    const REFRESH_DEBOUNCE_MS = 1000;
+    const refreshOnFocus = async () => {
+      if (activeTab === 'clients') {
+        try { await refreshClients(); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'roles' || activeTab === 'role-config') {
+        try { await refreshRoles(selectedClientId); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'members') {
+        try { await refreshMembers(selectedClientId); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'candidates') {
+        try { await refreshCandidates(selectedClientId, candidateRoleFilter, { silent: true }); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'billing') {
+        try { await refreshBilling({ silent: true }); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'accommodations') {
+        try { await refreshAccommodations({ silent: true }); } catch (_) {}
+        return;
+      }
+      if (activeTab === 'audit-logs') {
+        try {
+          await Promise.all([
+            refreshAuditRuns({ silent: true }),
+            refreshBillingReconciliation({ silent: true }),
+            refreshContractCancellationRuns({ silent: true })
+          ]);
+        } catch (_) {}
+      }
+    };
+    const triggerRefresh = () => {
+      const now = Date.now();
+      if (now - lastRefreshAt < REFRESH_DEBOUNCE_MS) return;
+      lastRefreshAt = now;
+      void refreshOnFocus();
+    };
+    const onFocus = () => { triggerRefresh(); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') triggerRefresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [isAdmin, activeTab, selectedClientId, candidateRoleFilter, accommodationFilter, clients.length]);
 
   useEffect(() => {
     const onClickOutside = (e) => {

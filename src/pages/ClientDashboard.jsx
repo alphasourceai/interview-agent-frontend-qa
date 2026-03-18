@@ -851,14 +851,15 @@ export default function ClientDashboard() {
     }
   }
 
-  const fetchRolesForClient = async (clientIdArg) => {
+  const fetchRolesForClient = async (clientIdArg, options = {}) => {
+    const silent = options?.silent === true;
     const targetId = clientIdArg || clientId;
     if (!targetId || !canManage) {
       setRoles([]);
       return;
     }
     const endpoint = `${rolesEndpointBase}?client_id=${encodeURIComponent(targetId)}`;
-    setRolesLoading(true);
+    if (!silent) setRolesLoading(true);
     try {
       const resp = await apiGet(endpoint);
       const items = Array.isArray(resp?.items) ? resp.items : [];
@@ -885,9 +886,9 @@ export default function ClientDashboard() {
         keys: e?.data ? Object.keys(e.data || {}) : []
       });
       setRoles([]);
-      showToast(detail || 'Failed to load roles', 'error');
+      if (!silent) showToast(detail || 'Failed to load roles', 'error');
     } finally {
-      setRolesLoading(false);
+      if (!silent) setRolesLoading(false);
     }
   };
 
@@ -922,6 +923,64 @@ export default function ClientDashboard() {
     })();
     return () => { alive = false; };
   }, [clientId, canManage, activeTab, validatedSelectedClientId]);
+
+  const refreshMembersSilently = async (targetClientId = validatedSelectedClientId) => {
+    if (!canManage || !targetClientId) return;
+    try {
+      const qs = `?client_id=${encodeURIComponent(targetClientId)}`;
+      const resp = await apiGet('/client-members' + qs);
+      setMembers(resp?.items || []);
+    } catch (_) {}
+  };
+
+  const refreshBillingSummarySilently = async (targetClientId = validatedSelectedClientId) => {
+    if (!targetClientId) return;
+    try {
+      const qs = `?client_id=${encodeURIComponent(targetClientId)}`;
+      const resp = await apiGet('/clients/billing/summary' + qs);
+      const item = Array.isArray(resp?.items) ? (resp.items[0] || null) : null;
+      setSelectedClientBillingSummary(item);
+    } catch (_) {}
+  };
+
+  useEffect(() => {
+    let lastRefreshAt = 0;
+    const REFRESH_DEBOUNCE_MS = 1000;
+    const refreshOnFocus = async () => {
+      if (!validatedSelectedClientId) return;
+      if (activeTab === 'candidates' && !selectedClientIsEffectivelyInactive) {
+        await fetchRows({ silent: true, reason: 'focus' });
+        return;
+      }
+      if (activeTab === 'roles' && canManage && !selectedClientIsEffectivelyInactive) {
+        await fetchRolesForClient(validatedSelectedClientId, { silent: true });
+        return;
+      }
+      if (activeTab === 'members' && canManage) {
+        await refreshMembersSilently(validatedSelectedClientId);
+        return;
+      }
+      if (activeTab === 'billing') {
+        await refreshBillingSummarySilently(validatedSelectedClientId);
+      }
+    };
+    const triggerRefresh = () => {
+      const now = Date.now();
+      if (now - lastRefreshAt < REFRESH_DEBOUNCE_MS) return;
+      lastRefreshAt = now;
+      void refreshOnFocus();
+    };
+    const onFocus = () => { triggerRefresh(); };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') triggerRefresh();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [activeTab, canManage, selectedClientIsEffectivelyInactive, validatedSelectedClientId, clientId]);
 
   const uploadJDToBackend = async (roleId, file) => {
     const form = new FormData();
@@ -1163,6 +1222,7 @@ export default function ClientDashboard() {
       const url = `${rolesEndpointBase}/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
       await apiDelete(url);
       setRoles((prev) => prev.filter((r) => r.id !== id));
+      await fetchRolesForClient(clientId, { silent: true });
       postSizeSoon();
       setTimeout(postSizeSoon, 300);
       showToast('Role deleted', 'success');
@@ -1199,6 +1259,7 @@ export default function ClientDashboard() {
         setMemberEmail('');
         setMemberName('');
         setMemberRole('member');
+        await refreshMembersSilently(validatedSelectedClientId);
         postSizeSoon();
         setTimeout(postSizeSoon, 300);
         showToast('Member added', 'success');
@@ -1220,6 +1281,7 @@ export default function ClientDashboard() {
     try {
       await apiDelete(`/client-members/${id}?client_id=${encodeURIComponent(validatedSelectedClientId)}`);
       setMembers((prev) => prev.filter((m) => m.id !== id));
+      await refreshMembersSilently(validatedSelectedClientId);
       postSizeSoon();
       setTimeout(postSizeSoon, 300);
       showToast('Member removed', 'success');
@@ -2116,8 +2178,8 @@ export default function ClientDashboard() {
                   <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
                     <div className="client-dash-muted">Current Contract End Date</div>
                     <div>
-                      {(selectedClientBillingSummary?.current_term_end || selectedClientBillingSummary?.contract_end_at)
-                        ? new Date(selectedClientBillingSummary.current_term_end || selectedClientBillingSummary.contract_end_at).toLocaleDateString()
+                      {selectedClientBillingSummary?.contract_end_at
+                        ? new Date(selectedClientBillingSummary?.contract_end_at).toLocaleDateString()
                         : '—'}
                     </div>
                   </div>
