@@ -33,6 +33,10 @@ const th = {
   borderBottom: '1px solid #e5e7eb',
   padding: '8px 6px',
   whiteSpace: 'nowrap',
+  position: 'sticky',
+  top: 0,
+  zIndex: 5,
+  background: '#0A1547',
 };
 const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlign: 'top' };
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
@@ -1152,7 +1156,11 @@ export default function ClientDashboard() {
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
 
-  const deleteRole = async (id) => {
+  const deleteRole = async (id, title) => {
+    const confirmed = window.confirm(
+      `This role${title ? ` (“${title}”)` : ''} has already been paid for.\nDeleting it will remove the role from the dashboard.\nPayment is not automatically reversed/refunded.\n\nDelete this role?`
+    );
+    if (!confirmed) return;
     try {
       const url = `${rolesEndpointBase}/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
       await apiDelete(url);
@@ -1879,7 +1887,7 @@ export default function ClientDashboard() {
               {rolesLoading && <div className="client-dash-muted">Loading roles…</div>}
               {!rolesLoading && (
                 <div className="client-dash-table">
-                  <div className="t-head">
+                  <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547' }}>
                     <div>Role</div>
                     <div>Created</div>
                     <div>Type</div>
@@ -1957,7 +1965,7 @@ export default function ClientDashboard() {
                           </div>
                           {canManage && (
                             <div className="center" style={{ display: 'flex', justifyContent: 'center' }}>
-                              <button className="btn-icon" onClick={() => deleteRole(r.id)} title="Delete role">
+                              <button className="btn-icon" onClick={() => deleteRole(r.id, r.title)} title="Delete role">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
                                   <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
@@ -2010,7 +2018,7 @@ export default function ClientDashboard() {
                 {membersLoading && <div className="client-dash-muted">Loading members…</div>}
                 {!membersLoading && (
                   <div className="client-dash-table members">
-                    <div className="t-head">
+                    <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547' }}>
                       <div>Name</div>
                       <div>Email</div>
                       <div>Role</div>
@@ -2092,6 +2100,14 @@ export default function ClientDashboard() {
                     <div>
                       {selectedClientBillingSummary?.current_term_end
                         ? new Date(selectedClientBillingSummary.current_term_end).toLocaleDateString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Contract End Date</div>
+                    <div>
+                      {selectedClientBillingSummary?.contract_end_at
+                        ? new Date(selectedClientBillingSummary.contract_end_at).toLocaleDateString()
                         : '—'}
                     </div>
                   </div>
