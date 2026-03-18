@@ -1217,8 +1217,8 @@ export default function ClientDashboard() {
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
   const rolesTableGridTemplate = canManage
-    ? 'minmax(220px, 2.4fr) 90px 150px 72px 72px 110px 72px'
-    : 'minmax(220px, 2.4fr) 90px 150px 72px 72px 110px';
+    ? 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px 88px'
+    : 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px';
 
   const deleteRole = async (id) => {
     try {
