@@ -1659,7 +1659,7 @@ export default function Admin() {
                 </div>
                 <div className="card-scroll" style={{ overflowY: 'visible', maxHeight: 'none' }}>
                   <div className="client-dash-table clients-billing" style={{ overflowY: 'visible', maxHeight: 'none' }}>
-                    <div className="t-head" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr' }}>
+                    <div className="t-head" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr', position: 'sticky', top: 0, zIndex: 5, background: '#0A1547' }}>
                       <div>Name</div>
                       <div>Plan tier</div>
                       <div>Billing status</div>
