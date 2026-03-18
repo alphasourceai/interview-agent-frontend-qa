@@ -2004,8 +2004,9 @@ export default function ClientDashboard() {
                             <div className="sub">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
                           </div>
                           <div>{r.interview_type || '—'}</div>
-                          <div style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                            {`${r?.included_interviews_per_role ?? '—'} included / ${r?.used_interviews ?? '—'} used / ${r?.remaining_interviews ?? '—'} left`}
+                          <div style={{ fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 2, justifyItems: 'start' }}>
+                            <div style={{ whiteSpace: 'nowrap' }}>{`${r?.remaining_interviews ?? '—'} left`}</div>
+                            <div className="sub" style={{ whiteSpace: 'nowrap', marginTop: 0 }}>{`${r?.used_interviews ?? '—'} used`}</div>
                           </div>
                           <div className="col-center">
                             {hasRubric ? (
