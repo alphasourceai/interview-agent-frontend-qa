@@ -117,7 +117,7 @@ export default function PwReset() {
       }
       toast.success('Password updated. Redirecting…', { duration: 1200 });
       const redirectOrigin = getResetOrigin();
-      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : '/signin';
+      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : 'https://www.alphasourceai.com/account';
       await supabase.auth.signOut();
       const cleanUrl = new URL(window.location.href);
       ['pwreset', 'code', 'token_hash', 'type', 'origin'].forEach((k) => cleanUrl.searchParams.delete(k));
