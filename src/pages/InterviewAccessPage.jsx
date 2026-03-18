@@ -63,6 +63,16 @@ function OtpInline({ email, candidateId, roleId, onVerified, onError, onInactive
       });
       const data = await resp.json();
       if (!resp.ok) {
+        if (data?.code === 'interview_limit_reached') {
+          setIsVerified(false);
+          onInactive?.({
+            title: 'Interview Unavailable',
+            detail: 'This interview is currently unavailable.',
+            secondary: 'Please contact the employer if you have questions or need help continuing.',
+            hint: data?.hint || ''
+          });
+          return;
+        }
         if (data?.code === 'CLIENT_INACTIVE') {
           onInactive?.({
             detail: data?.detail || 'Interviewing service is inactive.',
@@ -452,6 +462,17 @@ export default function InterviewAccessPage() {
       });
       const data = await resp.json();
       if (!resp.ok) {
+        if (data?.code === 'interview_limit_reached') {
+          setInactiveInfo({
+            title: 'Interview Unavailable',
+            detail: 'This interview is currently unavailable.',
+            secondary: 'Please contact the employer if you have questions or need help continuing.',
+            hint: data?.hint || ''
+          });
+          setVerified(false);
+          setError('');
+          return;
+        }
         setError(data?.error || 'Could not start interview.');
         return;
       }
@@ -542,8 +563,9 @@ export default function InterviewAccessPage() {
                     : inactiveInfo
                       ? (
                         <>
-                          <div>Interview temporarily unavailable</div>
-                          <div>{inactiveInfo.detail}</div>
+                          <div>{inactiveInfo?.title || 'Interview temporarily unavailable'}</div>
+                          <div>{inactiveInfo?.detail || 'This interview is currently unavailable.'}</div>
+                          {inactiveInfo?.secondary ? <div>{inactiveInfo.secondary}</div> : null}
                           {hintRaw
                             ? (
                               isEmailContact(hintRaw)

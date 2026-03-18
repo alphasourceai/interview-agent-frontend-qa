@@ -85,6 +85,15 @@ export default function InterviewAccessForm({ roleToken, onSubmitted, onInactive
       const data = await resp.json();
 
       if (!resp.ok) {
+        if (data?.code === 'interview_limit_reached') {
+          onInactive?.({
+            title: 'Interview Unavailable',
+            detail: 'This interview is currently unavailable.',
+            secondary: 'Please contact the employer if you have questions or need help continuing.',
+            hint: data?.hint || ''
+          });
+          return;
+        }
         if (data?.code === 'CLIENT_INACTIVE') {
           onInactive?.({
             detail: data?.detail || 'Interviewing service is inactive.',
