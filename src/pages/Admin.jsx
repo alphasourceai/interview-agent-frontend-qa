@@ -1654,6 +1654,7 @@ export default function Admin() {
                   <select className="alpha-input alpha-select client-dash-input" value={newClientAdminRole} onChange={e => setNewClientAdminRole(e.target.value)}>
                     <option value="manager">Manager (standard)</option>
                     <option value="tester">Tester (beta with NDA splash)</option>
+                    <option value="member">Member</option>
                   </select>
                   <button className="btn lilac client-dash-pill" onClick={createClient}>Create</button>
                 </div>

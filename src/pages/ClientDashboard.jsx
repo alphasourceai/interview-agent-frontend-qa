@@ -4,6 +4,7 @@ import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
 import SignOutButton from '../components/SignOutButton.jsx'
 import CustomFilePicker from '../components/CustomFilePicker'
 import TesterFeedbackForm from '../components/TesterFeedbackForm.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import '../styles/clientDashboard.css';
 
 // --- Dashboard enhancements: sorting, filtering, tooltips (no summaries) ---
@@ -537,6 +538,7 @@ export default function ClientDashboard() {
   const [rubricNotes, setRubricNotes] = useState('');
   const [rubricError, setRubricError] = useState('');
   const [rubricSending, setRubricSending] = useState(false);
+  const [confirmRoleDelete, setConfirmRoleDelete] = useState({ open: false, id: null, title: '' });
 
   // Members panel state
   const [members, setMembers] = useState([]);
@@ -1156,11 +1158,7 @@ export default function ClientDashboard() {
 
   const roleTitleError = roleTitleTouched && !newRoleTitle.trim();
 
-  const deleteRole = async (id, title) => {
-    const confirmed = window.confirm(
-      `This role${title ? ` (“${title}”)` : ''} has already been paid for.\nDeleting it will remove the role from the dashboard.\nPayment is not automatically reversed/refunded.\n\nDelete this role?`
-    );
-    if (!confirmed) return;
+  const deleteRole = async (id) => {
     try {
       const url = `${rolesEndpointBase}/admin/roles?id=${encodeURIComponent(id)}&client_id=${encodeURIComponent(clientId)}`;
       await apiDelete(url);
@@ -1175,6 +1173,18 @@ export default function ClientDashboard() {
       console.error('Role delete failed:', err);
       showToast(msg, 'error');
     }
+  };
+  const openDeleteRoleConfirm = (id, title) => {
+    setConfirmRoleDelete({ open: true, id, title: title || '' });
+  };
+  const closeDeleteRoleConfirm = () => {
+    setConfirmRoleDelete({ open: false, id: null, title: '' });
+  };
+  const confirmDeleteRole = async () => {
+    const targetId = confirmRoleDelete.id;
+    closeDeleteRoleConfirm();
+    if (!targetId) return;
+    await deleteRole(targetId);
   };
 
   const addMember = async () => {
@@ -1965,7 +1975,7 @@ export default function ClientDashboard() {
                           </div>
                           {canManage && (
                             <div className="center" style={{ display: 'flex', justifyContent: 'center' }}>
-                              <button className="btn-icon" onClick={() => deleteRole(r.id, r.title)} title="Delete role">
+                              <button className="btn-icon" onClick={() => openDeleteRoleConfirm(r.id, r.title)} title="Delete role">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                                   <path d="M3 6h18" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
                                   <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#FFFFFF" strokeWidth="2"/>
@@ -2104,10 +2114,10 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
-                    <div className="client-dash-muted">Contract End Date</div>
+                    <div className="client-dash-muted">Current Contract End Date</div>
                     <div>
-                      {selectedClientBillingSummary?.contract_end_at
-                        ? new Date(selectedClientBillingSummary.contract_end_at).toLocaleDateString()
+                      {(selectedClientBillingSummary?.current_term_end || selectedClientBillingSummary?.contract_end_at)
+                        ? new Date(selectedClientBillingSummary.current_term_end || selectedClientBillingSummary.contract_end_at).toLocaleDateString()
                         : '—'}
                     </div>
                   </div>
@@ -2237,6 +2247,24 @@ export default function ClientDashboard() {
             </div>
           </div>
         )}
+
+        <ConfirmDialog
+          open={confirmRoleDelete.open}
+          title={confirmRoleDelete.title ? `Delete role: ${confirmRoleDelete.title}` : 'Delete role'}
+          message={
+            <span>
+              • This role has already been paid for.
+              <br />
+              • Deleting it will remove the role from the dashboard.
+              <br />
+              • Payment is not automatically refunded.
+            </span>
+          }
+          confirmLabel="Delete Role"
+          cancelLabel="Cancel"
+          onConfirm={confirmDeleteRole}
+          onCancel={closeDeleteRoleConfirm}
+        />
       </div>
     </div>
   )
