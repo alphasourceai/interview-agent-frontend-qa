@@ -1297,7 +1297,7 @@ export default function ClientDashboard() {
     !!billingRoleSelectValue &&
     billingPurchaseQuantityIsValid &&
     !billingPurchaseBusy;
-  const billingCapacityGridTemplate = 'minmax(220px, 2.2fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(100px, 1fr)';
+  const billingPurchasedGridTemplate = 'minmax(220px, 2.2fr) minmax(120px, 1fr)';
   const normalizeCapacityValue = (value) => {
     const n = Number(value);
     if (!Number.isFinite(n)) return 0;
@@ -2370,29 +2370,27 @@ export default function ClientDashboard() {
                 </div>
               </div>
               <div className="client-dash-card" style={{ marginTop: 12, marginBottom: 0 }}>
-                <div className="client-dash-muted" style={{ marginBottom: 8 }}>Interview Capacity by Role</div>
+                <div className="client-dash-muted" style={{ marginBottom: 8 }}>Additional Interviews Purchased</div>
                 {rolesLoading ? (
                   <div className="client-dash-muted">Loading roles…</div>
                 ) : (
                   <div className="client-dash-table">
-                    <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: billingCapacityGridTemplate }}>
+                    <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: billingPurchasedGridTemplate }}>
                       <div>Role</div>
-                      <div>Included</div>
                       <div>Purchased</div>
-                      <div>Used</div>
-                      <div>Remaining</div>
                     </div>
                     <div className="t-body">
-                      {roles.map((role) => (
-                        <div key={role.id} className="t-row" style={{ gridTemplateColumns: billingCapacityGridTemplate }}>
+                      {roles
+                        .filter((role) => normalizeCapacityValue(role?.purchased_interviews) > 0)
+                        .map((role) => (
+                        <div key={role.id} className="t-row" style={{ gridTemplateColumns: billingPurchasedGridTemplate }}>
                           <div className="title">{role.title || 'Untitled role'}</div>
-                          <div>{normalizeCapacityValue(role?.included_interviews_per_role)}</div>
                           <div>{normalizeCapacityValue(role?.purchased_interviews)}</div>
-                          <div>{normalizeCapacityValue(role?.used_interviews)}</div>
-                          <div>{normalizeCapacityValue(role?.remaining_interviews)}</div>
                         </div>
                       ))}
-                      {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                      {roles.filter((role) => normalizeCapacityValue(role?.purchased_interviews) > 0).length === 0 && (
+                        <div className="t-empty muted">No additional interview purchases yet</div>
+                      )}
                     </div>
                   </div>
                 )}
