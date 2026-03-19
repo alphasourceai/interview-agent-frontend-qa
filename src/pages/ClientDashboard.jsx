@@ -2323,7 +2323,7 @@ export default function ClientDashboard() {
                   />
                 </div>
               )}
-              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'stretch', gap: 12, flexWrap: 'wrap' }}>
+              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                 <div className="client-dash-card" style={{ marginBottom: 0, flex: '1 1 420px', minWidth: 280, maxWidth: 520 }}>
                   <div className="client-dash-muted">Role</div>
                   <select
@@ -2343,7 +2343,7 @@ export default function ClientDashboard() {
                     ))}
                   </select>
                 </div>
-                <div className="client-dash-card" style={{ marginBottom: 0, flex: '0 0 170px', minWidth: 170 }}>
+                <div className="client-dash-card" style={{ marginBottom: 0, flex: '0 0 138px', minWidth: 138, maxWidth: 152 }}>
                   <div className="client-dash-muted">Quantity</div>
                   <input
                     type="number"
@@ -2353,10 +2353,10 @@ export default function ClientDashboard() {
                     className="alpha-input client-dash-input"
                     value={billingPurchaseQuantityInput}
                     onChange={(e) => setBillingPurchaseQuantityInput(e.target.value)}
-                    style={{ width: '100%', marginTop: 8 }}
+                    style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', marginTop: 8 }}
                   />
                 </div>
-                <div style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', flex: '0 0 240px', minWidth: 220 }}>
+                <div style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', flex: '0 0 240px', minWidth: 220 }}>
                   <div className="client-dash-muted" aria-hidden="true" style={{ visibility: 'hidden' }}>Action</div>
                   <button
                     type="button"
