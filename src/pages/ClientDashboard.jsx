@@ -1297,6 +1297,12 @@ export default function ClientDashboard() {
     !!billingRoleSelectValue &&
     billingPurchaseQuantityIsValid &&
     !billingPurchaseBusy;
+  const billingCapacityGridTemplate = 'minmax(220px, 2.2fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(90px, 1fr) minmax(100px, 1fr)';
+  const normalizeCapacityValue = (value) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 0;
+    return Math.max(0, Math.floor(n));
+  };
 
   const deleteRole = async (id) => {
     try {
@@ -2317,7 +2323,7 @@ export default function ClientDashboard() {
                   />
                 </div>
               )}
-              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'end' }}>
+              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'end', gap: 12, flexWrap: 'wrap' }}>
                 <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260, maxWidth: 480 }}>
                   <div className="client-dash-muted">Role</div>
                   <select
@@ -2337,7 +2343,7 @@ export default function ClientDashboard() {
                     ))}
                   </select>
                 </div>
-                <div className="client-dash-card" style={{ marginBottom: 0, width: 180 }}>
+                <div className="client-dash-card" style={{ marginBottom: 0, width: 170 }}>
                   <div className="client-dash-muted">Quantity</div>
                   <input
                     type="number"
@@ -2350,16 +2356,45 @@ export default function ClientDashboard() {
                     style={{ width: '100%', marginTop: 8 }}
                   />
                 </div>
-                <div>
+                <div style={{ marginBottom: 0 }}>
                   <button
                     type="button"
                     className="btn lilac client-dash-pill"
                     disabled={!canPurchaseAdditionalInterviews}
                     onClick={startAdditionalInterviewsCheckout}
+                    style={{ minWidth: 240, textAlign: 'center' }}
                   >
                     {billingPurchaseBusy ? 'Redirecting…' : 'Purchase Additional Interviews'}
                   </button>
                 </div>
+              </div>
+              <div className="client-dash-card" style={{ marginTop: 12, marginBottom: 0 }}>
+                <div className="client-dash-muted" style={{ marginBottom: 8 }}>Interview Capacity by Role</div>
+                {rolesLoading ? (
+                  <div className="client-dash-muted">Loading roles…</div>
+                ) : (
+                  <div className="client-dash-table">
+                    <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: billingCapacityGridTemplate }}>
+                      <div>Role</div>
+                      <div>Included</div>
+                      <div>Purchased</div>
+                      <div>Used</div>
+                      <div>Remaining</div>
+                    </div>
+                    <div className="t-body">
+                      {roles.map((role) => (
+                        <div key={role.id} className="t-row" style={{ gridTemplateColumns: billingCapacityGridTemplate }}>
+                          <div className="title">{role.title || 'Untitled role'}</div>
+                          <div>{normalizeCapacityValue(role?.included_interviews_per_role)}</div>
+                          <div>{normalizeCapacityValue(role?.purchased_interviews)}</div>
+                          <div>{normalizeCapacityValue(role?.used_interviews)}</div>
+                          <div>{normalizeCapacityValue(role?.remaining_interviews)}</div>
+                        </div>
+                      ))}
+                      {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                    </div>
+                  </div>
+                )}
               </div>
               <div style={{ marginTop: 12 }}>
                 <button
