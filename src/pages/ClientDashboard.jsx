@@ -2323,8 +2323,8 @@ export default function ClientDashboard() {
                   />
                 </div>
               )}
-              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'end', gap: 12, flexWrap: 'wrap' }}>
-                <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260, maxWidth: 480 }}>
+              <div className="client-dash-row" style={{ marginTop: 12, alignItems: 'stretch', gap: 12, flexWrap: 'wrap' }}>
+                <div className="client-dash-card" style={{ marginBottom: 0, flex: '1 1 420px', minWidth: 280, maxWidth: 520 }}>
                   <div className="client-dash-muted">Role</div>
                   <select
                     className="alpha-input alpha-select client-dash-input"
@@ -2343,7 +2343,7 @@ export default function ClientDashboard() {
                     ))}
                   </select>
                 </div>
-                <div className="client-dash-card" style={{ marginBottom: 0, width: 170 }}>
+                <div className="client-dash-card" style={{ marginBottom: 0, flex: '0 0 170px', minWidth: 170 }}>
                   <div className="client-dash-muted">Quantity</div>
                   <input
                     type="number"
@@ -2356,13 +2356,14 @@ export default function ClientDashboard() {
                     style={{ width: '100%', marginTop: 8 }}
                   />
                 </div>
-                <div style={{ marginBottom: 0 }}>
+                <div style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', flex: '0 0 240px', minWidth: 220 }}>
+                  <div className="client-dash-muted" aria-hidden="true" style={{ visibility: 'hidden' }}>Action</div>
                   <button
                     type="button"
                     className="btn lilac client-dash-pill"
                     disabled={!canPurchaseAdditionalInterviews}
                     onClick={startAdditionalInterviewsCheckout}
-                    style={{ minWidth: 240, textAlign: 'center' }}
+                    style={{ width: '100%', minHeight: 42, marginTop: 8, textAlign: 'center' }}
                   >
                     {billingPurchaseBusy ? 'Redirecting…' : 'Purchase Additional Interviews'}
                   </button>
