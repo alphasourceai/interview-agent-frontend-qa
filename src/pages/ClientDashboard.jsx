@@ -598,6 +598,8 @@ export default function ClientDashboard() {
   // Tab selector
   const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | billing | feedback
   const [billingRoleId, setBillingRoleId] = useState(() => urlBillingPrefill.roleId || '');
+  const [billingPurchaseQuantityInput, setBillingPurchaseQuantityInput] = useState('1');
+  const [billingPurchaseBusy, setBillingPurchaseBusy] = useState(false);
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -1179,6 +1181,46 @@ export default function ClientDashboard() {
     }
   };
 
+  const startAdditionalInterviewsCheckout = async () => {
+    const parsedQuantity = Number(billingPurchaseQuantityInput);
+    const quantity = Number.isInteger(parsedQuantity) ? parsedQuantity : NaN;
+    if (!validatedSelectedClientId || !billingRoleSelectValue || !Number.isInteger(quantity) || quantity <= 0 || billingPurchaseBusy) return;
+    try {
+      setBillingPurchaseBusy(true);
+      const resp = await apiPost('/clients/billing/additional-interviews/checkout-session', {
+        client_id: validatedSelectedClientId,
+        role_id: billingRoleSelectValue,
+        quantity
+      });
+      const url = resp?.url;
+      if (!url) throw new Error('No checkout URL returned');
+      if (window?.parent && window.parent !== window) {
+        try {
+          if (window.top) {
+            window.top.location.href = url;
+            return;
+          }
+        } catch (_) {
+          // fallback below
+        }
+        window.open(url, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      window.location.assign(url);
+    } catch (e) {
+      const detail =
+        e?.data?.detail ||
+        e?.response?.data?.detail ||
+        e?.data?.error ||
+        e?.response?.data?.error ||
+        e?.message ||
+        'Could not start additional interview checkout';
+      showToast(toMessage(detail, 'Could not start additional interview checkout'), 'error');
+    } finally {
+      setBillingPurchaseBusy(false);
+    }
+  };
+
   const createRole = async () => {
     if (!clientId) return;
     const title = newRoleTitle.trim();
@@ -1248,6 +1290,13 @@ export default function ClientDashboard() {
     [roles, billingRoleId]
   );
   const billingRoleSelectValue = selectedBillingRole ? String(selectedBillingRole.id) : '';
+  const billingPurchaseQuantity = Number(billingPurchaseQuantityInput);
+  const billingPurchaseQuantityIsValid = Number.isInteger(billingPurchaseQuantity) && billingPurchaseQuantity > 0;
+  const canPurchaseAdditionalInterviews =
+    !!validatedSelectedClientId &&
+    !!billingRoleSelectValue &&
+    billingPurchaseQuantityIsValid &&
+    !billingPurchaseBusy;
 
   const deleteRole = async (id) => {
     try {
@@ -2288,14 +2337,27 @@ export default function ClientDashboard() {
                     ))}
                   </select>
                 </div>
+                <div className="client-dash-card" style={{ marginBottom: 0, width: 180 }}>
+                  <div className="client-dash-muted">Quantity</div>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    className="alpha-input client-dash-input"
+                    value={billingPurchaseQuantityInput}
+                    onChange={(e) => setBillingPurchaseQuantityInput(e.target.value)}
+                    style={{ width: '100%', marginTop: 8 }}
+                  />
+                </div>
                 <div>
                   <button
                     type="button"
                     className="btn lilac client-dash-pill"
-                    disabled
-                    title="Purchase flow coming soon"
+                    disabled={!canPurchaseAdditionalInterviews}
+                    onClick={startAdditionalInterviewsCheckout}
                   >
-                    Purchase Additional Interviews
+                    {billingPurchaseBusy ? 'Redirecting…' : 'Purchase Additional Interviews'}
                   </button>
                 </div>
               </div>
