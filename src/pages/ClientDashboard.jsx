@@ -2308,7 +2308,7 @@ export default function ClientDashboard() {
                     </div>
                   </div>
                   <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
-                    <div className="client-dash-muted">Subscription Status</div>
+                    <div className="client-dash-muted">Membership Status</div>
                     <div>{selectedClientBillingSummary?.subscription_status || '—'}</div>
                   </div>
                   <div

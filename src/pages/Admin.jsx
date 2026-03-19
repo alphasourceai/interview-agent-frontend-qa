@@ -772,9 +772,9 @@ export default function Admin() {
     void client_id;
     refreshClients();
     if (checkout === 'success') {
-      toast.success('Subscription checkout completed.', { duration: 1800 });
+      toast.success('Membership checkout completed.', { duration: 1800 });
     } else {
-      toast('Subscription checkout canceled.', { duration: 1800 });
+      toast('Membership checkout canceled.', { duration: 1800 });
     }
     window.history.replaceState({}, '', window.location.pathname);
   }, [isAdmin]);
@@ -1801,12 +1801,12 @@ export default function Admin() {
                               <div className="t-row" style={{ gridTemplateColumns: '1fr', background: 'rgba(15,23,42,0.45)' }}>
                                 <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'minmax(280px,1.3fr) minmax(240px,1fr)' }}>
                                   <div>
-                                    <div><strong>Subscription details</strong></div>
+                                    <div><strong>Membership details</strong></div>
                                     {isClientActivelySubscribed(c) ? (
                                       <div>
                                         <div><strong>Billing status:</strong> {getClientBillingDisplay(c)}</div>
                                         <div className="muted">
-                                          Stripe subscription: {c.subscription_status || '—'}
+                                          Stripe membership: {c.subscription_status || '—'}
                                         </div>
                                         <div className="muted">
                                           Billing cycle: {
@@ -1839,7 +1839,7 @@ export default function Admin() {
                                       <div>
                                         <div><strong>Billing status:</strong> {getClientBillingDisplay(c)}</div>
                                         <div className="muted">
-                                          Stripe subscription: {c.subscription_status || '—'}
+                                          Stripe membership: {c.subscription_status || '—'}
                                         </div>
                                         <div className="muted">
                                           Billing cycle: {
@@ -1898,7 +1898,7 @@ export default function Admin() {
                                     </div>
                                     {!isLiveStripeSubscription(c) && (
                                       <div style={{ marginTop: 12 }}>
-                                        <div><strong>Subscription Checkout Link</strong></div>
+                                        <div><strong>Membership Checkout Link</strong></div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                                           <select
                                             className="alpha-input alpha-select client-dash-input"
@@ -1929,7 +1929,7 @@ export default function Admin() {
                                               type="number"
                                               min="0"
                                               step="0.01"
-                                              placeholder="Platform fee"
+                                              placeholder="Membership fee"
                                               value={clientInvoicePlatformFees[c.id] ?? ''}
                                               onChange={(e) => setClientInvoicePlatformFees((prev) => ({ ...prev, [c.id]: e.target.value }))}
                                               disabled={!!clientSubscriptionInvoiceBusy[c.id]}
@@ -2905,7 +2905,7 @@ export default function Admin() {
             <div className="rubric-modal-body">
               <div className="muted" style={{ marginBottom: 8 }}>{cancelContractClientName || 'Client'}</div>
               <p style={{ marginTop: 0 }}>
-                <strong>Contract ends immediately. App access turns off immediately. Stripe subscription is canceled immediately. This action is permanent.</strong>
+                <strong>Contract ends immediately. App access turns off immediately. Stripe membership is canceled immediately. This action is permanent.</strong>
               </p>
               <label style={{ display: 'block', marginBottom: 6 }}>Final invoice amount</label>
               <input
