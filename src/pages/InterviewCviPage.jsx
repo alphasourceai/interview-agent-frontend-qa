@@ -23,7 +23,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
 const SOFT_CLOSE_TEXT = 'We are approaching our time limit for this interview. Thank you for your time today. Our session will end momentarily.';
-const SOFT_CLOSE_THRESHOLD_SECONDS = 20;
+const SOFT_CLOSE_THRESHOLD_SECONDS = 10;
 const SOFT_CLOSE_END_DELAY_MS = 7000;
 const SOFT_CLOSE_MIN_PLAY_MS = 2500;
 
