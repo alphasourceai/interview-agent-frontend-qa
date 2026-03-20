@@ -296,12 +296,17 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     };
   }, [interviewId, roleToken, endInterview]);
 
-  const showTimeWarning =
+  const showTimerPill =
     !isEnding &&
+    Number.isInteger(maxInterviewMinutes) &&
+    maxInterviewMinutes > 0 &&
     typeof secondsRemaining === 'number' &&
-    secondsRemaining > 0 &&
-    secondsRemaining <= 120;
-  const warningMinutes = showTimeWarning ? Math.ceil(secondsRemaining / 60) : null;
+    secondsRemaining > 0;
+  const timerMinutes = showTimerPill ? Math.floor(secondsRemaining / 60) : 0;
+  const timerSeconds = showTimerPill ? secondsRemaining % 60 : 0;
+  const timerLabel = showTimerPill
+    ? `${String(timerMinutes).padStart(2, '0')}:${String(timerSeconds).padStart(2, '0')}`
+    : '';
 
   return (
     <div className="tavus-stage" style={{ width: '100%' }}>
@@ -348,27 +353,38 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
             />
           </div>
         )}
-        {showTimeWarning && (
+        {showTimerPill && (
           <div
-            role="status"
-            aria-live="polite"
+            aria-label="Time remaining"
             style={{
               position: 'absolute',
-              left: 12,
               right: 12,
               top: 12,
-              padding: '10px 12px',
-              borderRadius: 12,
-              background: 'rgba(127,29,29,0.92)',
-              border: '1px solid rgba(248,113,113,0.85)',
-              color: '#fee2e2',
-              fontSize: 14,
-              textAlign: 'center',
+              padding: '6px 10px',
+              borderRadius: 999,
+              background: secondsRemaining <= 60
+                ? 'rgba(127,29,29,0.9)'
+                : secondsRemaining <= 120
+                  ? 'rgba(120,53,15,0.9)'
+                  : 'rgba(17,24,39,0.72)',
+              border: secondsRemaining <= 60
+                ? '1px solid rgba(248,113,113,0.85)'
+                : secondsRemaining <= 120
+                  ? '1px solid rgba(251,191,36,0.85)'
+                  : '1px solid rgba(148,163,184,0.45)',
+              color: secondsRemaining <= 60
+                ? '#fee2e2'
+                : secondsRemaining <= 120
+                  ? '#fef3c7'
+                  : 'rgba(255,255,255,0.92)',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '0.04em',
               zIndex: 5,
               pointerEvents: 'none',
             }}
           >
-            {`This interview will end in ${warningMinutes} minute(s). Please finish your current response.`}
+            {timerLabel}
           </div>
         )}
       </div>
