@@ -22,6 +22,10 @@ function joinUrl(base, path) {
 const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
   ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
   : '';
+const SOFT_CLOSE_TEXT = 'We are approaching our time limit for this interview. Thank you for your time today. Our session will end momentarily.';
+const SOFT_CLOSE_THRESHOLD_SECONDS = 20;
+const SOFT_CLOSE_END_DELAY_MS = 7000;
+const SOFT_CLOSE_MIN_PLAY_MS = 2500;
 
 let __dailyCallObject = null;
 
@@ -33,6 +37,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const joinedRef = useRef(false);
   const endTriggeredRef = useRef(false);
   const closeEndTimerRef = useRef(null);
+  const softCloseEndTimerRef = useRef(null);
+  const candidateSpeakingRef = useRef(false);
+  const replicaSpeakingRef = useRef(false);
+  const softCloseSentRef = useRef(false);
+  const softClosePendingRef = useRef(false);
+  const softCloseSentAtRef = useRef(0);
+  const softCloseReplicaSpokeRef = useRef(false);
   const [secondsRemaining, setSecondsRemaining] = useState(null);
   const [isEnding, setIsEnding] = useState(false);
 
@@ -59,6 +70,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         clearTimeout(closeEndTimerRef.current);
         closeEndTimerRef.current = null;
       }
+      if (softCloseEndTimerRef.current) {
+        clearTimeout(softCloseEndTimerRef.current);
+        softCloseEndTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -68,6 +83,14 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }
     endTriggeredRef.current = true;
     setIsEnding(true);
+    if (closeEndTimerRef.current) {
+      clearTimeout(closeEndTimerRef.current);
+      closeEndTimerRef.current = null;
+    }
+    if (softCloseEndTimerRef.current) {
+      clearTimeout(softCloseEndTimerRef.current);
+      softCloseEndTimerRef.current = null;
+    }
     try {
       const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
         method: 'POST',
@@ -88,6 +111,32 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       onDone();
     }
   }, [conversationId, daily, onDone]);
+
+  const scheduleSoftCloseEnd = useCallback(() => {
+    if (softCloseEndTimerRef.current || endTriggeredRef.current) return;
+    softCloseEndTimerRef.current = setTimeout(() => {
+      softCloseEndTimerRef.current = null;
+      endInterview('time_limit_soft_close');
+    }, SOFT_CLOSE_END_DELAY_MS);
+  }, [endInterview]);
+
+  const sendSoftClose = useCallback(() => {
+    if (softCloseSentRef.current || endTriggeredRef.current) return;
+    softCloseSentRef.current = true;
+    softClosePendingRef.current = false;
+    softCloseSentAtRef.current = Date.now();
+    softCloseReplicaSpokeRef.current = false;
+    try {
+      daily?.sendAppMessage?.({
+        event_type: 'conversation.echo',
+        eventType: 'conversation.echo',
+        properties: {
+          text: SOFT_CLOSE_TEXT,
+        },
+      }, '*');
+    } catch {}
+    scheduleSoftCloseEnd();
+  }, [daily, scheduleSoftCloseEnd]);
 
   useEffect(() => {
     if (!conversationUrl || !Number.isInteger(maxInterviewMinutes) || maxInterviewMinutes <= 0) {
@@ -120,8 +169,55 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     };
   }, [conversationUrl, maxInterviewMinutes, endInterview]);
 
+  useEffect(() => {
+    if (typeof secondsRemaining !== 'number') return;
+    if (secondsRemaining > SOFT_CLOSE_THRESHOLD_SECONDS) return;
+    if (endTriggeredRef.current || softCloseSentRef.current) return;
+    if (candidateSpeakingRef.current) {
+      softClosePendingRef.current = true;
+      return;
+    }
+    sendSoftClose();
+  }, [secondsRemaining, sendSoftClose]);
+
   const onAppMessage = useCallback((event) => {
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
+    const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
+
+    if (eventType === 'conversation.user.started_speaking') {
+      candidateSpeakingRef.current = true;
+    } else if (eventType === 'conversation.user.stopped_speaking') {
+      candidateSpeakingRef.current = false;
+      if (
+        softClosePendingRef.current &&
+        !softCloseSentRef.current &&
+        !endTriggeredRef.current
+      ) {
+        sendSoftClose();
+      }
+    } else if (eventType === 'conversation.replica.started_speaking') {
+      replicaSpeakingRef.current = true;
+      if (softCloseSentRef.current) {
+        softCloseReplicaSpokeRef.current = true;
+      }
+    } else if (eventType === 'conversation.replica.stopped_speaking') {
+      replicaSpeakingRef.current = false;
+      if (
+        softCloseSentRef.current &&
+        softCloseReplicaSpokeRef.current &&
+        !endTriggeredRef.current
+      ) {
+        const elapsed = Date.now() - softCloseSentAtRef.current;
+        if (elapsed >= SOFT_CLOSE_MIN_PLAY_MS) {
+          if (softCloseEndTimerRef.current) {
+            clearTimeout(softCloseEndTimerRef.current);
+            softCloseEndTimerRef.current = null;
+          }
+          endInterview('time_limit_soft_close');
+        }
+      }
+    }
+
     const et = String(data?.event_type || '').toLowerCase();
     const role = String(data?.properties?.role || '').toLowerCase();
     const speech = String(data?.properties?.speech || '');
@@ -149,8 +245,6 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       }
       return;
     }
-
-    const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
     if (eventType !== 'conversation.tool_call' && eventType !== 'conversation.toolcall') return;
 
     const toolName = String(
@@ -165,7 +259,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     if (toolName === 'end_interview') {
       endInterview('tool_call');
     }
-  }, [endInterview]);
+  }, [endInterview, sendSoftClose]);
 
   useDailyEvent('app-message', onAppMessage);
 
