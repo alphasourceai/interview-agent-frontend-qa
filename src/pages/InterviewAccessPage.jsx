@@ -479,6 +479,10 @@ export default function InterviewAccessPage() {
       const url = data?.conversation_url || data?.video_url || data?.redirect_url || data?.url || '';
       const cid = data?.conversation_id || '';
       const iid = data?.interview_id || '';
+      const maxInterviewMinutesRaw = Number(data?.max_interview_minutes);
+      const maxInterviewMinutes = Number.isFinite(maxInterviewMinutesRaw) && maxInterviewMinutesRaw > 0
+        ? Math.floor(maxInterviewMinutesRaw)
+        : null;
       const isLegacy = new URLSearchParams(location.search).get('legacy') === '1';
       if (url) {
         if (!isLegacy) {
@@ -488,7 +492,8 @@ export default function InterviewAccessPage() {
               conversation_url: url,
               conversation_id: cid ? String(cid) : '',
               interview_id: iid ? String(iid) : '',
-              role_token: roleToken || ''
+              role_token: roleToken || '',
+              max_interview_minutes: maxInterviewMinutes
             }
           });
           return;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DailyIframe from '@daily-co/daily-js';
@@ -25,7 +25,7 @@ const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_
 
 let __dailyCallObject = null;
 
-function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, onDone }) {
+function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, maxInterviewMinutes, onDone }) {
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
   const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
@@ -33,6 +33,8 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const joinedRef = useRef(false);
   const endTriggeredRef = useRef(false);
   const closeEndTimerRef = useRef(null);
+  const [secondsRemaining, setSecondsRemaining] = useState(null);
+  const [isEnding, setIsEnding] = useState(false);
 
   useDailyEvent('left-meeting', onDone);
 
@@ -65,6 +67,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       return;
     }
     endTriggeredRef.current = true;
+    setIsEnding(true);
     try {
       const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
         method: 'POST',
@@ -85,6 +88,37 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       onDone();
     }
   }, [conversationId, daily, onDone]);
+
+  useEffect(() => {
+    if (!conversationUrl || !Number.isInteger(maxInterviewMinutes) || maxInterviewMinutes <= 0) {
+      setSecondsRemaining(null);
+      return;
+    }
+
+    const totalSeconds = maxInterviewMinutes * 60;
+    const startedAt = Date.now();
+    let timer = null;
+
+    const tick = () => {
+      const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+      const nextRemaining = Math.max(0, totalSeconds - elapsedSeconds);
+      setSecondsRemaining(nextRemaining);
+      if (nextRemaining <= 0) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+        endInterview('time_limit');
+      }
+    };
+
+    tick();
+    timer = setInterval(tick, 1000);
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [conversationUrl, maxInterviewMinutes, endInterview]);
 
   const onAppMessage = useCallback((event) => {
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
@@ -168,6 +202,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     };
   }, [interviewId, roleToken, endInterview]);
 
+  const showTimeWarning =
+    !isEnding &&
+    typeof secondsRemaining === 'number' &&
+    secondsRemaining > 0 &&
+    secondsRemaining <= 120;
+  const warningMinutes = showTimeWarning ? Math.ceil(secondsRemaining / 60) : null;
+
   return (
     <div className="tavus-stage" style={{ width: '100%' }}>
       <div
@@ -213,6 +254,29 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
             />
           </div>
         )}
+        {showTimeWarning && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              position: 'absolute',
+              left: 12,
+              right: 12,
+              top: 12,
+              padding: '10px 12px',
+              borderRadius: 12,
+              background: 'rgba(127,29,29,0.92)',
+              border: '1px solid rgba(248,113,113,0.85)',
+              color: '#fee2e2',
+              fontSize: 14,
+              textAlign: 'center',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          >
+            {`This interview will end in ${warningMinutes} minute(s). Please finish your current response.`}
+          </div>
+        )}
       </div>
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
@@ -235,6 +299,10 @@ export default function InterviewCviPage() {
   const conversationId = String(location.state?.conversation_id || '');
   const interviewId = String(location.state?.interview_id || '');
   const roleToken = String(location.state?.role_token || '');
+  const maxInterviewMinutesRaw = Number(location.state?.max_interview_minutes);
+  const maxInterviewMinutes = Number.isFinite(maxInterviewMinutesRaw) && maxInterviewMinutesRaw > 0
+    ? Math.floor(maxInterviewMinutesRaw)
+    : null;
   const callObject = conversationUrl
     ? (__dailyCallObject || (__dailyCallObject = DailyIframe.createCallObject()))
     : null;
@@ -276,6 +344,7 @@ export default function InterviewCviPage() {
               conversationId={conversationId}
               interviewId={interviewId}
               roleToken={roleToken}
+              maxInterviewMinutes={maxInterviewMinutes}
               onDone={handleDone}
             />
           </DailyProvider>
