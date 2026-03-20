@@ -46,6 +46,9 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const softCloseReplicaSpokeRef = useRef(false);
   const [secondsRemaining, setSecondsRemaining] = useState(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [fallbackMaxInterviewMinutes, setFallbackMaxInterviewMinutes] = useState(null);
+  const hasNavMaxInterviewMinutes = Number.isInteger(maxInterviewMinutes) && maxInterviewMinutes > 0;
+  const effectiveMaxInterviewMinutes = hasNavMaxInterviewMinutes ? maxInterviewMinutes : fallbackMaxInterviewMinutes;
 
   useDailyEvent('left-meeting', onDone);
 
@@ -139,12 +142,12 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [daily, scheduleSoftCloseEnd]);
 
   useEffect(() => {
-    if (!conversationUrl || !Number.isInteger(maxInterviewMinutes) || maxInterviewMinutes <= 0) {
+    if (!conversationUrl || !Number.isInteger(effectiveMaxInterviewMinutes) || effectiveMaxInterviewMinutes <= 0) {
       setSecondsRemaining(null);
       return;
     }
 
-    const totalSeconds = maxInterviewMinutes * 60;
+    const totalSeconds = effectiveMaxInterviewMinutes * 60;
     const startedAt = Date.now();
     let timer = null;
 
@@ -167,7 +170,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [conversationUrl, maxInterviewMinutes, endInterview]);
+  }, [conversationUrl, effectiveMaxInterviewMinutes, endInterview]);
 
   useEffect(() => {
     if (typeof secondsRemaining !== 'number') return;
@@ -265,6 +268,9 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
 
   useEffect(() => {
     if (!interviewId || !roleToken) return;
+    if (!hasNavMaxInterviewMinutes) {
+      setFallbackMaxInterviewMinutes(null);
+    }
 
     let active = true;
     let timer = null;
@@ -278,6 +284,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         const resp = await fetch(joinUrl(BK, `/public/interview-status?${qs.toString()}`));
         const data = await resp.json().catch(() => ({}));
         if (!active) return;
+        if (resp.ok && !hasNavMaxInterviewMinutes) {
+          const raw = Number(data?.max_interview_minutes);
+          const parsed = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : null;
+          if (parsed !== null) {
+            setFallbackMaxInterviewMinutes((prev) => (prev === parsed ? prev : parsed));
+          }
+        }
         const status = String(data?.status || '');
         if (resp.ok && (status === 'ending_requested' || status === 'Ended')) {
           active = false;
@@ -294,12 +307,12 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       active = false;
       if (timer) clearInterval(timer);
     };
-  }, [interviewId, roleToken, endInterview]);
+  }, [interviewId, roleToken, endInterview, hasNavMaxInterviewMinutes]);
 
   const showTimerPill =
     !isEnding &&
-    Number.isInteger(maxInterviewMinutes) &&
-    maxInterviewMinutes > 0 &&
+    Number.isInteger(effectiveMaxInterviewMinutes) &&
+    effectiveMaxInterviewMinutes > 0 &&
     typeof secondsRemaining === 'number' &&
     secondsRemaining > 0;
   const timerMinutes = showTimerPill ? Math.floor(secondsRemaining / 60) : 0;
