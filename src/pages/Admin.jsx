@@ -11,6 +11,13 @@ import '../styles/clientDashboard.css';
 import '../styles/clientTheme.css';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const isValidPhoneLike = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return false;
+  if (!/^[+\d()\s.\-]+$/.test(raw)) return false;
+  const digits = raw.replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 15;
+};
 const ALL_CLIENTS_VALUE = 'ALL';
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
 
@@ -153,6 +160,7 @@ export default function Admin() {
   const [newClientName, setNewClientName] = useState('');
   const [newClientAdminName, setNewClientAdminName] = useState('');
   const [newClientAdminEmail, setNewClientAdminEmail] = useState('');
+  const [newClientCandidateAssistanceContact, setNewClientCandidateAssistanceContact] = useState('');
   const [newClientAdminRole, setNewClientAdminRole] = useState('manager');
   const [clientCheckoutCycles, setClientCheckoutCycles] = useState({});
   const [clientCheckoutBusy, setClientCheckoutBusy] = useState({});
@@ -1154,10 +1162,25 @@ export default function Admin() {
     const name = newClientName.trim();
     const admin_name = newClientAdminName.trim();
     const admin_email = newClientAdminEmail.trim();
+    const candidate_assistance_contact = newClientCandidateAssistanceContact.trim();
     const admin_role = newClientAdminRole;
     if (!name) return;
+    if (!candidate_assistance_contact) {
+      toast.error('Candidate assistance contact is required.', { duration: 2000 });
+      return;
+    }
+    if (!isValidEmail(candidate_assistance_contact) && !isValidPhoneLike(candidate_assistance_contact)) {
+      toast.error('Candidate assistance contact must be a valid email or phone.', { duration: 2000 });
+      return;
+    }
     try {
-      const resp = await apiPost('/admin/clients', { name, admin_name, admin_email, admin_role });
+      const resp = await apiPost('/admin/clients', {
+        name,
+        admin_name,
+        admin_email,
+        admin_role,
+        candidate_assistance_contact
+      });
       const item = resp?.item;
       if (item) {
         // TODO: also create billing customer for this client and seed stripe_customer_id
@@ -1165,6 +1188,7 @@ export default function Admin() {
         setNewClientName('');
         setNewClientAdminName('');
         setNewClientAdminEmail('');
+        setNewClientCandidateAssistanceContact('');
         setNewClientAdminRole('manager');
         setSelectedClientId(item.id);
         if (resp?.seeded_member) setMembers([resp.seeded_member, ...members]);
@@ -1714,6 +1738,7 @@ export default function Admin() {
                   <input className="alpha-input client-dash-input" placeholder="Client name" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
                   <input className="alpha-input client-dash-input" placeholder="Client admin name" value={newClientAdminName} onChange={e => setNewClientAdminName(e.target.value)} />
                   <input className="alpha-input client-dash-input" placeholder="Admin email" value={newClientAdminEmail} onChange={e => setNewClientAdminEmail(e.target.value)} />
+                  <input className="alpha-input client-dash-input" placeholder="Candidate assistance contact (email or phone)" value={newClientCandidateAssistanceContact} onChange={e => setNewClientCandidateAssistanceContact(e.target.value)} />
                   <select className="alpha-input alpha-select client-dash-input" value={newClientAdminRole} onChange={e => setNewClientAdminRole(e.target.value)}>
                     <option value="manager">Manager (standard)</option>
                     <option value="tester">Tester (beta with NDA splash)</option>
