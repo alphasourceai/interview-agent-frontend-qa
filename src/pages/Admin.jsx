@@ -44,6 +44,27 @@ const FileIcon = ({ size = 22 }) => (
   </svg>
 );
 
+function SortIcon({ dir, active }) {
+  if (!active) {
+    return <span className="client-dash-sort-caret client-dash-sort-caret--neutral">▼</span>;
+  }
+  return <span className="client-dash-sort-caret">{dir === 'asc' ? '▲' : '▼'}</span>;
+}
+
+function HeaderButton({ label, active, dir, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="sortable-header"
+      title={`Sort by ${label}`}
+      aria-pressed={active}
+    >
+      <span>{label}</span>
+      <SortIcon dir={dir} active={active} />
+    </button>
+  );
+}
+
 const extractRubricQuestions = (rubric) => {
   const questions = [];
   const seen = new Set();
@@ -208,6 +229,12 @@ export default function Admin() {
   const [emailError, setEmailError] = useState('');
 
   const [activeTab, setActiveTab] = useState('clients');
+  const [clientsSortBy, setClientsSortBy] = useState('name');
+  const [clientsSortDir, setClientsSortDir] = useState('asc');
+  const [rolesSortBy, setRolesSortBy] = useState('created');
+  const [rolesSortDir, setRolesSortDir] = useState('desc');
+  const [candidatesSortBy, setCandidatesSortBy] = useState('created');
+  const [candidatesSortDir, setCandidatesSortDir] = useState('desc');
 
   const [billingCustomers, setBillingCustomers] = useState([]);
   const [billingInvoices, setBillingInvoices] = useState([]);
@@ -250,10 +277,114 @@ export default function Admin() {
   const shareBase = 'https://interviews.alphasourceai.com/interview-host';
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
   const clientNameById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.name])), [clients]);
+  const roleTitleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r.title])), [roles]);
   const currentClientName = useMemo(() => {
     if (isAllClients) return 'All clients';
     return clients.find((c) => c.id === selectedClientId)?.name || '';
   }, [clients, selectedClientId, isAllClients]);
+  const toSortText = (value) => {
+    const text = String(value || '').trim().toLowerCase();
+    return text || null;
+  };
+  const toSortNumber = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const toSortTime = (value) => {
+    const ts = new Date(value || '').getTime();
+    return Number.isFinite(ts) ? ts : null;
+  };
+  const compareNullable = (a, b, dir) => {
+    const aNull = a == null;
+    const bNull = b == null;
+    if (aNull && bNull) return 0;
+    if (aNull) return 1;
+    if (bNull) return -1;
+    if (a < b) return dir === 'asc' ? -1 : 1;
+    if (a > b) return dir === 'asc' ? 1 : -1;
+    return 0;
+  };
+  const sortedClients = useMemo(() => {
+    const indexed = (clients || []).map((item, index) => ({ item, index }));
+    indexed.sort((a, b) => {
+      let cmp = 0;
+      if (clientsSortBy === 'name') {
+        cmp = compareNullable(toSortText(a.item?.name), toSortText(b.item?.name), clientsSortDir);
+      } else if (clientsSortBy === 'plan_tier') {
+        const aPlan = String(a.item?.billing_status || '').toLowerCase() === 'active' ? toSortText(a.item?.plan_tier) : null;
+        const bPlan = String(b.item?.billing_status || '').toLowerCase() === 'active' ? toSortText(b.item?.plan_tier) : null;
+        cmp = compareNullable(aPlan, bPlan, clientsSortDir);
+      } else if (clientsSortBy === 'billing_status') {
+        cmp = compareNullable(toSortText(getClientBillingDisplay(a.item)), toSortText(getClientBillingDisplay(b.item)), clientsSortDir);
+      } else if (clientsSortBy === 'billing_cycle') {
+        const aCycleRaw = String(a.item?.billing_interval || '').toLowerCase();
+        const bCycleRaw = String(b.item?.billing_interval || '').toLowerCase();
+        const aCycle = String(a.item?.billing_status || '').toLowerCase() === 'active'
+          ? (aCycleRaw === 'annual' || aCycleRaw === 'monthly' ? aCycleRaw : null)
+          : null;
+        const bCycle = String(b.item?.billing_status || '').toLowerCase() === 'active'
+          ? (bCycleRaw === 'annual' || bCycleRaw === 'monthly' ? bCycleRaw : null)
+          : null;
+        cmp = compareNullable(aCycle, bCycle, clientsSortDir);
+      } else if (clientsSortBy === 'auto_renew') {
+        const rank = (value) => (value === false ? 0 : value === true ? 1 : 2);
+        cmp = compareNullable(rank(a.item?.auto_renew), rank(b.item?.auto_renew), clientsSortDir);
+      }
+      if (cmp !== 0) return cmp;
+      return a.index - b.index;
+    });
+    return indexed.map(({ item }) => item);
+  }, [clients, clientsSortBy, clientsSortDir]);
+  const sortedRoles = useMemo(() => {
+    const indexed = (roles || []).map((item, index) => ({ item, index }));
+    indexed.sort((a, b) => {
+      let cmp = 0;
+      if (rolesSortBy === 'role') {
+        cmp = compareNullable(toSortText(a.item?.title), toSortText(b.item?.title), rolesSortDir);
+      } else if (rolesSortBy === 'client') {
+        const aClientId = a.item?.client_id || a.item?.clientId || a.item?.client?.id;
+        const bClientId = b.item?.client_id || b.item?.clientId || b.item?.client?.id;
+        const aClientName = clientNameById[aClientId] || a.item?.client_name || a.item?.client?.name || '';
+        const bClientName = clientNameById[bClientId] || b.item?.client_name || b.item?.client?.name || '';
+        cmp = compareNullable(toSortText(aClientName), toSortText(bClientName), rolesSortDir);
+      } else if (rolesSortBy === 'type') {
+        cmp = compareNullable(toSortText(a.item?.interview_type), toSortText(b.item?.interview_type), rolesSortDir);
+      } else {
+        cmp = compareNullable(toSortTime(a.item?.created_at), toSortTime(b.item?.created_at), rolesSortDir);
+      }
+      if (cmp !== 0) return cmp;
+      return a.index - b.index;
+    });
+    return indexed.map(({ item }) => item);
+  }, [roles, rolesSortBy, rolesSortDir, clientNameById]);
+  const sortedCandidates = useMemo(() => {
+    const indexed = (candidates || []).map((item, index) => ({ item, index }));
+    indexed.sort((a, b) => {
+      let cmp = 0;
+      if (candidatesSortBy === 'name') {
+        cmp = compareNullable(toSortText(a.item?.name), toSortText(b.item?.name), candidatesSortDir);
+      } else if (candidatesSortBy === 'client') {
+        const aClientName = clientNameById[a.item?.client_id] || a.item?.client_name || a.item?.client?.name || currentClientName || '';
+        const bClientName = clientNameById[b.item?.client_id] || b.item?.client_name || b.item?.client?.name || currentClientName || '';
+        cmp = compareNullable(toSortText(aClientName), toSortText(bClientName), candidatesSortDir);
+      } else if (candidatesSortBy === 'role') {
+        const aRoleTitle = roleTitleById[a.item?.role_id] || a.item?.role_title || a.item?.role?.title || '';
+        const bRoleTitle = roleTitleById[b.item?.role_id] || b.item?.role_title || b.item?.role?.title || '';
+        cmp = compareNullable(toSortText(aRoleTitle), toSortText(bRoleTitle), candidatesSortDir);
+      } else if (candidatesSortBy === 'resume') {
+        cmp = compareNullable(toSortNumber(a.item?.resume_score), toSortNumber(b.item?.resume_score), candidatesSortDir);
+      } else if (candidatesSortBy === 'interview') {
+        cmp = compareNullable(toSortNumber(a.item?.interview_score), toSortNumber(b.item?.interview_score), candidatesSortDir);
+      } else if (candidatesSortBy === 'overall') {
+        cmp = compareNullable(toSortNumber(a.item?.overall_score), toSortNumber(b.item?.overall_score), candidatesSortDir);
+      } else {
+        cmp = compareNullable(toSortTime(a.item?.created_at), toSortTime(b.item?.created_at), candidatesSortDir);
+      }
+      if (cmp !== 0) return cmp;
+      return a.index - b.index;
+    });
+    return indexed.map(({ item }) => item);
+  }, [candidates, candidatesSortBy, candidatesSortDir, clientNameById, roleTitleById, currentClientName]);
 
   const openRubricModal = (role) => {
     const questions = extractRubricQuestions(role?.rubric);
@@ -1748,15 +1879,65 @@ export default function Admin() {
                 <div className="card-scroll" style={{ overflowY: 'visible', maxHeight: 'none' }}>
                   <div className="client-dash-table clients-billing" style={{ overflowY: 'visible', maxHeight: 'none' }}>
                     <div className="t-head" style={{ gridTemplateColumns: '2.2fr 0.9fr 1.1fr 1.1fr 0.8fr 0.6fr', position: 'sticky', top: 0, zIndex: 5, background: '#0A1547' }}>
-                      <div>Name</div>
-                      <div>Plan tier</div>
-                      <div>Billing status</div>
-                      <div>Billing cycle</div>
-                      <div>Auto-Renew</div>
+                      <div>
+                        <HeaderButton
+                          label="Name"
+                          active={clientsSortBy === 'name'}
+                          dir={clientsSortDir}
+                          onClick={() => {
+                            setClientsSortBy('name');
+                            setClientsSortDir((d) => (clientsSortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <HeaderButton
+                          label="Plan tier"
+                          active={clientsSortBy === 'plan_tier'}
+                          dir={clientsSortDir}
+                          onClick={() => {
+                            setClientsSortBy('plan_tier');
+                            setClientsSortDir((d) => (clientsSortBy === 'plan_tier' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <HeaderButton
+                          label="Billing status"
+                          active={clientsSortBy === 'billing_status'}
+                          dir={clientsSortDir}
+                          onClick={() => {
+                            setClientsSortBy('billing_status');
+                            setClientsSortDir((d) => (clientsSortBy === 'billing_status' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <HeaderButton
+                          label="Billing cycle"
+                          active={clientsSortBy === 'billing_cycle'}
+                          dir={clientsSortDir}
+                          onClick={() => {
+                            setClientsSortBy('billing_cycle');
+                            setClientsSortDir((d) => (clientsSortBy === 'billing_cycle' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <HeaderButton
+                          label="Auto-Renew"
+                          active={clientsSortBy === 'auto_renew'}
+                          dir={clientsSortDir}
+                          onClick={() => {
+                            setClientsSortBy('auto_renew');
+                            setClientsSortDir((d) => (clientsSortBy === 'auto_renew' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">
-                      {clients.map(c => {
+                      {sortedClients.map(c => {
                         const expanded = expandedClientId === c.id;
                         const invoicePlanTier = String(
                           clientInvoicePlanTiers[c.id] ||
@@ -2014,7 +2195,7 @@ export default function Admin() {
                           </React.Fragment>
                         );
                       })}
-                      {clients.length === 0 && <div className="t-empty muted">No clients yet</div>}
+                      {sortedClients.length === 0 && <div className="t-empty muted">No clients yet</div>}
                     </div>
                   </div>
                 </div>
@@ -2069,17 +2250,59 @@ export default function Admin() {
                 <div className="card-scroll">
                   <div className={`client-dash-table ${isAllClients ? 'roles-with-client' : ''}`}>
                     <div className="t-head">
-                      <div>Role</div>
-                      {isAllClients && <div>Client</div>}
-                      <div>Created</div>
-                      <div>Type</div>
+                      <div>
+                        <HeaderButton
+                          label="Role"
+                          active={rolesSortBy === 'role'}
+                          dir={rolesSortDir}
+                          onClick={() => {
+                            setRolesSortBy('role');
+                            setRolesSortDir((d) => (rolesSortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
+                      {isAllClients && (
+                        <div>
+                          <HeaderButton
+                            label="Client"
+                            active={rolesSortBy === 'client'}
+                            dir={rolesSortDir}
+                            onClick={() => {
+                              setRolesSortBy('client');
+                              setRolesSortDir((d) => (rolesSortBy === 'client' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div>
+                        <HeaderButton
+                          label="Created"
+                          active={rolesSortBy === 'created'}
+                          dir={rolesSortDir}
+                          onClick={() => {
+                            setRolesSortBy('created');
+                            setRolesSortDir((d) => (rolesSortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <HeaderButton
+                          label="Type"
+                          active={rolesSortBy === 'type'}
+                          dir={rolesSortDir}
+                          onClick={() => {
+                            setRolesSortBy('type');
+                            setRolesSortDir((d) => (rolesSortBy === 'type' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                          }}
+                        />
+                      </div>
                       <div className="col-center">Rubric</div>
                       <div className="col-center">JD</div>
                       <div>Link</div>
                       <div>Delete</div>
                     </div>
                     <div className="t-body">
-                      {roles.map(r => {
+                      {sortedRoles.map(r => {
                         const rubricQuestions = extractRubricQuestions(r.rubric);
                         const hasRubric = rubricQuestions.length > 0;
                         const hasJD = !!r.job_description_url;
@@ -2143,7 +2366,7 @@ export default function Admin() {
                           </div>
                         );
                       })}
-                      {roles.length === 0 && <div className="t-empty muted">No roles yet</div>}
+                      {sortedRoles.length === 0 && <div className="t-empty muted">No roles yet</div>}
                     </div>
                   </div>
                 </div>
@@ -2181,24 +2404,96 @@ export default function Admin() {
                 {!candidatesMessage && (
                   <div className="card-scroll">
                     <div className="client-dash-table members members-extended">
-                      <div className="t-head" style={{ gridTemplateColumns: '2.2fr 1.1fr 1.1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
-                        <div>Candidate</div>
-                        <div>Role</div>
-                        <div>Created</div>
-                        <div>Resume</div>
-                        <div>Interview</div>
-                        <div>Overall</div>
+                      <div className="t-head" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
+                        <div>
+                          <HeaderButton
+                            label="Name"
+                            active={candidatesSortBy === 'name'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('name');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'name' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Client"
+                            active={candidatesSortBy === 'client'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('client');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'client' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Role"
+                            active={candidatesSortBy === 'role'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('role');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Created"
+                            active={candidatesSortBy === 'created'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('created');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'created' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Resume"
+                            active={candidatesSortBy === 'resume'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('resume');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'resume' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Interview"
+                            active={candidatesSortBy === 'interview'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('interview');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'interview' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <HeaderButton
+                            label="Overall"
+                            active={candidatesSortBy === 'overall'}
+                            dir={candidatesSortDir}
+                            onClick={() => {
+                              setCandidatesSortBy('overall');
+                              setCandidatesSortDir((d) => (candidatesSortBy === 'overall' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </div>
                         <div>Actions</div>
                         <div>Delete</div>
                       </div>
                       <div className="t-body">
-                        {candidates.map((c) => {
+                        {sortedCandidates.map((c) => {
                           const opened = expandedCandidateId === c.id;
-                          const roleTitle = roles.find((r) => r.id === c.role_id)?.title || '—';
+                          const roleTitle = roleTitleById[c.role_id] || '—';
+                          const candidateClientName = clientNameById[c.client_id] || c.client_name || c.client?.name || currentClientName || '—';
                           const pct = (v) => (typeof v === 'number' && isFinite(v)) ? `${Math.max(0, Math.min(100, Math.round(v)))}%` : '—';
                           return (
                             <React.Fragment key={c.id}>
-                              <div className="t-row" style={{ gridTemplateColumns: '2.2fr 1.1fr 1.1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
+                              <div className="t-row" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 0.7fr 0.7fr 0.7fr 1.2fr 0.6fr' }}>
                                 <div className="grow">
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                     <button className="btn-icon" onClick={() => setExpandedCandidateId(opened ? null : c.id)} title={opened ? 'Collapse' : 'Expand'}>
@@ -2208,6 +2503,7 @@ export default function Admin() {
                                   </div>
                                   <div className="sub">{c.email || '—'}</div>
                                 </div>
+                                <div>{candidateClientName}</div>
                                 <div>{roleTitle}</div>
                                 <div>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</div>
                                 <div>{pct(c.resume_score)}</div>
@@ -2246,7 +2542,7 @@ export default function Admin() {
                             </React.Fragment>
                           );
                         })}
-                        {candidates.length === 0 && <div className="t-empty muted">No candidates found</div>}
+                        {sortedCandidates.length === 0 && <div className="t-empty muted">No candidates found</div>}
                       </div>
                     </div>
                   </div>

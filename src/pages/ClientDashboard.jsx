@@ -622,6 +622,8 @@ export default function ClientDashboard() {
   // sort & filter UI state
   const [sortBy, setSortBy] = useState('created'); // 'name' | 'role' | 'created'
   const [sortDir, setSortDir] = useState('desc');  // 'asc' | 'desc'
+  const [roleSortBy, setRoleSortBy] = useState('role'); // 'role' | 'type'
+  const [roleSortDir, setRoleSortDir] = useState('asc');  // 'asc' | 'desc'
   const [roleFilter, setRoleFilter] = useState(''); // role title or ''
   const [minOverall, setMinOverall] = useState(''); // numeric (string input)
 
@@ -1285,6 +1287,35 @@ export default function ClientDashboard() {
   const rolesTableGridTemplate = canManage
     ? 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px 88px'
     : 'minmax(220px, 2.4fr) 100px 180px 84px 84px 132px';
+  const displayRoles = useMemo(() => {
+    const toSortText = (value) => {
+      const text = String(value || '').trim().toLowerCase();
+      return text || null;
+    };
+    const compareNullable = (a, b, dir) => {
+      const aNull = a == null;
+      const bNull = b == null;
+      if (aNull && bNull) return 0;
+      if (aNull) return 1;
+      if (bNull) return -1;
+      if (a < b) return dir === 'asc' ? -1 : 1;
+      if (a > b) return dir === 'asc' ? 1 : -1;
+      return 0;
+    };
+
+    const indexed = (roles || []).map((item, index) => ({ item, index }));
+    indexed.sort((a, b) => {
+      let cmp = 0;
+      if (roleSortBy === 'role') {
+        cmp = compareNullable(toSortText(a.item?.title), toSortText(b.item?.title), roleSortDir);
+      } else {
+        cmp = compareNullable(toSortText(a.item?.interview_type), toSortText(b.item?.interview_type), roleSortDir);
+      }
+      if (cmp !== 0) return cmp;
+      return a.index - b.index;
+    });
+    return indexed.map(({ item }) => item);
+  }, [roles, roleSortBy, roleSortDir]);
   const selectedBillingRole = useMemo(
     () => roles.find((r) => String(r?.id) === String(billingRoleId)) || null,
     [roles, billingRoleId]
@@ -2053,8 +2084,28 @@ export default function ClientDashboard() {
               {!rolesLoading && (
                 <div className="client-dash-table">
                   <div className="t-head" style={{ position: 'sticky', top: 0, zIndex: 5, background: '#0A1547', gridTemplateColumns: rolesTableGridTemplate }}>
-                    <div>Role</div>
-                    <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>Type</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <HeaderButton
+                        label="Role"
+                        active={roleSortBy === 'role'}
+                        dir={roleSortDir}
+                        onClick={() => {
+                          setRoleSortBy('role');
+                          setRoleSortDir((d) => (roleSortBy === 'role' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                        }}
+                      />
+                    </div>
+                    <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
+                      <HeaderButton
+                        label="Type"
+                        active={roleSortBy === 'type'}
+                        dir={roleSortDir}
+                        onClick={() => {
+                          setRoleSortBy('type');
+                          setRoleSortDir((d) => (roleSortBy === 'type' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                        }}
+                      />
+                    </div>
                     <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
                         Usage
@@ -2088,7 +2139,7 @@ export default function ClientDashboard() {
                     )}
                   </div>
                   <div className="t-body">
-                    {roles.map(r => {
+                    {displayRoles.map(r => {
                       const rubricQuestions = extractRubricQuestions(r.rubric);
                       const hasRubric = rubricQuestions.length > 0;
                       const hasJD = !!r.job_description_url;
@@ -2174,7 +2225,7 @@ export default function ClientDashboard() {
                         </div>
                       );
                     })}
-                    {roles.length === 0 && <div className="t-empty muted">No roles</div>}
+                    {displayRoles.length === 0 && <div className="t-empty muted">No roles</div>}
                   </div>
                 </div>
               )}

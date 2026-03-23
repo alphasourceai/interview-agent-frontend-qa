@@ -120,9 +120,7 @@ function OtpInline({ email, candidateId, roleId, onVerified, onError, onInactive
 
       {err && <p className="text-red-300 text-sm mb-2">{err}</p>}
 
-      {isVerified ? (
-        <span className="verified-inline">Verified! You can start your interview.</span>
-      ) : (
+      {!isVerified && (
         <button type="submit" disabled={busy} className="btn-lg">
           {busy ? 'Verifying…' : 'Verify'}
         </button>
@@ -606,6 +604,7 @@ export default function InterviewAccessPage() {
         <div className="alpha-form">
             <div className="alpha-form-grid-3">
               <div className="alpha-span-2">
+                <h3 className="text-base font-semibold mb-3">Step 1 — Enter your information</h3>
                 <InterviewAccessForm
                   roleToken={roleToken}
                   onInactive={(info) => {
@@ -619,6 +618,7 @@ export default function InterviewAccessPage() {
                     setRoomUrl('');
                     setConversationId('');
                     setInterviewId('');
+                    toast.success('Form submitted. Candidate created and verification code sent.', { duration: 3000 });
                     setTimeout(pingEmbedSize, 80);
                   }}
                 />
@@ -632,6 +632,7 @@ export default function InterviewAccessPage() {
                   onVerified={(info) => {
                     setVerified(true);
                     setSubmitted((s) => ({ ...(s || {}), ...info }));
+                    toast.success('Verified. You can start your interview when ready.', { duration: 3000 });
                     setTimeout(pingEmbedSize, 80);
                   }}
                   onError={() => { setVerified(false); setTimeout(pingEmbedSize, 80); }}
@@ -648,6 +649,9 @@ export default function InterviewAccessPage() {
 
             {verified && (
               <div className="start-block">
+                <p className="text-sm mb-3 center" style={{ color: 'rgba(235,254,255,0.9)' }}>
+                  Verification complete. You can begin when ready.
+                </p>
                 <button
                   type="button"
                   disabled={!canStart || starting}

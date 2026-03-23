@@ -175,7 +175,7 @@
   border-color: var(--alpha-primary, #AD8BF7);
 }
 .client-dash-tab--active {
-  background: var(--alpha-primary, #AD8BF7);
+  background: rgba(255,255,255,0.12);
   border-color: var(--alpha-primary, #AD8BF7);
   color: #fff;
   box-shadow: 0 6px 20px rgba(0,0,0,0.18);
