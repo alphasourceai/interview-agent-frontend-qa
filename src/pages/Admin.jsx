@@ -757,6 +757,20 @@ export default function Admin() {
     }
   }
 
+  async function openCandidateResume(candidate) {
+    const candidateId = candidate?.id || candidate?.candidate_id;
+    if (!candidateId) return;
+    try {
+      const qs = `?candidate_id=${encodeURIComponent(candidateId)}`;
+      const resp = await apiGet('/files/resume-signed-url' + qs);
+      const url = resp?.url;
+      if (!url) throw new Error('Could not open resume');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      toast.error(e?.message || 'Could not open resume', { duration: 1600 });
+    }
+  }
+
   async function loadRoleConfig(roleId) {
     if (!selectedClientId || selectedClientId === ALL_CLIENTS_VALUE) return;
     setRoleConfigLoading((prev) => ({ ...prev, [roleId]: true }));
@@ -2598,7 +2612,7 @@ export default function Admin() {
                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                   <button
                                     className={`btn lilac client-dash-pill ${!c.resume_url ? 'is-disabled' : ''}`}
-                                    onClick={() => c.resume_url && window.open(c.resume_url, '_blank', 'noopener,noreferrer')}
+                                    onClick={() => c.resume_url && openCandidateResume(c)}
                                     disabled={!c.resume_url}
                                   >
                                     Resume
