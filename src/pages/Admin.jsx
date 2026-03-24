@@ -263,6 +263,8 @@ export default function Admin() {
   const [accommodationSending, setAccommodationSending] = useState({});
   const [auditRuns, setAuditRuns] = useState([]);
   const [auditRunsLoading, setAuditRunsLoading] = useState(false);
+  const [auditStartDate, setAuditStartDate] = useState('');
+  const [auditEndDate, setAuditEndDate] = useState('');
   const [contractCancellationRuns, setContractCancellationRuns] = useState([]);
   const [contractCancellationRunsLoading, setContractCancellationRunsLoading] = useState(false);
   const [billingReconciliationItems, setBillingReconciliationItems] = useState([]);
@@ -385,6 +387,80 @@ export default function Admin() {
     });
     return indexed.map(({ item }) => item);
   }, [candidates, candidatesSortBy, candidatesSortDir, clientNameById, roleTitleById, currentClientName]);
+  const filteredAuditRuns = useMemo(() => {
+    const parseBoundary = (value, endOfDay) => {
+      if (!value) return null;
+      const parts = String(value).split('-').map((p) => Number(p));
+      if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return null;
+      const [y, m, d] = parts;
+      const dt = new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+      const ts = dt.getTime();
+      return Number.isFinite(ts) ? ts : null;
+    };
+    const startTs = parseBoundary(auditStartDate, false);
+    const endTs = parseBoundary(auditEndDate, true);
+    if (startTs == null && endTs == null) return auditRuns;
+    return (auditRuns || []).filter((run) => {
+      const runTs = new Date(run?.started_at || run?.created_at || '').getTime();
+      if (!Number.isFinite(runTs)) return false;
+      if (startTs != null && runTs < startTs) return false;
+      if (endTs != null && runTs > endTs) return false;
+      return true;
+    });
+  }, [auditRuns, auditStartDate, auditEndDate]);
+
+  const exportAuditRunsCsv = () => {
+    if (!filteredAuditRuns.length) {
+      toast('No audit logs to export', { duration: 1500 });
+      return;
+    }
+    const toCsvValue = (value) => {
+      const raw = value == null ? '' : String(value);
+      if (/[",\n]/.test(raw)) return `"${raw.replace(/"/g, '""')}"`;
+      return raw;
+    };
+    const headers = [
+      'Run time',
+      'Source',
+      'Status',
+      'Errors',
+      'Due',
+      'Renewed',
+      'Deactivated',
+      'Skipped',
+      'Request ID',
+      'Triggered by',
+      'Error',
+    ];
+    const lines = filteredAuditRuns.map((run) => {
+      const summary = run?.summary || {};
+      const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
+      const values = [
+        run?.started_at || run?.created_at || '',
+        run?.trigger_source || '',
+        run?.processed_ok === true ? 'success' : (run?.processed_ok === false ? 'failed' : ''),
+        summary?.errors || 0,
+        summary?.due || 0,
+        summary?.renewed || 0,
+        summary?.deactivated || 0,
+        skipped,
+        run?.request_id || '',
+        run?.triggered_by_email || '',
+        run?.error || '',
+      ];
+      return values.map(toCsvValue).join(',');
+    });
+    const csv = [headers.join(','), ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const openRubricModal = (role) => {
     const questions = extractRubricQuestions(role?.rubric);
@@ -2862,19 +2938,49 @@ export default function Admin() {
                 <div className="client-dash-card">
                   <div className="client-dash-section-head">
                     <h2>Audit Logs</h2>
-                    <button
-                      className="btn lilac client-dash-pill"
-                      onClick={refreshAuditRuns}
-                      disabled={auditRunsLoading}
-                    >
-                      {auditRunsLoading ? 'Loading…' : 'Refresh'}
-                    </button>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <input
+                        type="date"
+                        className="alpha-input client-dash-input"
+                        value={auditStartDate}
+                        onChange={(e) => setAuditStartDate(e.target.value)}
+                        aria-label="Audit start date"
+                        title="Start date"
+                        style={{ width: 150 }}
+                      />
+                      <input
+                        type="date"
+                        className="alpha-input client-dash-input"
+                        value={auditEndDate}
+                        onChange={(e) => setAuditEndDate(e.target.value)}
+                        aria-label="Audit end date"
+                        title="End date"
+                        style={{ width: 150 }}
+                      />
+                      <button
+                        className="btn lilac client-dash-pill"
+                        onClick={exportAuditRunsCsv}
+                        disabled={filteredAuditRuns.length === 0}
+                      >
+                        Export CSV
+                      </button>
+                      <button
+                        className="btn lilac client-dash-pill"
+                        onClick={refreshAuditRuns}
+                        disabled={auditRunsLoading}
+                      >
+                        {auditRunsLoading ? 'Loading…' : 'Refresh'}
+                      </button>
+                    </div>
                   </div>
                   {auditRunsLoading && <div className="client-dash-muted">Loading audit logs…</div>}
                   {!auditRunsLoading && auditRuns.length === 0 && (
                     <div className="client-dash-muted">No audit log runs yet</div>
                   )}
-                  {!auditRunsLoading && auditRuns.length > 0 && (
+                  {!auditRunsLoading && auditRuns.length > 0 && filteredAuditRuns.length === 0 && (
+                    <div className="client-dash-muted">No audit log runs in selected date range</div>
+                  )}
+                  {!auditRunsLoading && filteredAuditRuns.length > 0 && (
                     <div className="card-scroll">
                       <div className="client-dash-table members members-extended">
                         <div className="t-head" style={{ gridTemplateColumns: '1.1fr 0.7fr 0.7fr 1.7fr 1.2fr 1.1fr 1.4fr' }}>
@@ -2887,7 +2993,7 @@ export default function Admin() {
                           <div>Error</div>
                         </div>
                         <div className="t-body">
-                          {auditRuns.map((run) => {
+                          {filteredAuditRuns.map((run) => {
                             const summary = run?.summary || {};
                             const skipped = (summary?.skipped_no_action || 0) + (summary?.skipped_manual_override || 0);
                             const summaryTitle = `due ${summary?.due || 0}, renewed ${summary?.renewed || 0}, deactivated ${summary?.deactivated || 0}, skipped ${skipped}, errors ${summary?.errors || 0}`;
