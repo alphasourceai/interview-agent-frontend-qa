@@ -744,7 +744,27 @@ export default function Admin() {
       setRoleConfigs((prev) => ({ ...prev, [roleId]: { prompt, questions } }));
       toast.success('Role config saved', { duration: 1200 });
     } catch (e) {
-      toast.error(e?.message || 'Could not save role config', { duration: 1800 });
+      const code = String(
+        e?.data?.code ||
+        e?.data?.error ||
+        e?.response?.data?.code ||
+        e?.response?.data?.error ||
+        ''
+      ).toUpperCase();
+      const detail = String(
+        e?.data?.detail ||
+        e?.response?.data?.detail ||
+        e?.message ||
+        ''
+      ).toLowerCase();
+      if (
+        code === 'INVALID_RUBRIC_QUESTIONS' ||
+        detail.includes('rubric_questions must be open-ended and not yes/no style')
+      ) {
+        toast.error('Questions cannot be Y/N, make open-ended', { duration: 1800 });
+      } else {
+        toast.error(e?.message || 'Could not save role config', { duration: 1800 });
+      }
     } finally {
       setRoleConfigSaving((prev) => ({ ...prev, [roleId]: false }));
     }
@@ -1923,17 +1943,7 @@ export default function Admin() {
                           }}
                         />
                       </div>
-                      <div>
-                        <HeaderButton
-                          label="Auto-Renew"
-                          active={clientsSortBy === 'auto_renew'}
-                          dir={clientsSortDir}
-                          onClick={() => {
-                            setClientsSortBy('auto_renew');
-                            setClientsSortDir((d) => (clientsSortBy === 'auto_renew' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
-                          }}
-                        />
-                      </div>
+                      <div>Auto-Renew</div>
                       <div>Remove</div>
                     </div>
                     <div className="t-body">

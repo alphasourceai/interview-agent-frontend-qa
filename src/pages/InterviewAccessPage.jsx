@@ -649,9 +649,6 @@ export default function InterviewAccessPage() {
 
             {verified && (
               <div className="start-block">
-                <p className="text-sm mb-3 center" style={{ color: 'rgba(235,254,255,0.9)' }}>
-                  Verification complete. You can begin when ready.
-                </p>
                 <button
                   type="button"
                   disabled={!canStart || starting}

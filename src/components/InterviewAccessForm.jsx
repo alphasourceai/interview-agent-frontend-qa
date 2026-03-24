@@ -190,9 +190,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted, onInactive
 
       {/* Upload Resume (left column, row 3) */}
       <div>
-        {isLocked ? (
-          <div className="text-green-300 text-sm">Candidate created. OTP emailed.</div>
-        ) : (
+        {!isLocked && (
           <>
             <div className="client-dash-file-wrapper interview-resume-wrapper">
               <CustomFilePicker
@@ -211,9 +209,7 @@ export default function InterviewAccessForm({ roleToken, onSubmitted, onInactive
 
       {/* Submit (right column, row 3) */}
       <div className="interview-submit-wrapper">
-        {isLocked ? (
-          <div className="text-green-300 text-sm self-center">Form submitted.</div>
-        ) : (
+        {!isLocked && (
           <button
             type="submit"
             disabled={submitting || !form.resume}
