@@ -2111,7 +2111,7 @@ export default function ClientDashboard() {
                       className="alpha-input alpha-select client-dash-input"
                       value={interviewType}
                       onChange={e => setInterviewType(e.target.value)}
-                      style={{ flex: '1 1 auto', minWidth: 0, fontSize: interviewType ? undefined : '12px' }}
+                      style={{ flex: '1 1 auto', minWidth: 0, fontSize: interviewType ? undefined : '12px', color: interviewType ? undefined : 'var(--alpha-muted)' }}
                     >
                       <option value="" disabled>Interview Type</option>
                       <option value="BASIC">BASIC</option>
@@ -2128,6 +2128,7 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
                   <div
                     className="client-dash-file-wrapper"
                     style={{
+                      '--alpha-text': jobFile ? undefined : 'var(--alpha-muted)',
                       width: 320,
                       minWidth: 320,
                       maxWidth: 320,
