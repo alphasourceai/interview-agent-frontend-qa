@@ -388,6 +388,27 @@ export default function InterviewAccessPage() {
   const [inactiveInfo, setInactiveInfo] = useState(null);
   const [showPreInterviewNotice, setShowPreInterviewNotice] = useState(true);
   const [hasAcknowledgedQuiet, setHasAcknowledgedQuiet] = useState(false);
+  const [preStartMaxInterviewMinutes, setPreStartMaxInterviewMinutes] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    if (!roleToken) {
+      setPreStartMaxInterviewMinutes(null);
+      return () => { alive = false; };
+    }
+    (async () => {
+      try {
+        const qs = new URLSearchParams({ role_token: String(roleToken) });
+        const resp = await fetch(joinUrl(BK, `/public/interview-status?${qs.toString()}`));
+        const data = await resp.json().catch(() => ({}));
+        if (!alive || !resp.ok) return;
+        const raw = Number(data?.max_interview_minutes);
+        const minutes = Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : null;
+        setPreStartMaxInterviewMinutes(minutes);
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, [roleToken]);
 
   useEffect(() => {
     const t = setTimeout(pingEmbedSize, 60);
@@ -736,10 +757,18 @@ export default function InterviewAccessPage() {
       {showPreInterviewNotice && (
         <div className="pre-interview-overlay">
           <div className="alpha-card pre-interview-card">
-            <h2>Before you start your interview</h2>
-            <p>
-              To make sure your interview goes smoothly, please move to a quiet, distraction-free area. Our AI Agent
-              will pick up background conversations and noises, which can interfere with your answers and result in a less effective interview.
+            <h2 style={{ fontSize: '1.9rem', lineHeight: 1.2, marginBottom: 12 }}>Before you start your interview</h2>
+            <p style={{ fontSize: '1.05rem', marginBottom: 10 }}>
+              Please review this quick checklist before you begin:
+            </p>
+            <ul style={{ margin: '0 0 12px 20px', padding: 0, fontSize: '1.02rem', lineHeight: 1.5 }}>
+              <li>Current resume in PDF or DOCX format</li>
+              <li>Stable internet connection</li>
+              <li>{preStartMaxInterviewMinutes ? `${preStartMaxInterviewMinutes} uninterrupted minutes to complete the interview` : 'The allotted uninterrupted time to complete the interview'}</li>
+              <li>Quiet environment free of background conversations and distractions</li>
+            </ul>
+            <p style={{ fontSize: '1rem', marginBottom: 12 }}>
+              Background conversations and noise can be picked up during the interview and may interfere with your responses.
             </p>
             <label className="pre-interview-checkbox">
               <input
