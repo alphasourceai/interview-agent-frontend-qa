@@ -209,10 +209,11 @@ function HeaderButton({ label, active, dir, onClick }) {
   );
 }
 
-function InfoTip({ text }) {
+function InfoTip({ text, placement = 'top' }) {
   const [open, setOpen] = useState(false);
   const [flip, setFlip] = useState(false);
   const ref = useRef(null);
+  const isBottom = placement === 'bottom';
 
   const onEnter = () => {
     setOpen(true);
@@ -258,10 +259,10 @@ function InfoTip({ text }) {
           role="tooltip"
           style={{
             position: 'absolute',
-            top: -8,
+            top: isBottom ? 20 : -8,
             left: flip ? 'auto' : 12,
             right: flip ? 12 : 'auto',
-            transform: 'translateY(-100%)',
+            transform: isBottom ? 'none' : 'translateY(-100%)',
             background: '#111827',
             color: '#EBFEFF',
             border: '1px solid rgba(255,255,255,0.14)',
@@ -2117,6 +2118,7 @@ export default function ClientDashboard() {
                       <option value="TECHNICAL">TECHNICAL</option>
                     </select>
                     <InfoTip
+                      placement="bottom"
                       text={`BASIC: shorter screening interview focused on core fit and relevant experience.
 DETAILED: deeper interview with more behavioral and situational depth.
 TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
