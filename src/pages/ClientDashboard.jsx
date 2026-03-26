@@ -537,7 +537,7 @@ export default function ClientDashboard() {
   const [roles, setRoles] = useState([]);
   const [newRoleTitle, setNewRoleTitle] = useState('');
   const [roleTitleTouched, setRoleTitleTouched] = useState(false);
-  const [interviewType, setInterviewType] = useState('BASIC');
+  const [interviewType, setInterviewType] = useState('');
   const [jobFile, setJobFile] = useState(null);
   const [roleBusy, setRoleBusy] = useState(false);
   const [rolesLoading, setRolesLoading] = useState(false);
@@ -2111,8 +2111,9 @@ export default function ClientDashboard() {
                       className="alpha-input alpha-select client-dash-input"
                       value={interviewType}
                       onChange={e => setInterviewType(e.target.value)}
-                      style={{ flex: '1 1 auto', minWidth: 0 }}
+                      style={{ flex: '1 1 auto', minWidth: 0, fontSize: interviewType ? undefined : '12px' }}
                     >
+                      <option value="" disabled>Interview Type</option>
                       <option value="BASIC">BASIC</option>
                       <option value="DETAILED">DETAILED</option>
                       <option value="TECHNICAL">TECHNICAL</option>
