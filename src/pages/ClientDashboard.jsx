@@ -82,6 +82,29 @@ function normalizeScoreObject(value) {
   return null;
 }
 
+function hasPerceptionCoreScores(scores) {
+  return (
+    Number.isFinite(Number(scores?.clarity)) ||
+    Number.isFinite(Number(scores?.confidence)) ||
+    Number.isFinite(Number(scores?.engagement))
+  );
+}
+
+function isPerceptionPendingRow(row) {
+  const transcriptScores = normalizeScoreObject(row?.transcript_scores) || {};
+  const summary = typeof row?.interview_summary === 'string' ? row.interview_summary.trim() : '';
+  const hasOverall = Number.isFinite(Number(transcriptScores?.overall));
+  const hasAnalysisSignal =
+    row?.has_analysis === true ||
+    hasOverall ||
+    !!summary ||
+    !!row?.analysis ||
+    !!row?.analysis_url;
+  if (!hasAnalysisSignal) return false;
+  const perceptionScores = normalizeScoreObject(row?.perception_scores) || {};
+  return !hasPerceptionCoreScores(perceptionScores);
+}
+
 function sanitizeFilenamePart(value, fallback) {
   const raw = value == null ? '' : String(value);
   const trimmed = raw.trim();
@@ -299,8 +322,8 @@ export default function ClientDashboard() {
   const [refreshing, setRefreshing] = useState(false)
 
   const pollRef = useRef({ timer: null, stopAt: 0, active: false, inflight: false })
-  const POLL_INTERVAL_MS = 8000
-  const POLL_MAX_MS = 120000
+  const POLL_INTERVAL_MS = 12000
+  const POLL_MAX_MS = 360000
 
   // --- Row visibility controls (Show more / Show less) ---
   const INITIAL_COUNT = 20;
@@ -334,16 +357,12 @@ export default function ClientDashboard() {
     const transcriptScores = getTranscriptScores(row);
     const hasOverall = Number.isFinite(Number(transcriptScores.overall));
     const perceptionScores = getPerceptionScores(row);
-    const hasPerception =
-      Number.isFinite(Number(perceptionScores.clarity)) ||
-      Number.isFinite(Number(perceptionScores.confidence)) ||
-      Number.isFinite(Number(perceptionScores.engagement)) ||
-      Number.isFinite(Number(perceptionScores.body_language));
+    const hasPerception = hasPerceptionCoreScores(perceptionScores);
     return !!summary && hasOverall && hasPerception;
   };
 
-  const countIncompleteRows = (rowsList) => {
-    return (rowsList || []).reduce((acc, row) => acc + (isRowComplete(row) ? 0 : 1), 0);
+  const countPerceptionPendingRows = (rowsList) => {
+    return (rowsList || []).reduce((acc, row) => acc + (isPerceptionPendingRow(row) ? 1 : 0), 0);
   };
 
   function stopPolling() {
@@ -414,13 +433,6 @@ export default function ClientDashboard() {
               : 0
           });
         });
-      }
-      const incomplete = countIncompleteRows(scrubbed);
-      if (incomplete > 0) {
-        if (!state.active) startPolling(reason);
-        scheduleNextPoll();
-      } else {
-        stopPolling();
       }
     } catch (e) {
       setError(String(e?.message || e));
@@ -620,7 +632,7 @@ export default function ClientDashboard() {
   }, []);
 
   // sort & filter UI state
-  const [sortBy, setSortBy] = useState('created'); // 'name' | 'role' | 'created'
+  const [sortBy, setSortBy] = useState('created'); // 'name' | 'email' | 'role' | 'resume' | 'interview' | 'overall' | 'created'
   const [sortDir, setSortDir] = useState('desc');  // 'asc' | 'desc'
   const [roleSortBy, setRoleSortBy] = useState('role'); // 'role' | 'type'
   const [roleSortDir, setRoleSortDir] = useState('asc');  // 'asc' | 'desc'
@@ -1574,12 +1586,34 @@ export default function ClientDashboard() {
         if (av < bv) return sortDir === 'asc' ? -1 : 1;
         if (av > bv) return sortDir === 'asc' ? 1 : -1;
         return 0;
+      } else if (sortBy === 'email') {
+        av = typeof a?.candidate?.email === 'string' ? a.candidate.email.trim().toLowerCase() : '';
+        bv = typeof b?.candidate?.email === 'string' ? b.candidate.email.trim().toLowerCase() : '';
+        const aMissing = !av;
+        const bMissing = !bv;
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+        if (av < bv) return sortDir === 'asc' ? -1 : 1;
+        if (av > bv) return sortDir === 'asc' ? 1 : -1;
+        return 0;
       } else if (sortBy === 'role') {
         av = (a.role?.title || '').toLowerCase();
         bv = (b.role?.title || '').toLowerCase();
         if (av < bv) return sortDir === 'asc' ? -1 : 1;
         if (av > bv) return sortDir === 'asc' ? 1 : -1;
         return 0;
+      } else if (sortBy === 'resume' || sortBy === 'interview' || sortBy === 'overall') {
+        const aRaw = sortBy === 'resume' ? a.resume_score : sortBy === 'interview' ? a.interview_score : a.overall_score;
+        const bRaw = sortBy === 'resume' ? b.resume_score : sortBy === 'interview' ? b.interview_score : b.overall_score;
+        const aNum = Number(aRaw);
+        const bNum = Number(bRaw);
+        const aMissing = !Number.isFinite(aNum);
+        const bMissing = !Number.isFinite(bNum);
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+        return sortDir === 'asc' ? aNum - bNum : bNum - aNum;
       } else {
         av = new Date(a.created_at || 0).getTime();
         bv = new Date(b.created_at || 0).getTime();
@@ -1594,6 +1628,21 @@ export default function ClientDashboard() {
   const visibleRows = useMemo(() => {
     return (displayRows || []).slice(0, visibleCount);
   }, [displayRows, visibleCount]);
+
+  useEffect(() => {
+    const state = pollRef.current;
+    if (activeTab !== 'candidates') {
+      if (state.active) stopPolling();
+      return;
+    }
+    const pendingVisible = countPerceptionPendingRows(visibleRows);
+    if (pendingVisible > 0) {
+      if (!state.active) startPolling('perception_pending');
+      else scheduleNextPoll();
+      return;
+    }
+    if (state.active) stopPolling();
+  }, [activeTab, visibleRows]);
 
   // reset visible count when scope/order changes (and resize)
   useEffect(() => {
@@ -1867,7 +1916,17 @@ export default function ClientDashboard() {
                             }}
                           />
                         </th>
-                        <th style={th}>Email</th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Email"
+                            active={sortBy === 'email'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('email');
+                              setSortDir(d => (sortBy === 'email' ? (d === 'asc' ? 'desc' : 'asc') : 'asc'));
+                            }}
+                          />
+                        </th>
                         <th style={th}>
                           <HeaderButton
                             label="Role"
@@ -1879,9 +1938,39 @@ export default function ClientDashboard() {
                             }}
                           />
                         </th>
-                        <th style={th}>Resume</th>
-                        <th style={th}>Interview</th>
-                        <th style={th}>Overall</th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Resume"
+                            active={sortBy === 'resume'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('resume');
+                              setSortDir(d => (sortBy === 'resume' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Interview"
+                            active={sortBy === 'interview'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('interview');
+                              setSortDir(d => (sortBy === 'interview' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </th>
+                        <th style={th}>
+                          <HeaderButton
+                            label="Overall"
+                            active={sortBy === 'overall'}
+                            dir={sortDir}
+                            onClick={() => {
+                              setSortBy('overall');
+                              setSortDir(d => (sortBy === 'overall' ? (d === 'asc' ? 'desc' : 'asc') : 'desc'));
+                            }}
+                          />
+                        </th>
                         <th style={th}>
                           <HeaderButton
                             label="Created"
@@ -2016,16 +2105,23 @@ export default function ClientDashboard() {
                       Required
                     </div>
                   </div>
-                  <select
-                    className="alpha-input alpha-select client-dash-input"
-                    value={interviewType}
-                    onChange={e => setInterviewType(e.target.value)}
-                    style={{ width: 150, minWidth: 150, maxWidth: 150 }}
-                  >
-                    <option value="BASIC">BASIC</option>
-                    <option value="DETAILED">DETAILED</option>
-                    <option value="TECHNICAL">TECHNICAL</option>
-                  </select>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', width: 150, minWidth: 150, maxWidth: 150 }}>
+                    <select
+                      className="alpha-input alpha-select client-dash-input"
+                      value={interviewType}
+                      onChange={e => setInterviewType(e.target.value)}
+                      style={{ flex: '1 1 auto', minWidth: 0 }}
+                    >
+                      <option value="BASIC">BASIC</option>
+                      <option value="DETAILED">DETAILED</option>
+                      <option value="TECHNICAL">TECHNICAL</option>
+                    </select>
+                    <InfoTip
+                      text={`BASIC: shorter screening interview focused on core fit and relevant experience.
+DETAILED: deeper interview with more behavioral and situational depth.
+TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
+                    />
+                  </div>
                   <div
                     className="client-dash-file-wrapper"
                     style={{
@@ -2618,6 +2714,7 @@ function FragmentRow({
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
   const analysisPending = r.has_analysis === false;
   const analysisStatus = analysisPending ? 'Processing' : 'Summary not available';
+  const perceptionPending = isPerceptionPendingRow(r);
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
   const handleTranscriptClick = async () => {
@@ -2750,6 +2847,12 @@ function FragmentRow({
                       <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
                       <div><Meter label="Engagement" value={perceptionScores?.engagement ?? null} /> <InfoTip text={TIPS.engagement} /></div>
                     </div>
+                    {perceptionPending && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontWeight: 600, color: '#374151' }}>Perception analysis pending…</div>
+                        <div style={{ color: '#6b7280', fontSize: 12 }}>This can take a few minutes after interview completion.</div>
+                      </div>
+                    )}
                     <div style={{ marginTop: 8, color:'#374151' }}>
                       <strong>Summary:</strong>{' '}
                       {analysisSummary
