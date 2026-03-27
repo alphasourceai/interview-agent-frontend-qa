@@ -98,7 +98,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: conversationId }),
+        body: JSON.stringify({ conversation_id: conversationId, interview_id: interviewId, role_token: roleToken }),
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {

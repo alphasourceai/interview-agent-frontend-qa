@@ -295,7 +295,7 @@ export default function InterviewAccessPage() {
       const resp = await fetch(joinUrl(BK, '/tavus/end-conversation'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversation_id: cid }),
+        body: JSON.stringify({ conversation_id: cid, interview_id: interviewId, role_token: roleToken }),
       });
       const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
