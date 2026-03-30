@@ -812,7 +812,14 @@ export default function ClientDashboard() {
       : '—'
   const fmtDate = (iso) => {
     if (!iso) return '—'
-    const date = new Date(iso)
+    let normalized = iso
+    if (typeof normalized === 'string') {
+      const trimmed = normalized.trim()
+      if (!trimmed) return '—'
+      const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed)
+      normalized = hasTimezone ? trimmed : `${trimmed}Z`
+    }
+    const date = new Date(normalized)
     if (Number.isNaN(date.getTime())) return '—'
     try {
       const formatted = date.toLocaleString('en-US', {
@@ -2745,6 +2752,10 @@ function FragmentRow({
   const perceptionPending = !perceptionUnavailable && isPerceptionPendingRow(r);
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
+  const createdAtText = fmtDate(r.created_at);
+  const createdAtParts = createdAtText === '—' ? null : createdAtText.split(', ');
+  const createdAtDateLine = createdAtParts && createdAtParts.length > 1 ? `${createdAtParts[0]},` : createdAtText;
+  const createdAtTimeLine = createdAtParts && createdAtParts.length > 1 ? createdAtParts.slice(1).join(', ') : '';
   const handleTranscriptClick = async () => {
     if (!transcriptReady) {
       if (typeof showToast === 'function') showToast('Transcript is processing', 'success');
@@ -2787,7 +2798,16 @@ function FragmentRow({
         <td style={td}>{pctText(r.resume_score)}</td>
         <td style={td}>{pctText(r.interview_score)}</td>
         <td style={td}>{pctText(r.overall_score)}</td>
-        <td style={td}>{fmtDate(r.created_at)}</td>
+        <td style={td}>
+          {createdAtTimeLine ? (
+            <span style={{ display: 'inline-block', whiteSpace: 'nowrap', lineHeight: 1.2 }}>
+              <span style={{ display: 'block' }}>{createdAtDateLine}</span>
+              <span style={{ display: 'block' }}>{createdAtTimeLine}</span>
+            </span>
+          ) : (
+            createdAtText
+          )}
+        </td>
       </tr>
 
       {opened && (

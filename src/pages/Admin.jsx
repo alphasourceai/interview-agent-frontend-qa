@@ -152,7 +152,14 @@ function formatShortDate(value) {
 
 function formatCstDateTime(value) {
   if (!value) return '—';
-  const d = new Date(value);
+  let normalized = value;
+  if (typeof normalized === 'string') {
+    const trimmed = normalized.trim();
+    if (!trimmed) return '—';
+    const hasTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(trimmed);
+    normalized = hasTimezone ? trimmed : `${trimmed}Z`;
+  }
+  const d = new Date(normalized);
   if (Number.isNaN(d.getTime())) return '—';
   try {
     const out = new Intl.DateTimeFormat('en-US', {
