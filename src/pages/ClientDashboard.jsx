@@ -334,7 +334,7 @@ export default function ClientDashboard() {
   // lightweight toast (success / error)
   const [toast, setToast] = useState({ visible: false, type: 'success', msg: '' });
   const toastTimerRef = useRef(null);
-  function showToast(msg, type = 'success', ttlMs = 3000) {
+  function showToast(msg, type = 'success', ttlMs = 4500) {
     if (toastTimerRef.current) {
       clearTimeout(toastTimerRef.current);
       toastTimerRef.current = null;
@@ -2568,15 +2568,17 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
             aria-live="polite"
             style={{
               position: 'fixed',
-              right: 16,
-              bottom: 16,
+              top: 20,
+              left: '50%',
+              transform: 'translateX(-50%)',
               background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : 'rgba(16, 185, 129, 0.95)',
               color: '#fff',
-              borderRadius: 8,
-              padding: '10px 12px',
+              borderRadius: 10,
+              padding: '12px 16px',
               boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
               maxWidth: 360,
-              zIndex: 1000,
+              zIndex: 99999,
+              pointerEvents: 'none',
               fontSize: 14,
               lineHeight: 1.3
             }}
