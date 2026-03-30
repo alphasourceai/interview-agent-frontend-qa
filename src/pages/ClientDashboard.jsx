@@ -811,10 +811,26 @@ export default function ClientDashboard() {
       ? `${Math.max(0, Math.min(100, v))}%`
       : '—'
   const fmtDate = (iso) => {
+    if (!iso) return '—'
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return '—'
     try {
-      return new Date(iso).toLocaleString()
+      const formatted = date.toLocaleString('en-US', {
+        timeZone: 'America/Chicago',
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      })
+      const normalized = formatted
+        .replace(/\sGMT[+-]\d{1,2}(?::\d{2})?/g, '')
+        .replace(/\b(?:CDT|CST)\b/g, 'CST')
+      return /\bCST\b/.test(normalized) ? normalized : `${normalized} CST`
     } catch {
-      return iso || '—'
+      return '—'
     }
   }
 
@@ -2256,7 +2272,7 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
                         <div key={r.id} className="t-row" style={{ gridTemplateColumns: rolesTableGridTemplate }}>
                           <div>
                             <div className="title">{r.title}</div>
-                            <div className="sub">{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</div>
+                            <div className="sub">{fmtDate(r.created_at)}</div>
                           </div>
                           <div style={{ justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>{r.interview_type || '—'}</div>
                           <div style={{ fontVariantNumeric: 'tabular-nums', display: 'grid', gap: 2, justifyItems: 'start', justifySelf: 'start', alignSelf: 'center', textAlign: 'left' }}>
