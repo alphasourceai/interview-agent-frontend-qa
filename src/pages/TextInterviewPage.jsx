@@ -22,6 +22,7 @@ export default function TextInterviewPage() {
   const fileInputRef = useRef(null);
   const chatEndRef = useRef(null);
   const answerInputRef = useRef(null);
+  const pendingPasteCharsRef = useRef(0);
 
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
@@ -83,9 +84,15 @@ export default function TextInterviewPage() {
         index: idx + 1,
         question: q,
         answer: '',
+        paste_count: 0,
+        largest_paste_length: 0,
+        typed_char_count: 0,
+        pasted_char_count: 0,
+        used_paste: false,
       }));
       setAnswers(nextAnswers);
       setCurrentIndex(0);
+      pendingPasteCharsRef.current = 0;
     } catch {
       setError('Network error loading interview.');
     } finally {
@@ -154,7 +161,15 @@ export default function TextInterviewPage() {
     try {
       const payload = {
         token,
-        answers: answers.map((a) => ({ question: a.question, answer: a.answer })),
+        answers: answers.map((a) => ({
+          question: a.question,
+          answer: a.answer,
+          paste_count: Number(a.paste_count) || 0,
+          largest_paste_length: Number(a.largest_paste_length) || 0,
+          typed_char_count: Number(a.typed_char_count) || 0,
+          pasted_char_count: Number(a.pasted_char_count) || 0,
+          used_paste: !!a.used_paste,
+        })),
       };
       const resp = await fetch(joinUrl(BK, '/api/text-interview/answers'), {
         method: 'POST',
@@ -312,9 +327,40 @@ export default function TextInterviewPage() {
                         rows={4}
                         value={current?.answer || ''}
                         onChange={(e) => {
-                          const next = [...answers];
-                          next[currentIndex] = { ...next[currentIndex], answer: e.target.value };
-                          setAnswers(next);
+                          const nextValue = e.target.value;
+                          setAnswers((prev) => {
+                            const next = [...prev];
+                            const existing = next[currentIndex] || {};
+                            const prevValue = String(existing.answer || '');
+                            const growth = Math.max(0, nextValue.length - prevValue.length);
+                            const pendingPasteChars = Math.max(0, Number(pendingPasteCharsRef.current) || 0);
+                            const pastedDelta = Math.min(pendingPasteChars, growth);
+                            const typedDelta = Math.max(0, growth - pastedDelta);
+                            pendingPasteCharsRef.current = Math.max(0, pendingPasteChars - pastedDelta);
+                            next[currentIndex] = {
+                              ...existing,
+                              answer: nextValue,
+                              typed_char_count: (Number(existing.typed_char_count) || 0) + typedDelta,
+                            };
+                            return next;
+                          });
+                        }}
+                        onPaste={(e) => {
+                          const pastedText = e.clipboardData?.getData?.('text') || '';
+                          const pastedLen = Math.max(0, pastedText.length);
+                          pendingPasteCharsRef.current = (Number(pendingPasteCharsRef.current) || 0) + pastedLen;
+                          setAnswers((prev) => {
+                            const next = [...prev];
+                            const existing = next[currentIndex] || {};
+                            next[currentIndex] = {
+                              ...existing,
+                              paste_count: (Number(existing.paste_count) || 0) + 1,
+                              largest_paste_length: Math.max(Number(existing.largest_paste_length) || 0, pastedLen),
+                              pasted_char_count: (Number(existing.pasted_char_count) || 0) + pastedLen,
+                              used_paste: true,
+                            };
+                            return next;
+                          });
                         }}
                         required
                       />
