@@ -150,6 +150,27 @@ function formatShortDate(value) {
   return d.toLocaleDateString();
 }
 
+function formatCstDateTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  try {
+    const out = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Chicago',
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZoneName: 'short',
+    }).format(d);
+    return out.replace(/\b(?:CDT|CST)\b/, 'CST');
+  } catch {
+    return '—';
+  }
+}
+
 function formatCurrency(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return '—';
@@ -2605,7 +2626,7 @@ export default function Admin() {
                                 </div>
                                 <div>{candidateClientName}</div>
                                 <div>{roleTitle}</div>
-                                <div>{c.created_at ? new Date(c.created_at).toLocaleString() : '—'}</div>
+                                <div>{formatCstDateTime(c.created_at)}</div>
                                 <div>{pct(c.resume_score)}</div>
                                 <div>{pct(c.interview_score)}</div>
                                 <div>{pct(c.overall_score)}</div>
@@ -2635,7 +2656,7 @@ export default function Admin() {
                                 <div className="t-row" style={{ gridTemplateColumns: '1fr', background: 'rgba(15,23,42,0.45)' }}>
                                   <div>
                                     <div className="sub">Status: {c.status || c.interview_status || '—'}</div>
-                                    <div className="sub">Report generated: {c.report_generated_at ? new Date(c.report_generated_at).toLocaleString() : '—'}</div>
+                                    <div className="sub">Report generated: {formatCstDateTime(c.report_generated_at)}</div>
                                   </div>
                                 </div>
                               )}
@@ -2885,7 +2906,7 @@ export default function Admin() {
                               <div className="title">{req.candidate_name || '—'}</div>
                               <div className="sub">{req.candidate_email || '—'}</div>
                               {req.candidate_phone && <div className="sub">{req.candidate_phone}</div>}
-                              <div className="sub">Created {req.created_at ? new Date(req.created_at).toLocaleString() : '—'}</div>
+                              <div className="sub">Created {formatCstDateTime(req.created_at)}</div>
                             </div>
                             <div>
                               <div className="title">{roleTitle}</div>
@@ -2908,8 +2929,8 @@ export default function Admin() {
                                 <option value="sent">Sent</option>
                                 <option value="denied">Denied</option>
                               </select>
-                              {req.approved_at && <div className="sub">Approved {new Date(req.approved_at).toLocaleString()}</div>}
-                              {req.sent_at && <div className="sub">Sent {new Date(req.sent_at).toLocaleString()}</div>}
+                              {req.approved_at && <div className="sub">Approved {formatCstDateTime(req.approved_at)}</div>}
+                              {req.sent_at && <div className="sub">Sent {formatCstDateTime(req.sent_at)}</div>}
                             </div>
                             <div className="accommodation-notes">
                               <textarea
