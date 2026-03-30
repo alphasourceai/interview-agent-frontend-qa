@@ -102,6 +102,7 @@ function isPerceptionPendingRow(row) {
     !!row?.analysis_url;
   if (!hasAnalysisSignal) return false;
   const perceptionScores = normalizeScoreObject(row?.perception_scores) || {};
+  if (perceptionScores?.mode === 'text' || perceptionScores?.unavailable === true) return false;
   return !hasPerceptionCoreScores(perceptionScores);
 }
 
@@ -2718,7 +2719,12 @@ function FragmentRow({
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
   const analysisPending = r.has_analysis === false;
   const analysisStatus = analysisPending ? 'Processing' : 'Summary not available';
-  const perceptionPending = isPerceptionPendingRow(r);
+  const perceptionUnavailable = perceptionScores?.mode === 'text' || perceptionScores?.unavailable === true;
+  const perceptionUnavailableReason =
+    typeof perceptionScores?.reason === 'string' && perceptionScores.reason.trim()
+      ? perceptionScores.reason.trim()
+      : 'Perception analysis is not available for text interviews.';
+  const perceptionPending = !perceptionUnavailable && isPerceptionPendingRow(r);
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
   const handleTranscriptClick = async () => {
@@ -2851,7 +2857,12 @@ function FragmentRow({
                       <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
                       <div><Meter label="Engagement" value={perceptionScores?.engagement ?? null} /> <InfoTip text={TIPS.engagement} /></div>
                     </div>
-                    {perceptionPending && (
+                    {perceptionUnavailable && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontWeight: 600, color: '#374151' }}>{perceptionUnavailableReason}</div>
+                      </div>
+                    )}
+                    {!perceptionUnavailable && perceptionPending && (
                       <div style={{ marginTop: 8 }}>
                         <div style={{ fontWeight: 600, color: '#374151' }}>Perception analysis pending…</div>
                         <div style={{ color: '#6b7280', fontSize: 12 }}>This can take a few minutes after interview completion.</div>
