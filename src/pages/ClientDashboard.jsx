@@ -1,6 +1,7 @@
 // src/pages/ClientDashboard.jsx
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
+import toast from 'react-hot-toast'
 import SignOutButton from '../components/SignOutButton.jsx'
 import CustomFilePicker from '../components/CustomFilePicker'
 import TesterFeedbackForm from '../components/TesterFeedbackForm.jsx'
@@ -331,19 +332,12 @@ export default function ClientDashboard() {
   const INITIAL_COUNT = 20;
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 
-  // lightweight toast (success / error)
-  const [toast, setToast] = useState({ visible: false, type: 'success', msg: '' });
-  const toastTimerRef = useRef(null);
   function showToast(msg, type = 'success', ttlMs = 4500) {
-    if (toastTimerRef.current) {
-      clearTimeout(toastTimerRef.current);
-      toastTimerRef.current = null;
+    if (type === 'error') {
+      toast.error(msg, { duration: ttlMs });
+      return;
     }
-    setToast({ visible: true, type, msg });
-    toastTimerRef.current = setTimeout(() => {
-      setToast(t => ({ ...t, visible: false }));
-      toastTimerRef.current = null;
-    }, ttlMs);
+    toast.success(msg, { duration: ttlMs });
   }
 
   const getPerceptionScores = (row) => {
@@ -2583,32 +2577,6 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
             </div>
           )}
         </div>
-
-        {/* Toast */}
-        {toast.visible && (
-          <div
-            role="status"
-            aria-live="polite"
-            style={{
-              position: 'fixed',
-              top: 20,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: toast.type === 'error' ? 'rgba(220, 38, 38, 0.95)' : 'rgba(16, 185, 129, 0.95)',
-              color: '#fff',
-              borderRadius: 10,
-              padding: '12px 16px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-              maxWidth: 360,
-              zIndex: 99999,
-              pointerEvents: 'none',
-              fontSize: 14,
-              lineHeight: 1.3
-            }}
-          >
-            {toast.msg}
-          </div>
-        )}
 
         {isTranscriptOpen && (
           <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
