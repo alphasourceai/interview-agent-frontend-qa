@@ -192,6 +192,17 @@ function getAccessOverrideModeLabel(value) {
   return 'Inherit';
 }
 
+function getAccessOverridePillMeta(value) {
+  const mode = String(value || 'inherit').toLowerCase();
+  if (mode === 'force_active') {
+    return { label: 'Forced Active', className: 'admin-access-pill admin-access-pill--forced-active' };
+  }
+  if (mode === 'force_inactive') {
+    return { label: 'Forced Inactive', className: 'admin-access-pill admin-access-pill--forced-inactive' };
+  }
+  return { label: 'Inherited', className: 'admin-access-pill admin-access-pill--inherited' };
+}
+
 export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
@@ -573,7 +584,7 @@ export default function Admin() {
     let timer;
     const triggerLogout = async () => {
       try {
-        await supabase.auth.signOut();
+        await supabase.auth.signOut({ scope: 'local' });
       } finally {
         localStorage.removeItem('adm_show_clients');
         localStorage.removeItem('adm_show_roles');
@@ -1246,19 +1257,25 @@ export default function Admin() {
     const url = new URL(window.location.href);
     url.searchParams.delete('pwreset');
     window.history.replaceState({}, '', url.toString());
-    await supabase.auth.signOut();
-    localStorage.removeItem('adm_show_clients');
-    localStorage.removeItem('adm_show_roles');
-    localStorage.removeItem('adm_show_members');
-    window.location.replace('/admin');
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      localStorage.removeItem('adm_show_clients');
+      localStorage.removeItem('adm_show_roles');
+      localStorage.removeItem('adm_show_members');
+      window.location.replace('/admin');
+    }
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    localStorage.removeItem('adm_show_clients');
-    localStorage.removeItem('adm_show_roles');
-    localStorage.removeItem('adm_show_members');
-    window.location.replace('/admin');
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } finally {
+      localStorage.removeItem('adm_show_clients');
+      localStorage.removeItem('adm_show_roles');
+      localStorage.removeItem('adm_show_members');
+      window.location.replace('/admin');
+    }
   };
 
   const getNiceErrorMessage = (err, status) => {
@@ -2085,6 +2102,7 @@ export default function Admin() {
                     <div className="t-body">
                       {sortedClients.map(c => {
                         const expanded = expandedClientId === c.id;
+                        const accessOverridePill = getAccessOverridePillMeta(c.access_override_mode);
                         const invoicePlanTier = String(
                           clientInvoicePlanTiers[c.id] ||
                           (['basic', 'pro', 'enterprise'].includes(String(c.plan_tier || '').toLowerCase())
@@ -2112,7 +2130,10 @@ export default function Admin() {
                               <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
                                 {String(c.billing_status || '').toLowerCase() === 'active' ? (c.plan_tier || '—') : '—'}
                               </div>
-                              <div className="muted" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>{getClientBillingDisplay(c)}</div>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 6 }}>
+                                <div className="muted">{getClientBillingDisplay(c)}</div>
+                                <span className={accessOverridePill.className}>{accessOverridePill.label}</span>
+                              </div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
                                 {String(c.billing_status || '').toLowerCase() === 'active' ? (
                                   <div className="muted">

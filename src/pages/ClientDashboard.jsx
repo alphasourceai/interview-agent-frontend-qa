@@ -748,6 +748,14 @@ export default function ClientDashboard() {
   );
   const selectedClientAccessOverrideMode = String(selectedClientBillingSummary?.access_override_mode || '').toLowerCase();
   const selectedClientBillingStatus = String(selectedClientBillingSummary?.billing_status || '').toLowerCase();
+  const selectedClientAccessStatusLabel = selectedClientAccessOverrideMode === 'force_active'
+    ? 'Access: Forced Active'
+    : (selectedClientAccessOverrideMode === 'force_inactive' ? 'Access: Forced Inactive' : 'Access: Inherited');
+  const selectedClientAccessStatusClass = selectedClientAccessOverrideMode === 'force_active'
+    ? 'client-access-status client-access-status--forced-active'
+    : (selectedClientAccessOverrideMode === 'force_inactive'
+      ? 'client-access-status client-access-status--forced-inactive'
+      : 'client-access-status client-access-status--inherited');
   const selectedClientIsEffectivelyInactive = useMemo(() => {
     if (!validatedSelectedClientId) return false;
     if (selectedClientAccessOverrideMode === 'force_inactive') return true;
@@ -1920,8 +1928,9 @@ export default function ClientDashboard() {
                   </option>
                 ))}
               </select>
-              <div style={{ color:'#6b7280' }}>
-                Viewing: <strong>{currentName}</strong> · Role: <strong>{effectiveRole}</strong>
+              <div style={{ color:'#6b7280', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span>Viewing: <strong>{currentName}</strong> · Role: <strong>{effectiveRole}</strong></span>
+                <span className={selectedClientAccessStatusClass}>{selectedClientAccessStatusLabel}</span>
               </div>
               <div style={{ marginLeft: 'auto' }}>
                 <button
@@ -2660,6 +2669,10 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
                   <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
                     <div className="client-dash-muted">Membership Status</div>
                     <div>{selectedClientBillingSummary?.subscription_status || '—'}</div>
+                  </div>
+                  <div className="client-dash-card" style={{ marginBottom: 0, flex: 1, minWidth: 260 }}>
+                    <div className="client-dash-muted">Access Status</div>
+                    <div><span className={selectedClientAccessStatusClass}>{selectedClientAccessStatusLabel}</span></div>
                   </div>
                   <div
                     className="client-dash-card"

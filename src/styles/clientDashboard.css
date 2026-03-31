@@ -442,6 +442,32 @@
   min-height: 52px;
   font-weight: 700 !important;
 }
+.client-dash .client-access-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.client-dash .client-access-status--inherited {
+  color: rgba(235, 254, 255, 0.82);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.client-dash .client-access-status--forced-active {
+  color: #c8f8ea;
+  background: rgba(35, 197, 152, 0.18);
+  border-color: rgba(52, 211, 153, 0.45);
+}
+.client-dash .client-access-status--forced-inactive {
+  color: #ffd7d7;
+  background: rgba(220, 82, 82, 0.2);
+  border-color: rgba(239, 107, 107, 0.46);
+}
 .client-dash .client-dash-tour-trigger {
   height: 34px;
   min-height: 34px;
