@@ -1926,19 +1926,9 @@ export default function ClientDashboard() {
               <div style={{ marginLeft: 'auto' }}>
                 <button
                   type="button"
-                  className="btn lilac client-dash-pill"
+                  className="btn client-dash-pill client-dash-tour-trigger"
                   data-tour="tour-trigger"
                   onClick={startTour}
-                  style={{
-                    padding: '6px 10px',
-                    fontSize: 12,
-                    lineHeight: 1.2,
-                    whiteSpace: 'nowrap',
-                    background: 'transparent',
-                    color: '#EBFEFF',
-                    border: '1px solid rgba(235, 254, 255, 0.35)',
-                    boxShadow: 'none'
-                  }}
                 >
                   Take a tour
                 </button>

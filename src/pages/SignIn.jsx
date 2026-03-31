@@ -5,11 +5,11 @@ import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+const CLIENT_SIGNIN_ERROR_TOAST_ID = 'client-signin-error';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
   const signInInFlightRef = useRef(false);
@@ -70,7 +70,7 @@ export default function SignIn() {
       postEmbedSizeBurst();
     }, 60);
     return () => clearTimeout(t);
-  }, [err, loading]);
+  }, [loading]);
 
   // Initial size on mount (helps Wix editor/preview too)
   useEffect(() => {
@@ -103,22 +103,26 @@ export default function SignIn() {
     e.preventDefault();
     if (signInInFlightRef.current) return;
     if (!email || !password || loading) return;
+    toast.dismiss(CLIENT_SIGNIN_ERROR_TOAST_ID);
     if (!isValidEmail(email)) {
       setEmailError('Please enter a valid email address.');
       toast.error('Please enter a valid email address.', { duration: 1500 });
       return;
     }
     setEmailError('');
-    setErr('');
     signInInFlightRef.current = true;
     setLoading(true);
     try {
       try { await requestSafariStorageAccess(); } catch (_) {}
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setErr(error.message || 'Could not sign in.');
+        toast.error(error.message || 'Could not sign in.', {
+          id: CLIENT_SIGNIN_ERROR_TOAST_ID,
+          duration: 2000
+        });
         return;
       }
+      toast.dismiss(CLIENT_SIGNIN_ERROR_TOAST_ID);
       const url = new URL(window.location.href);
       const next = url.searchParams.get('next');
       window.location.replace(next || '/dashboard');
@@ -197,12 +201,6 @@ export default function SignIn() {
             </button>
           </div>
         </form>
-
-        {err && (
-          <div role="alert" style={{ color: '#ffb4b4', marginTop: 12, fontSize: 14 }}>
-            {err}
-          </div>
-        )}
       </div>
     </div>
   );
