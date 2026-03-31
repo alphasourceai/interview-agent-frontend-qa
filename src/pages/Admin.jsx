@@ -18,6 +18,7 @@ const isValidPhoneLike = (value) => {
   const digits = raw.replace(/\D/g, '');
   return digits.length >= 10 && digits.length <= 15;
 };
+const ADMIN_SIGNIN_ERROR_TOAST_ID = 'admin-signin-error';
 const ALL_CLIENTS_VALUE = 'ALL';
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
 
@@ -1175,6 +1176,7 @@ export default function Admin() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     if (adminSignInInFlightRef.current) return;
+    toast.dismiss(ADMIN_SIGNIN_ERROR_TOAST_ID);
     if (!isValidEmail(email)) {
       setEmailError('Please enter a valid email address.');
       toast.error('Please enter a valid email address.', { duration: 1500 });
@@ -1189,9 +1191,13 @@ export default function Admin() {
       } catch {}
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        toast.error('Sign in failed: ' + error.message, { duration: 2000 });
+        toast.error('Sign in failed: ' + error.message, {
+          id: ADMIN_SIGNIN_ERROR_TOAST_ID,
+          duration: 2000
+        });
         return;
       }
+      toast.dismiss(ADMIN_SIGNIN_ERROR_TOAST_ID);
       setSession(data?.session || null);
       window.location.replace('/admin');
     } finally {
