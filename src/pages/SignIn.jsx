@@ -1,5 +1,5 @@
 // src/pages/SignIn.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import '../styles/clientTheme.css';
@@ -12,6 +12,7 @@ export default function SignIn() {
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const signInInFlightRef = useRef(false);
 
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
@@ -100,6 +101,7 @@ export default function SignIn() {
 
   async function handleSignIn(e) {
     e.preventDefault();
+    if (signInInFlightRef.current) return;
     if (!email || !password || loading) return;
     if (!isValidEmail(email)) {
       setEmailError('Please enter a valid email address.');
@@ -108,18 +110,23 @@ export default function SignIn() {
     }
     setEmailError('');
     setErr('');
+    signInInFlightRef.current = true;
     setLoading(true);
-    try { await requestSafariStorageAccess(); } catch (_) {}
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    setTimeout(() => postEmbedSizeBurst(), 40);
-    if (error) {
-      setErr(error.message || 'Could not sign in.');
-      return;
+    try {
+      try { await requestSafariStorageAccess(); } catch (_) {}
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setErr(error.message || 'Could not sign in.');
+        return;
+      }
+      const url = new URL(window.location.href);
+      const next = url.searchParams.get('next');
+      window.location.replace(next || '/dashboard');
+    } finally {
+      signInInFlightRef.current = false;
+      setLoading(false);
+      setTimeout(() => postEmbedSizeBurst(), 40);
     }
-    const url = new URL(window.location.href);
-    const next = url.searchParams.get('next');
-    window.location.replace(next || '/dashboard');
   }
 
   async function startReset() {

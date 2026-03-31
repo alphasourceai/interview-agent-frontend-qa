@@ -199,6 +199,8 @@ export default function Admin() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [adminSigningIn, setAdminSigningIn] = useState(false);
+  const adminSignInInFlightRef = useRef(false);
 
   const [showReset, setShowReset] = useState(false);
   const [newPass1, setNewPass1] = useState('');
@@ -1172,22 +1174,30 @@ export default function Admin() {
 
   const handleSignIn = async (e) => {
     e.preventDefault();
+    if (adminSignInInFlightRef.current) return;
     if (!isValidEmail(email)) {
       setEmailError('Please enter a valid email address.');
       toast.error('Please enter a valid email address.', { duration: 1500 });
       return;
     }
     setEmailError('');
+    adminSignInInFlightRef.current = true;
+    setAdminSigningIn(true);
     try {
-      await requestSafariStorageAccess();
-    } catch {}
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      toast.error('Sign in failed: ' + error.message, { duration: 2000 });
-      return;
+      try {
+        await requestSafariStorageAccess();
+      } catch {}
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast.error('Sign in failed: ' + error.message, { duration: 2000 });
+        return;
+      }
+      setSession(data?.session || null);
+      window.location.replace('/admin');
+    } finally {
+      adminSignInInFlightRef.current = false;
+      setAdminSigningIn(false);
     }
-    setSession(data?.session || null);
-    window.location.replace('/admin');
   };
 
   const startReset = async () => {
@@ -1835,7 +1845,9 @@ export default function Admin() {
             {emailError && <div className="input-error-text">{emailError}</div>}
             <label htmlFor="admin-password">Password</label>
             <input id="admin-password" className="alpha-input" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-            <button type="submit" style={{ width: '100%' }}>Sign In</button>
+            <button type="submit" style={{ width: '100%' }} disabled={!email || !password || adminSigningIn}>
+              {adminSigningIn ? 'Signing in…' : 'Sign In'}
+            </button>
             <div style={{ marginTop: 10 }}>
               <button
                 type="button"
