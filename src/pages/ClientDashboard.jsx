@@ -752,8 +752,10 @@ export default function ClientDashboard() {
     if (!validatedSelectedClientId) return false;
     if (selectedClientAccessOverrideMode === 'force_inactive') return true;
     if (selectedClientAccessOverrideMode === 'force_active') return false;
+    if (billingLoading) return false;
+    if (!selectedClientBillingSummary || Object.keys(selectedClientBillingSummary).length === 0) return false;
     return selectedClientBillingStatus !== 'active';
-  }, [validatedSelectedClientId, selectedClientAccessOverrideMode, selectedClientBillingStatus]);
+  }, [validatedSelectedClientId, selectedClientAccessOverrideMode, selectedClientBillingStatus, billingLoading, selectedClientBillingSummary]);
 
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
@@ -833,6 +835,7 @@ export default function ClientDashboard() {
     }
     (async () => {
       try {
+        setSelectedClientBillingSummary(null);
         setBillingLoading(true);
         const qs = `?client_id=${encodeURIComponent(validatedSelectedClientId)}`;
         const resp = await apiGet('/clients/billing/summary' + qs);
@@ -1926,7 +1929,16 @@ export default function ClientDashboard() {
                   className="btn lilac client-dash-pill"
                   data-tour="tour-trigger"
                   onClick={startTour}
-                  style={{ padding: '6px 10px', fontSize: 12, lineHeight: 1.2, whiteSpace: 'nowrap' }}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 12,
+                    lineHeight: 1.2,
+                    whiteSpace: 'nowrap',
+                    background: 'transparent',
+                    color: '#EBFEFF',
+                    border: '1px solid rgba(235, 254, 255, 0.35)',
+                    boxShadow: 'none'
+                  }}
                 >
                   Take a tour
                 </button>
@@ -2023,8 +2035,10 @@ export default function ClientDashboard() {
         {!hasMembership && !loading && (
           <div
             style={{
-              background: '#fff3cd',
-              border: '1px solid #ffeeba',
+              background: '#fef3c7',
+              border: '1px solid #f59e0b',
+              color: '#1f2937',
+              fontWeight: 600,
               padding: 12,
               borderRadius: 8,
               marginTop: 8
