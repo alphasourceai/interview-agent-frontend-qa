@@ -233,14 +233,29 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Toaster
           position="top-center"
           toastOptions={{
-            duration: 1000,
+            duration: 4500,
             style: {
-              fontSize: '0.9rem',
+              fontSize: '0.98rem',
               color: '#ffffff',
-              background: '#2f2a4a'
-            }
+              background: '#1d4ed8',
+              padding: '12px 16px',
+              borderRadius: '12px',
+              boxShadow: '0 14px 36px rgba(2, 6, 23, 0.45)',
+            },
+            success: {
+              duration: 4500,
+              style: {
+                background: '#0f766e',
+              },
+            },
+            error: {
+              duration: 5000,
+              style: {
+                background: '#b91c1c',
+              },
+            },
           }}
-          containerStyle={{ marginTop: 64 }}
+          containerStyle={{ marginTop: 78, zIndex: 99999 }}
         />
       </SessionRecoveryWrapper>
     </Sentry.ErrorBoundary>
