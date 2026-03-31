@@ -43,6 +43,8 @@ const th = {
 const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlign: 'top' };
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
 const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
+const CLIENT_DASH_TOUR_SEEN_KEY = 'client_dash_tour_seen_v1';
+const CLIENT_DASH_TOUR_DISMISSED_KEY = 'client_dash_tour_dismissed_v1';
 const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;
 
 function isDailyRoomUrl(url) {
@@ -608,6 +610,10 @@ export default function ClientDashboard() {
   const [billingRoleId, setBillingRoleId] = useState(() => urlBillingPrefill.roleId || '');
   const [billingPurchaseQuantityInput, setBillingPurchaseQuantityInput] = useState('1');
   const [billingPurchaseBusy, setBillingPurchaseBusy] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+  const [tourTargetRect, setTourTargetRect] = useState(null);
+  const tourAutoCheckRef = useRef(false);
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -656,10 +662,80 @@ export default function ClientDashboard() {
   const [testerChecked, setTesterChecked] = useState(false);
   const canManage = ['manager', 'admin', 'tester'].includes(effectiveRole);
   const isTester = effectiveRole === 'tester';
+  const tourSteps = useMemo(() => {
+    const steps = [
+      {
+        target: 'client-context',
+        title: 'Client context',
+        body: 'Choose which client account you are viewing here. Everything in the dashboard updates based on the selected client.',
+      },
+      {
+        target: 'client-tabs',
+        title: 'Dashboard navigation',
+        body: 'Use these tabs to move between roles, candidates, members, and billing. Roles and candidates are the primary day-to-day views.',
+      },
+      {
+        target: 'roles-section',
+        title: 'Roles',
+        body: 'Create and manage roles here. Roles control interview type, job description, rubric generation, and interview links.',
+        tab: 'roles',
+      },
+      {
+        target: 'candidates-section',
+        title: 'Candidates',
+        body: 'Candidate interview results appear here. Review transcripts, summaries, scores, and downloadable reports.',
+        tab: 'candidates',
+      },
+    ];
+    if (canManage) {
+      steps.push({
+        target: 'members-section',
+        title: 'Members',
+        body: 'Add or remove teammates here. Managers have full-function access. Members are read-only.',
+        tab: 'members',
+      });
+    }
+    steps.push({
+      target: 'billing-section',
+      title: 'Billing',
+      body: 'View membership status and manage additional interview capacity here.',
+      tab: 'billing',
+    });
+    return steps;
+  }, [canManage]);
+  const activeTourStep = tourOpen ? (tourSteps[tourStepIndex] || null) : null;
+  const isLastTourStep = tourStepIndex >= tourSteps.length - 1;
+  const startTour = () => {
+    setTourStepIndex(0);
+    setTourOpen(true);
+  };
+  const dismissTour = () => {
+    setTourOpen(false);
+    try {
+      localStorage.setItem(CLIENT_DASH_TOUR_DISMISSED_KEY, '1');
+    } catch {}
+  };
+  const completeTour = () => {
+    setTourOpen(false);
+    try {
+      localStorage.setItem(CLIENT_DASH_TOUR_SEEN_KEY, '1');
+    } catch {}
+  };
+  const nextTourStep = () => {
+    if (isLastTourStep) {
+      completeTour();
+      return;
+    }
+    setTourStepIndex((idx) => Math.min(tourSteps.length - 1, idx + 1));
+  };
+  const previousTourStep = () => {
+    setTourStepIndex((idx) => Math.max(0, idx - 1));
+  };
 
   const testerSplashRole = (currentMember?.role || '').toLowerCase();
   const testerAcknowledgedAt = currentMember?.tester_acknowledged_at ?? null;
   const [showTesterNda, setShowTesterNda] = useState(false);
+  const mainTabsVisible = hasMembership && !showTesterNda;
   const prefillName =
     selfMember?.name ||
     me?.user?.user_metadata?.full_name ||
@@ -682,6 +758,69 @@ export default function ClientDashboard() {
   useEffect(() => {
     setShowTesterNda(testerSplashRole === 'tester' && testerAcknowledgedAt == null);
   }, [testerSplashRole, testerAcknowledgedAt, clientId]);
+
+  useEffect(() => {
+    if (tourAutoCheckRef.current) return;
+    if (!hasMembership || !mainTabsVisible) return;
+    let seen = false;
+    let dismissed = false;
+    try {
+      seen = localStorage.getItem(CLIENT_DASH_TOUR_SEEN_KEY) === '1';
+      dismissed = localStorage.getItem(CLIENT_DASH_TOUR_DISMISSED_KEY) === '1';
+    } catch {}
+    if (!seen && !dismissed) {
+      setTourStepIndex(0);
+      setTourOpen(true);
+    }
+    tourAutoCheckRef.current = true;
+  }, [hasMembership, mainTabsVisible]);
+
+  useEffect(() => {
+    if (!tourOpen) return;
+    const step = tourSteps[tourStepIndex];
+    if (!step?.tab) return;
+    if (selectedClientIsEffectivelyInactive && (step.tab === 'roles' || step.tab === 'candidates')) return;
+    if (activeTab !== step.tab) setActiveTab(step.tab);
+  }, [tourOpen, tourStepIndex, tourSteps, activeTab, selectedClientIsEffectivelyInactive]);
+
+  useEffect(() => {
+    if (!tourOpen) {
+      setTourTargetRect(null);
+      return;
+    }
+    const step = tourSteps[tourStepIndex];
+    if (!step) {
+      setTourTargetRect(null);
+      return;
+    }
+    let raf = 0;
+    const update = () => {
+      const el = document.querySelector(`[data-tour="${step.target}"]`);
+      if (!el) {
+        setTourTargetRect(null);
+        return;
+      }
+      const rect = el.getBoundingClientRect();
+      setTourTargetRect({
+        top: Math.max(8, rect.top - 6),
+        left: Math.max(8, rect.left - 6),
+        width: Math.max(0, rect.width + 12),
+        height: Math.max(0, rect.height + 12),
+      });
+    };
+    const schedule = () => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(update);
+    };
+    schedule();
+    window.addEventListener('resize', schedule);
+    window.addEventListener('scroll', schedule, true);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('resize', schedule);
+      window.removeEventListener('scroll', schedule, true);
+    };
+  }, [tourOpen, tourStepIndex, tourSteps, activeTab]);
 
   useEffect(() => {
     let alive = true;
@@ -1723,6 +1862,33 @@ export default function ClientDashboard() {
     downloadCsv(csvText, `alphascreen-candidates-${yyyy}-${mm}-${dd}.csv`);
   };
 
+  const tourCardStyle = (() => {
+    const base = {
+      position: 'fixed',
+      left: '50%',
+      top: 24,
+      transform: 'translateX(-50%)',
+      width: 360,
+      maxWidth: 'calc(100vw - 24px)',
+      background: '#0A1547',
+      border: '1px solid rgba(255,255,255,0.16)',
+      borderRadius: 12,
+      color: '#EBFEFF',
+      padding: 14,
+      boxShadow: '0 18px 44px rgba(0,0,0,0.35)',
+      zIndex: 120002
+    };
+    if (typeof window === 'undefined' || !tourTargetRect) return base;
+    const margin = 16;
+    const cardWidth = 360;
+    const left = Math.min(window.innerWidth - cardWidth - margin, Math.max(margin, tourTargetRect.left));
+    const preferredTop = tourTargetRect.top + tourTargetRect.height + 14;
+    const top = preferredTop + 220 <= window.innerHeight
+      ? preferredTop
+      : Math.max(margin, tourTargetRect.top - 220);
+    return { ...base, left, top, transform: 'none' };
+  })();
+
   return (
     <div className="dash-page alpha-theme client-dash">
       <div className="dash-center dash-inner">
@@ -1737,7 +1903,7 @@ export default function ClientDashboard() {
 
         {hasMembership && (
           <div className="client-dash-card" style={{ marginBottom: 8 }}>
-            <div className="client-dash-row" style={{ marginBottom: 0 }}>
+            <div className="client-dash-row" style={{ marginBottom: 0, alignItems: 'center', gap: 10 }} data-tour="client-context">
               <label htmlFor="clientSel">Client</label>
               <select
                 id="clientSel"
@@ -1753,6 +1919,17 @@ export default function ClientDashboard() {
               </select>
               <div style={{ color:'#6b7280' }}>
                 Viewing: <strong>{currentName}</strong> · Role: <strong>{effectiveRole}</strong>
+              </div>
+              <div style={{ marginLeft: 'auto' }}>
+                <button
+                  type="button"
+                  className="btn lilac client-dash-pill"
+                  data-tour="tour-trigger"
+                  onClick={startTour}
+                  style={{ padding: '6px 10px', fontSize: 12, lineHeight: 1.2, whiteSpace: 'nowrap' }}
+                >
+                  Take a tour
+                </button>
               </div>
             </div>
           </div>
@@ -1796,7 +1973,7 @@ export default function ClientDashboard() {
       )}
 
         {hasMembership && (
-          <div className="dash-tabs">
+          <div className="dash-tabs" data-tour="client-tabs">
             {!selectedClientIsEffectivelyInactive && (
               <button
                 type="button"
@@ -1859,7 +2036,7 @@ export default function ClientDashboard() {
 
         <div className="dash-scroll">
           {activeTab === 'candidates' && !selectedClientIsEffectivelyInactive && (
-            <div className="client-dash-card">
+            <div className="client-dash-card" data-tour="candidates-section">
               {/* Filters: Role + Min Overall */}
               <div className="filters">
                 <div style={{ fontWeight: 600, opacity: 0.9, marginRight: 4 }}>Filters:</div>
@@ -2082,7 +2259,7 @@ export default function ClientDashboard() {
           )}
 
           {activeTab === 'roles' && !selectedClientIsEffectivelyInactive && (
-            <div className="client-dash-card">
+            <div className="client-dash-card" data-tour="roles-section">
               <div className="client-dash-section-head">
                 <h2>Roles for {currentName}</h2>
               </div>
@@ -2352,7 +2529,7 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
 
           {activeTab === 'members' && (
             canManage ? (
-              <div className="client-dash-card">
+              <div className="client-dash-card" data-tour="members-section">
                 <div className="client-dash-section-head">
                   <h2>Client Members for {currentName}</h2>
                 </div>
@@ -2425,14 +2602,14 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
                 )}
               </div>
             ) : (
-              <div className="client-dash-card">
+              <div className="client-dash-card" data-tour="members-section">
                 You don’t have permission to manage members for this client.
               </div>
             )
           )}
 
           {activeTab === 'billing' && (
-            <div className="client-dash-card">
+            <div className="client-dash-card" data-tour="billing-section">
               <div className="client-dash-section-head">
                 <h2>Billing for {currentName}</h2>
               </div>
@@ -2577,6 +2754,80 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
             </div>
           )}
         </div>
+
+        {tourOpen && activeTourStep && (
+          <>
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(10, 21, 71, 0.42)',
+                zIndex: 120000
+              }}
+            />
+            {tourTargetRect && (
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'fixed',
+                  top: tourTargetRect.top,
+                  left: tourTargetRect.left,
+                  width: tourTargetRect.width,
+                  height: tourTargetRect.height,
+                  borderRadius: 12,
+                  border: '2px solid rgba(125, 211, 252, 0.95)',
+                  boxShadow: '0 0 0 9999px rgba(10, 21, 71, 0.42)',
+                  pointerEvents: 'none',
+                  zIndex: 120001
+                }}
+              />
+            )}
+            <div role="dialog" aria-modal="true" style={tourCardStyle}>
+              <div style={{ fontSize: 12, opacity: 0.84, marginBottom: 8 }}>
+                Step {tourStepIndex + 1} of {tourSteps.length}
+              </div>
+              <h3 style={{ margin: '0 0 8px 0', fontSize: 18, lineHeight: 1.2 }}>
+                {activeTourStep.title}
+              </h3>
+              <p style={{ margin: 0, color: '#dbeafe', fontSize: 14, lineHeight: 1.45 }}>
+                {activeTourStep.body}
+              </p>
+              {!tourTargetRect && (
+                <div style={{ marginTop: 8, fontSize: 12, color: '#bfdbfe' }}>
+                  This section is currently hidden. Continue to the next step.
+                </div>
+              )}
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                <button
+                  type="button"
+                  className="btn lilac client-dash-pill"
+                  onClick={dismissTour}
+                >
+                  Skip
+                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    onClick={previousTourStep}
+                    disabled={tourStepIndex === 0}
+                    style={tourStepIndex === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    className="btn lilac client-dash-pill"
+                    onClick={nextTourStep}
+                  >
+                    {isLastTourStep ? 'Done' : 'Next'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         {isTranscriptOpen && (
           <div className="rubric-modal-overlay" role="dialog" aria-modal="true">
