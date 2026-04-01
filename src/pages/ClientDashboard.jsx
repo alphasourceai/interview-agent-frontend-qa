@@ -1750,10 +1750,12 @@ export default function ClientDashboard() {
         summary: r.resume_analysis?.summary || '',
       },
       interview_analysis: {
-        clarity: r.perception_scores?.clarity ?? null,
-        confidence: r.perception_scores?.confidence ?? null,
-        engagement: r.perception_scores?.engagement ?? r.perception_scores?.body_language ?? null,
-        summary: typeof r.interview_summary === 'string' ? r.interview_summary : ''
+        clarity: r.interview_analysis?.clarity ?? null,
+        confidence: r.interview_analysis?.confidence ?? null,
+        engagement: r.interview_analysis?.engagement ?? r.interview_analysis?.body_language ?? null,
+        summary: typeof r.interview_analysis?.summary === 'string'
+          ? r.interview_analysis.summary
+          : (typeof r.interview_summary === 'string' ? r.interview_summary : '')
       },
     };
       row.is_complete = isRowComplete(row);
@@ -3012,6 +3014,7 @@ function FragmentRow({
     }
   };
   const perceptionScores = r.perception_scores && typeof r.perception_scores === 'object' ? r.perception_scores : {};
+  const interviewAnalysis = r.interview_analysis && typeof r.interview_analysis === 'object' ? r.interview_analysis : {};
   const transcriptScores = r.transcript_scores && typeof r.transcript_scores === 'object' ? r.transcript_scores : {};
   const evidenceStrengthValue = (() => {
     const raw = transcriptScores?.confidence;
@@ -3180,9 +3183,9 @@ function FragmentRow({
                   <div className="detail-card">
                     <div className="detail-title">Interview Analysis</div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
-                      <div><Meter label="Clarity" value={insufficientInterview ? null : (perceptionScores?.clarity ?? null)} /> <InfoTip text={TIPS.clarity} /></div>
-                      <div><Meter label="Confidence" value={insufficientInterview ? null : (perceptionScores?.confidence ?? null)} /> <InfoTip text={TIPS.confidence} /></div>
-                      <div><Meter label="Engagement" value={insufficientInterview ? null : (perceptionScores?.engagement ?? null)} /> <InfoTip text={TIPS.engagement} /></div>
+                      <div><Meter label="Clarity" value={insufficientInterview ? null : (interviewAnalysis?.clarity ?? null)} /> <InfoTip text={TIPS.clarity} /></div>
+                      <div><Meter label="Confidence" value={insufficientInterview ? null : (interviewAnalysis?.confidence ?? null)} /> <InfoTip text={TIPS.confidence} /></div>
+                      <div><Meter label="Engagement" value={insufficientInterview ? null : (interviewAnalysis?.engagement ?? interviewAnalysis?.body_language ?? null)} /> <InfoTip text={TIPS.engagement} /></div>
                     </div>
                     {perceptionUnavailable && (
                       <div style={{ marginTop: 8 }}>
