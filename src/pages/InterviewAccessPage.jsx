@@ -766,6 +766,7 @@ export default function InterviewAccessPage() {
               <li>Stable internet connection</li>
               <li>{preStartMaxInterviewMinutes ? `${preStartMaxInterviewMinutes} uninterrupted minutes to complete the interview` : 'The allotted uninterrupted time to complete the interview'}</li>
               <li>Quiet environment free of background conversations and distractions</li>
+              <li>The interviewer is not mobile optimized yet; please complete this interview on a computer.</li>
               <li>You may complete only one interview per role. Once submitted, the interview cannot be retaken.</li>
             </ul>
             <p style={{ fontSize: '1rem', marginBottom: 12 }}>
