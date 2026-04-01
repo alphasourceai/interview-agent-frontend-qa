@@ -299,7 +299,7 @@ export default function Admin() {
 
   const [accommodations, setAccommodations] = useState([]);
   const [accommodationsLoading, setAccommodationsLoading] = useState(false);
-  const [accommodationFilter, setAccommodationFilter] = useState('pending');
+  const [accommodationFilter, setAccommodationFilter] = useState('all');
   const [accommodationNotes, setAccommodationNotes] = useState({});
   const [accommodationSaving, setAccommodationSaving] = useState({});
   const [accommodationSending, setAccommodationSending] = useState({});
@@ -936,7 +936,7 @@ export default function Admin() {
     if (!silent) setAccommodationsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (accommodationFilter) params.set('status', accommodationFilter);
+      if (accommodationFilter && accommodationFilter !== 'all') params.set('status', accommodationFilter);
       if (selectedClientId && selectedClientId !== ALL_CLIENTS_VALUE) {
         params.set('client_id', selectedClientId);
       }
