@@ -1341,7 +1341,10 @@ export default function ClientDashboard() {
     if (!validatedSelectedClientId || billingPortalBusy) return;
     try {
       setBillingPortalBusy(true);
-      const resp = await apiPost('/clients/billing/portal-session', { client_id: validatedSelectedClientId });
+      const resp = await apiPost('/clients/billing/portal-session', {
+        client_id: validatedSelectedClientId,
+        tab: activeTab
+      });
       const url = resp?.url;
       if (!url) throw new Error('No billing portal URL returned');
       if (window?.parent && window.parent !== window) {
@@ -1373,7 +1376,8 @@ export default function ClientDashboard() {
       const resp = await apiPost('/clients/billing/additional-interviews/checkout-session', {
         client_id: validatedSelectedClientId,
         role_id: billingRoleSelectValue,
-        quantity
+        quantity,
+        tab: activeTab
       });
       const url = resp?.url;
       if (!url) throw new Error('No checkout URL returned');
@@ -1425,6 +1429,7 @@ export default function ClientDashboard() {
       form.append('client_id', clientId);
       form.append('role_title', title);
       form.append('interview_type', interviewType);
+      form.append('tab', activeTab);
       form.append('file', jobFile);
       const resp = await api.upload('/clients/roles/checkout-session', form);
       const url = resp?.url;
