@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DailyIframe from '@daily-co/daily-js';
+import * as Sentry from '@sentry/react';
 import {
   DailyAudioTrack,
   DailyProvider,
@@ -32,7 +33,7 @@ const NO_RESPONSE_NUDGE_DELAY_MS = 6000;
 
 let __dailyCallObject = null;
 
-function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, maxInterviewMinutes, onDone, debugCvi }) {
+function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, candidateId, requestId, maxInterviewMinutes, onDone, debugCvi }) {
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
   const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
@@ -76,6 +77,27 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       ...payload,
     });
   }, [conversationId, interviewId]);
+
+  const captureCviException = useCallback((error, extra = {}) => {
+    try {
+      const normalizedError =
+        error instanceof Error
+          ? error
+          : new Error(typeof error === 'string' && error ? error : 'CVI runtime error');
+      Sentry.captureException(normalizedError, {
+        tags: {
+          route_name: 'interview_cvi',
+          surface: 'frontend',
+          ...(interviewId ? { interview_id: interviewId } : {}),
+          ...(conversationId ? { conversation_id: conversationId } : {}),
+          ...(roleToken ? { role_token: roleToken } : {}),
+          ...(candidateId ? { candidate_id: candidateId } : {}),
+          ...(requestId ? { request_id: requestId } : {}),
+        },
+        extra,
+      });
+    } catch {}
+  }, [candidateId, conversationId, interviewId, requestId, roleToken]);
 
   const clearStartupWatchdogTimers = useCallback(() => {
     if (startupRemoteTimerRef.current) {
@@ -131,6 +153,18 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         void handleStartupFailure('no_remote_participant_after_recovery_timeout');
       }, STARTUP_REMOTE_TIMEOUT_MS);
       logDailyDiag('join-attempt', { source: 'startup-recovery', conversationUrl });
+      try {
+        Sentry.addBreadcrumb({
+          category: 'cvi',
+          level: 'info',
+          message: 'CVI join started',
+          data: {
+            source: 'startup-recovery',
+            interview_id: interviewId || undefined,
+            conversation_id: conversationId || undefined,
+          },
+        });
+      } catch {}
       daily.join({
         url: conversationUrl,
         userName: 'Candidate',
@@ -140,6 +174,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         logDailyDiag('join-error', {
           source: 'startup-recovery',
           error: error?.message || String(error || 'join_failed'),
+        });
+        captureCviException(error, {
+          stage: 'join',
+          source: 'startup-recovery',
         });
         startupRecoveryInFlightRef.current = false;
         clearStartupWatchdogTimers();
@@ -153,6 +191,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
 
     setStartupStatus('');
     startupRecoveryInFlightRef.current = false;
+    captureCviException(new Error(`CVI startup failed: ${reason}`), {
+      stage: 'startup-watchdog',
+      ...extra,
+    });
     toast.error('Interview did not start correctly. Please relaunch and try again.');
     joinedRef.current = false;
     try {
@@ -160,7 +202,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     } catch {}
     try { daily?.destroy?.() } catch {}
     onDone();
-  }, [clearStartupWatchdogTimers, clearNoResponseTimer, conversationUrl, daily, logDailyDiag, onDone]);
+  }, [captureCviException, clearStartupWatchdogTimers, clearNoResponseTimer, conversationId, conversationUrl, daily, interviewId, logDailyDiag, onDone]);
 
   useDailyEvent('left-meeting', useCallback((event) => {
     if (startupRecoveryInFlightRef.current) {
@@ -207,13 +249,37 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   }, [logDailyDiag]));
   useDailyEvent('error', useCallback((event) => {
     logDailyDiag('error', { event });
-  }, [logDailyDiag]));
+    captureCviException(
+      event?.error || event?.errorMsg || event?.message || 'Daily error event',
+      {
+        stage: 'daily-event',
+        event_name: 'error',
+        event_action: event?.action ?? null,
+      }
+    );
+  }, [captureCviException, logDailyDiag]));
   useDailyEvent('camera-error', useCallback((event) => {
     logDailyDiag('camera-error', { event });
-  }, [logDailyDiag]));
+    captureCviException(
+      event?.error || event?.errorMsg || event?.message || 'Daily camera error event',
+      {
+        stage: 'daily-event',
+        event_name: 'camera-error',
+        event_action: event?.action ?? null,
+      }
+    );
+  }, [captureCviException, logDailyDiag]));
   useDailyEvent('load-attempt-failed', useCallback((event) => {
     logDailyDiag('load-attempt-failed', { event });
-  }, [logDailyDiag]));
+    captureCviException(
+      event?.error || event?.errorMsg || event?.message || 'Daily load-attempt-failed event',
+      {
+        stage: 'daily-event',
+        event_name: 'load-attempt-failed',
+        event_action: event?.action ?? null,
+      }
+    );
+  }, [captureCviException, logDailyDiag]));
 
   useEffect(() => {
     try {
@@ -253,6 +319,18 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }, STARTUP_REMOTE_TIMEOUT_MS);
     setMeetingState('joining-meeting');
     logDailyDiag('join-attempt', { conversationUrl });
+    try {
+      Sentry.addBreadcrumb({
+        category: 'cvi',
+        level: 'info',
+        message: 'CVI join started',
+        data: {
+          source: 'initial',
+          interview_id: interviewId || undefined,
+          conversation_id: conversationId || undefined,
+        },
+      });
+    } catch {}
     daily.join({
       url: conversationUrl,
       userName: 'Candidate',
@@ -262,12 +340,16 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       logDailyDiag('join-error', {
         error: error?.message || String(error || 'join_failed'),
       });
+      captureCviException(error, {
+        stage: 'join',
+        source: 'initial',
+      });
       clearStartupWatchdogTimers();
       joinedRef.current = false;
       toast.error('Could not join interview.');
       onDone();
     });
-  }, [clearStartupWatchdogTimers, daily, conversationUrl, onDone, logDailyDiag, handleStartupFailure]);
+  }, [captureCviException, clearStartupWatchdogTimers, conversationId, conversationUrl, daily, handleStartupFailure, interviewId, logDailyDiag, onDone]);
 
   useEffect(() => {
     const prev = prevRemoteSessionIdRef.current;
@@ -292,6 +374,18 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         setStartupStatus('');
       }
       logDailyDiag('remote-session-available', { remoteSessionId });
+      try {
+        Sentry.addBreadcrumb({
+          category: 'cvi',
+          level: 'info',
+          message: 'CVI remote session available',
+          data: {
+            remote_session_id: remoteSessionId,
+            interview_id: interviewId || undefined,
+            conversation_id: conversationId || undefined,
+          },
+        });
+      } catch {}
     } else if (prev && !remoteSessionId) {
       if (startupReplicaTimerRef.current) {
         clearTimeout(startupReplicaTimerRef.current);
@@ -300,7 +394,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       logDailyDiag('remote-session-disappeared', { previousRemoteSessionId: prev });
     }
     prevRemoteSessionIdRef.current = remoteSessionId;
-  }, [handleStartupFailure, remoteSessionId, logDailyDiag]);
+  }, [conversationId, handleStartupFailure, interviewId, remoteSessionId, logDailyDiag]);
 
   useEffect(() => {
     return () => {
@@ -801,6 +895,8 @@ export default function InterviewCviPage() {
   const conversationId = String(location.state?.conversation_id || '');
   const interviewId = String(location.state?.interview_id || '');
   const roleToken = String(location.state?.role_token || '');
+  const candidateId = String(location.state?.candidate_id || '');
+  const requestId = String(location.state?.request_id || '');
   const maxInterviewMinutesRaw = Number(location.state?.max_interview_minutes);
   const maxInterviewMinutes = Number.isFinite(maxInterviewMinutesRaw) && maxInterviewMinutesRaw > 0
     ? Math.floor(maxInterviewMinutesRaw)
@@ -816,6 +912,27 @@ export default function InterviewCviPage() {
   const handleDone = useCallback(() => {
     navigate('/interview-complete', { replace: true });
   }, [navigate]);
+
+  useEffect(() => {
+    try {
+      Sentry.setTag('route_name', 'interview_cvi');
+      Sentry.setTag('surface', 'frontend');
+      if (interviewId) Sentry.setTag('interview_id', interviewId);
+      if (conversationId) Sentry.setTag('conversation_id', conversationId);
+      if (roleToken) Sentry.setTag('role_token', roleToken);
+      if (candidateId) Sentry.setTag('candidate_id', candidateId);
+      if (requestId) Sentry.setTag('request_id', requestId);
+      Sentry.addBreadcrumb({
+        category: 'cvi',
+        level: 'info',
+        message: 'CVI page initialized',
+        data: {
+          interview_id: interviewId || undefined,
+          conversation_id: conversationId || undefined,
+        },
+      });
+    } catch {}
+  }, [candidateId, conversationId, interviewId, requestId, roleToken]);
 
   useEffect(() => {
     if (!conversationUrl) {
@@ -850,6 +967,8 @@ export default function InterviewCviPage() {
               conversationId={conversationId}
               interviewId={interviewId}
               roleToken={roleToken}
+              candidateId={candidateId}
+              requestId={requestId}
               maxInterviewMinutes={maxInterviewMinutes}
               debugCvi={debugCvi}
               onDone={handleDone}
