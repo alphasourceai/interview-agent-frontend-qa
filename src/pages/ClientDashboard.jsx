@@ -1667,13 +1667,26 @@ export default function ClientDashboard() {
       : '';
     if (tab) params.set('tab', tab);
     else params.delete('tab');
-    if (tab === 'billing' && billingRoleId) params.set('role_id', String(billingRoleId));
+    const roleId = tab === 'billing' && billingRoleId ? String(billingRoleId) : '';
+    if (roleId) params.set('role_id', roleId);
     else params.delete('role_id');
     const nextSearch = params.toString();
     const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash || ''}`;
     const currentUrl = `${window.location.pathname}${window.location.search || ''}${window.location.hash || ''}`;
     if (nextUrl !== currentUrl) {
       window.history.replaceState(window.history.state, '', nextUrl);
+    }
+    if (window.parent && window.parent !== window) {
+      try {
+        window.parent.postMessage({
+          type: 'DASHBOARD_QUERY_STATE',
+          client_id: clientId || '',
+          tab: tab || '',
+          role_id: roleId || null,
+        }, '*');
+      } catch (_) {
+        // noop
+      }
     }
   }, [clients.length, clientId, activeTab, billingRoleId, urlStateHydrationNonce]);
 
