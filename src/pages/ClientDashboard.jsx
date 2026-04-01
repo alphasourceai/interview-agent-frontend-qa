@@ -614,6 +614,7 @@ export default function ClientDashboard() {
   const [tourTargetRect, setTourTargetRect] = useState(null);
   const tourAutoCheckRef = useRef(false);
   const urlStateHydratedRef = useRef(false);
+  const [urlStateHydrationNonce, setUrlStateHydrationNonce] = useState(0);
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -1634,7 +1635,10 @@ export default function ClientDashboard() {
       } catch (e) {
         setError(String(e?.message || e))
       } finally {
-        if (alive) urlStateHydratedRef.current = true;
+        if (alive) {
+          urlStateHydratedRef.current = true;
+          setUrlStateHydrationNonce((n) => n + 1);
+        }
         setLoading(false)
       }
     })()
@@ -1671,7 +1675,7 @@ export default function ClientDashboard() {
     if (nextUrl !== currentUrl) {
       window.history.replaceState(window.history.state, '', nextUrl);
     }
-  }, [clients.length, clientId, activeTab, billingRoleId]);
+  }, [clients.length, clientId, activeTab, billingRoleId, urlStateHydrationNonce]);
 
   // Load candidate-centric rows for selected client
   useEffect(() => {
@@ -3006,6 +3010,14 @@ function FragmentRow({
   const aiAidedRiskLabel = aiAidedRiskRaw ? `${aiAidedRiskRaw.charAt(0).toUpperCase()}${aiAidedRiskRaw.slice(1)}` : '—';
   const aiAidedRiskReason = typeof transcriptScores?.ai_aided_risk_reason === 'string' ? transcriptScores.ai_aided_risk_reason.trim() : '';
   const analysisSummary = typeof r.interview_summary === 'string' ? r.interview_summary.trim() : '';
+  const analysisSummaryLower = analysisSummary.toLowerCase();
+  const insufficientInterview =
+    !Number.isFinite(Number(transcriptScores?.overall)) &&
+    (
+      analysisSummaryLower.includes('before any substantive responses were recorded') ||
+      analysisSummaryLower.includes('before substantive responses were captured') ||
+      analysisSummaryLower.includes('insufficient data')
+    );
   const analysisPending = r.has_analysis === false;
   const analysisStatus = analysisPending ? 'Processing' : 'Summary not available';
   const perceptionUnavailable = perceptionScores?.mode === 'text' || perceptionScores?.unavailable === true;
@@ -3013,7 +3025,7 @@ function FragmentRow({
     typeof perceptionScores?.reason === 'string' && perceptionScores.reason.trim()
       ? perceptionScores.reason.trim()
       : 'Perception analysis is not available for text interviews.';
-  const perceptionPending = !perceptionUnavailable && isPerceptionPendingRow(r);
+  const perceptionPending = !insufficientInterview && !perceptionUnavailable && isPerceptionPendingRow(r);
   const transcriptReady =
     typeof r.transcript === 'string' && r.transcript.trim().length > 0;
   const createdAtText = fmtDate(r.created_at);
@@ -3155,9 +3167,9 @@ function FragmentRow({
                   <div className="detail-card">
                     <div className="detail-title">Interview Analysis</div>
                     <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap: 8 }}>
-                      <div><Meter label="Clarity" value={perceptionScores?.clarity ?? null} /> <InfoTip text={TIPS.clarity} /></div>
-                      <div><Meter label="Confidence" value={perceptionScores?.confidence ?? null} /> <InfoTip text={TIPS.confidence} /></div>
-                      <div><Meter label="Engagement" value={perceptionScores?.engagement ?? null} /> <InfoTip text={TIPS.engagement} /></div>
+                      <div><Meter label="Clarity" value={insufficientInterview ? null : (perceptionScores?.clarity ?? null)} /> <InfoTip text={TIPS.clarity} /></div>
+                      <div><Meter label="Confidence" value={insufficientInterview ? null : (perceptionScores?.confidence ?? null)} /> <InfoTip text={TIPS.confidence} /></div>
+                      <div><Meter label="Engagement" value={insufficientInterview ? null : (perceptionScores?.engagement ?? null)} /> <InfoTip text={TIPS.engagement} /></div>
                     </div>
                     {perceptionUnavailable && (
                       <div style={{ marginTop: 8 }}>
@@ -3184,14 +3196,14 @@ function FragmentRow({
                       <div style={{ display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap' }}>
                         <strong>Evaluation Reliability:</strong>
                         <InfoTip text={TIPS.evidence_strength} />
-                        <span>{evidenceStrengthValue === null ? '—' : `${Math.round(evidenceStrengthValue)}%`}</span>
+                        <span>{insufficientInterview || evidenceStrengthValue === null ? '—' : `${Math.round(evidenceStrengthValue)}%`}</span>
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap: 6, flexWrap: 'wrap' }}>
                         <strong>AI-aided interview risk:</strong>
                         <InfoTip text={TIPS.ai_aided_risk} />
-                        <span>{aiAidedRiskLabel}</span>
+                        <span>{insufficientInterview ? '—' : aiAidedRiskLabel}</span>
                       </div>
-                      {aiAidedRiskReason && (
+                      {!insufficientInterview && aiAidedRiskReason && (
                         <div style={{ color: '#6b7280', fontSize: 12 }}>{aiAidedRiskReason}</div>
                       )}
                     </div>
