@@ -613,6 +613,7 @@ export default function ClientDashboard() {
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const [tourTargetRect, setTourTargetRect] = useState(null);
   const tourAutoCheckRef = useRef(false);
+  const urlStateHydratedRef = useRef(false);
 
   // initial ping; also on viewport resize
   useEffect(() => {
@@ -1628,6 +1629,7 @@ export default function ClientDashboard() {
       } catch (e) {
         setError(String(e?.message || e))
       } finally {
+        if (alive) urlStateHydratedRef.current = true;
         setLoading(false)
       }
     })()
@@ -1646,6 +1648,7 @@ export default function ClientDashboard() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!urlStateHydratedRef.current) return;
     if (!clients.length && !clientId) return;
     const params = new URLSearchParams(window.location.search || '');
     if (clientId) params.set('client_id', clientId);
