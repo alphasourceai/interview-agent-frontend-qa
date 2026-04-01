@@ -28,6 +28,7 @@ const SOFT_CLOSE_END_DELAY_MS = 7000;
 const SOFT_CLOSE_MIN_PLAY_MS = 2500;
 const STARTUP_REMOTE_TIMEOUT_MS = 12000;
 const STARTUP_REPLICA_ACTIVITY_TIMEOUT_MS = 5000;
+const NO_RESPONSE_NUDGE_DELAY_MS = 6000;
 
 let __dailyCallObject = null;
 
@@ -53,6 +54,11 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const startupRecoveryInFlightRef = useRef(false);
   const startupRemoteTimerRef = useRef(null);
   const startupReplicaTimerRef = useRef(null);
+  const noResponseTimerRef = useRef(null);
+  const noResponseAwaitingCandidateRef = useRef(false);
+  const noResponseCandidateStartedRef = useRef(false);
+  const noResponseNudgeSentForTurnRef = useRef(false);
+  const noResponseNudgePlaybackPendingRef = useRef(false);
   const prevRemoteSessionIdRef = useRef(null);
   const [secondsRemaining, setSecondsRemaining] = useState(null);
   const [isEnding, setIsEnding] = useState(false);
@@ -82,11 +88,19 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }
   }, []);
 
+  const clearNoResponseTimer = useCallback((reason) => {
+    if (!noResponseTimerRef.current) return;
+    clearTimeout(noResponseTimerRef.current);
+    noResponseTimerRef.current = null;
+    logDailyDiag('no-response-timer-cancel', { reason });
+  }, [logDailyDiag]);
+
   const handleStartupFailure = useCallback(async (reason, extra = {}) => {
     if (endTriggeredRef.current) return;
     if (startupReplicaSpeakingSeenRef.current || startupReplicaUtteranceSeenRef.current) return;
 
     clearStartupWatchdogTimers();
+    clearNoResponseTimer('startup-failure');
     logDailyDiag('startup-failure', {
       reason,
       recoveryAttempted: startupRecoveryAttemptedRef.current,
@@ -146,7 +160,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     } catch {}
     try { daily?.destroy?.() } catch {}
     onDone();
-  }, [clearStartupWatchdogTimers, conversationUrl, daily, logDailyDiag, onDone]);
+  }, [clearStartupWatchdogTimers, clearNoResponseTimer, conversationUrl, daily, logDailyDiag, onDone]);
 
   useDailyEvent('left-meeting', useCallback((event) => {
     if (startupRecoveryInFlightRef.current) {
@@ -225,8 +239,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     startupRemoteSeenRef.current = false;
     startupReplicaSpeakingSeenRef.current = false;
     startupReplicaUtteranceSeenRef.current = false;
+    noResponseAwaitingCandidateRef.current = false;
+    noResponseCandidateStartedRef.current = false;
+    noResponseNudgeSentForTurnRef.current = false;
+    noResponseNudgePlaybackPendingRef.current = false;
     setStartupStatus('');
     clearStartupWatchdogTimers();
+    clearNoResponseTimer('initial-join');
     startupRemoteTimerRef.current = setTimeout(() => {
       startupRemoteTimerRef.current = null;
       if (startupRemoteSeenRef.current || endTriggeredRef.current) return;
@@ -301,6 +320,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
         clearTimeout(startupReplicaTimerRef.current);
         startupReplicaTimerRef.current = null;
       }
+      if (noResponseTimerRef.current) {
+        clearTimeout(noResponseTimerRef.current);
+        noResponseTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -310,6 +333,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     }
     endTriggeredRef.current = true;
     setIsEnding(true);
+    clearNoResponseTimer('interview-ending');
     if (closeEndTimerRef.current) {
       clearTimeout(closeEndTimerRef.current);
       closeEndTimerRef.current = null;
@@ -337,7 +361,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       try { daily?.destroy?.() } catch {}
       onDone();
     }
-  }, [conversationId, daily, onDone]);
+  }, [conversationId, daily, onDone, clearNoResponseTimer]);
 
   const scheduleSoftCloseEnd = useCallback(() => {
     if (softCloseEndTimerRef.current || endTriggeredRef.current) return;
@@ -421,6 +445,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
 
     if (eventType === 'conversation.user.started_speaking') {
       candidateSpeakingRef.current = true;
+      if (noResponseAwaitingCandidateRef.current) {
+        noResponseCandidateStartedRef.current = true;
+      }
+      clearNoResponseTimer('candidate-started-speaking');
     } else if (eventType === 'conversation.user.stopped_speaking') {
       candidateSpeakingRef.current = false;
       if (
@@ -432,6 +460,15 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       }
     } else if (eventType === 'conversation.replica.started_speaking') {
       replicaSpeakingRef.current = true;
+      clearNoResponseTimer('replica-started-speaking');
+      if (noResponseNudgePlaybackPendingRef.current) {
+        noResponseNudgePlaybackPendingRef.current = false;
+        logDailyDiag('no-response-nudge-playback-started', {});
+      } else {
+        noResponseNudgeSentForTurnRef.current = false;
+      }
+      noResponseAwaitingCandidateRef.current = false;
+      noResponseCandidateStartedRef.current = false;
       startupReplicaSpeakingSeenRef.current = true;
       clearStartupWatchdogTimers();
       setStartupStatus('');
@@ -440,6 +477,47 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       }
     } else if (eventType === 'conversation.replica.stopped_speaking') {
       replicaSpeakingRef.current = false;
+      noResponseAwaitingCandidateRef.current = true;
+      noResponseCandidateStartedRef.current = false;
+      if (!endTriggeredRef.current && !noResponseNudgeSentForTurnRef.current) {
+        clearNoResponseTimer('restart-after-replica-stop');
+        logDailyDiag('no-response-timer-start', { delay_ms: NO_RESPONSE_NUDGE_DELAY_MS });
+        noResponseTimerRef.current = setTimeout(() => {
+          noResponseTimerRef.current = null;
+          logDailyDiag('no-response-timer-fire', {
+            awaiting_candidate: noResponseAwaitingCandidateRef.current,
+            candidate_started: noResponseCandidateStartedRef.current,
+            candidate_speaking: candidateSpeakingRef.current,
+            replica_speaking: replicaSpeakingRef.current,
+            nudge_sent_for_turn: noResponseNudgeSentForTurnRef.current,
+          });
+          if (endTriggeredRef.current) return;
+          if (!noResponseAwaitingCandidateRef.current) return;
+          if (noResponseCandidateStartedRef.current || candidateSpeakingRef.current) return;
+          if (replicaSpeakingRef.current) return;
+          if (noResponseNudgeSentForTurnRef.current) return;
+          noResponseNudgeSentForTurnRef.current = true;
+          noResponseNudgePlaybackPendingRef.current = true;
+          logDailyDiag('no-response-nudge-send', {});
+          try {
+            daily?.sendAppMessage?.({
+              event_type: 'conversation.echo',
+              eventType: 'conversation.echo',
+              properties: {
+                text: 'Please check in once naturally with the candidate by first name and ask whether they are still with you.',
+              },
+            }, '*');
+          } catch (e) {
+            logDailyDiag('no-response-nudge-send-error', {
+              error: e?.message || String(e || 'unknown_send_error'),
+            });
+          }
+        }, NO_RESPONSE_NUDGE_DELAY_MS);
+      } else {
+        logDailyDiag('no-response-timer-skip', {
+          reason: endTriggeredRef.current ? 'interview-ending' : 'nudge-already-sent-for-turn',
+        });
+      }
       if (
         softCloseSentRef.current &&
         softCloseReplicaSpokeRef.current &&
@@ -502,7 +580,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     if (toolName === 'end_interview') {
       endInterview('tool_call');
     }
-  }, [clearStartupWatchdogTimers, endInterview, sendSoftClose, logDailyDiag]);
+  }, [clearNoResponseTimer, clearStartupWatchdogTimers, endInterview, sendSoftClose, daily, logDailyDiag]);
 
   useDailyEvent('app-message', onAppMessage);
 
@@ -694,6 +772,10 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
           <div>startupReplicaUtteranceSeenRef.current: {String(startupReplicaUtteranceSeenRef.current)}</div>
           <div>startupRecoveryAttemptedRef.current: {String(startupRecoveryAttemptedRef.current)}</div>
           <div>startupRecoveryInFlightRef.current: {String(startupRecoveryInFlightRef.current)}</div>
+          <div>noResponseAwaitingCandidateRef.current: {String(noResponseAwaitingCandidateRef.current)}</div>
+          <div>noResponseCandidateStartedRef.current: {String(noResponseCandidateStartedRef.current)}</div>
+          <div>noResponseNudgeSentForTurnRef.current: {String(noResponseNudgeSentForTurnRef.current)}</div>
+          <div>noResponseNudgePlaybackPendingRef.current: {String(noResponseNudgePlaybackPendingRef.current)}</div>
           <div>startupStatus: {startupStatus || '—'}</div>
           <div style={{ opacity: 0.65 }}>debugTick: {debugTick}</div>
         </div>
