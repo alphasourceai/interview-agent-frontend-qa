@@ -29,7 +29,7 @@ const SOFT_CLOSE_MIN_PLAY_MS = 2500;
 
 let __dailyCallObject = null;
 
-function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, maxInterviewMinutes, onDone }) {
+function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleToken, maxInterviewMinutes, onDone, debugCvi }) {
   const daily = useDaily();
   const localSessionId = useLocalSessionId();
   const remoteParticipantIds = useParticipantIds({ filter: 'remote' });
@@ -44,28 +44,111 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const softClosePendingRef = useRef(false);
   const softCloseSentAtRef = useRef(0);
   const softCloseReplicaSpokeRef = useRef(false);
+  const prevRemoteSessionIdRef = useRef(null);
   const [secondsRemaining, setSecondsRemaining] = useState(null);
   const [isEnding, setIsEnding] = useState(false);
   const [fallbackMaxInterviewMinutes, setFallbackMaxInterviewMinutes] = useState(null);
+  const [meetingState, setMeetingState] = useState('');
+  const [debugTick, setDebugTick] = useState(0);
   const hasNavMaxInterviewMinutes = Number.isInteger(maxInterviewMinutes) && maxInterviewMinutes > 0;
   const effectiveMaxInterviewMinutes = hasNavMaxInterviewMinutes ? maxInterviewMinutes : fallbackMaxInterviewMinutes;
 
+  const logDailyDiag = useCallback((name, payload) => {
+    console.log(`[CVI] ${name}`, {
+      conversationId,
+      interviewId,
+      ...payload,
+    });
+  }, [conversationId, interviewId]);
+
   useDailyEvent('left-meeting', onDone);
+  useDailyEvent('joining-meeting', useCallback((event) => {
+    setMeetingState('joining-meeting');
+    logDailyDiag('joining-meeting', { event });
+  }, [logDailyDiag]));
+  useDailyEvent('joined-meeting', useCallback((event) => {
+    setMeetingState('joined-meeting');
+    logDailyDiag('joined-meeting', { event });
+  }, [logDailyDiag]));
+  useDailyEvent('left-meeting', useCallback((event) => {
+    setMeetingState('left-meeting');
+    logDailyDiag('left-meeting', { event });
+  }, [logDailyDiag]));
+  useDailyEvent('meeting-state', useCallback((event) => {
+    const nextState = String(event?.meetingState ?? event?.state ?? event?.action ?? '');
+    if (nextState) setMeetingState(nextState);
+    logDailyDiag('meeting-state', { meetingState: nextState || null, event });
+  }, [logDailyDiag]));
+  useDailyEvent('participant-joined', useCallback((event) => {
+    logDailyDiag('participant-joined', {
+      sessionId: event?.participant?.session_id ?? null,
+      userName: event?.participant?.user_name ?? null,
+      event,
+    });
+  }, [logDailyDiag]));
+  useDailyEvent('participant-left', useCallback((event) => {
+    logDailyDiag('participant-left', {
+      sessionId: event?.participant?.session_id ?? null,
+      userName: event?.participant?.user_name ?? null,
+      event,
+    });
+  }, [logDailyDiag]));
+  useDailyEvent('error', useCallback((event) => {
+    logDailyDiag('error', { event });
+  }, [logDailyDiag]));
+  useDailyEvent('camera-error', useCallback((event) => {
+    logDailyDiag('camera-error', { event });
+  }, [logDailyDiag]));
+  useDailyEvent('load-attempt-failed', useCallback((event) => {
+    logDailyDiag('load-attempt-failed', { event });
+  }, [logDailyDiag]));
+
+  useEffect(() => {
+    try {
+      const currentState = daily?.meetingState?.();
+      if (typeof currentState === 'string' && currentState) {
+        setMeetingState(currentState);
+      }
+    } catch {}
+  }, [daily]);
+
+  useEffect(() => {
+    if (!debugCvi) return undefined;
+    const t = setInterval(() => {
+      setDebugTick((v) => v + 1);
+    }, 400);
+    return () => clearInterval(t);
+  }, [debugCvi]);
 
   useEffect(() => {
     if (!daily || !conversationUrl || joinedRef.current) return;
     joinedRef.current = true;
+    setMeetingState('joining-meeting');
+    logDailyDiag('join-attempt', { conversationUrl });
     daily.join({
       url: conversationUrl,
       userName: 'Candidate',
       startVideoOff: false,
       startAudioOff: false,
-    }).catch(() => {
+    }).catch((error) => {
+      logDailyDiag('join-error', {
+        error: error?.message || String(error || 'join_failed'),
+      });
       joinedRef.current = false;
       toast.error('Could not join interview.');
       onDone();
     });
-  }, [daily, conversationUrl, onDone]);
+  }, [daily, conversationUrl, onDone, logDailyDiag]);
+
+  useEffect(() => {
+    const prev = prevRemoteSessionIdRef.current;
+    if (!prev && remoteSessionId) {
+      logDailyDiag('remote-session-available', { remoteSessionId });
+    } else if (prev && !remoteSessionId) {
+      logDailyDiag('remote-session-disappeared', { previousRemoteSessionId: prev });
+    }
+    prevRemoteSessionIdRef.current = remoteSessionId;
+  }, [remoteSessionId, logDailyDiag]);
 
   useEffect(() => {
     return () => {
@@ -185,6 +268,14 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
 
   const onAppMessage = useCallback((event) => {
     const data = event?.data ?? event?.message ?? event?.payload ?? event;
+    const rawEventType = data?.eventType ?? data?.event_type ?? null;
+    logDailyDiag('app-message', {
+      eventType: rawEventType,
+      role: data?.properties?.role ?? null,
+      toolName: data?.name ?? data?.tool?.name ?? data?.tool_name ?? data?.function?.name ?? null,
+      hasSpeech: typeof data?.properties?.speech === 'string' && data.properties.speech.length > 0,
+      speechLength: typeof data?.properties?.speech === 'string' ? data.properties.speech.length : 0,
+    });
     const eventType = String(data?.eventType ?? data?.event_type ?? '').toLowerCase();
 
     if (eventType === 'conversation.user.started_speaking') {
@@ -262,7 +353,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     if (toolName === 'end_interview') {
       endInterview('tool_call');
     }
-  }, [endInterview, sendSoftClose]);
+  }, [endInterview, sendSoftClose, logDailyDiag]);
 
   useDailyEvent('app-message', onAppMessage);
 
@@ -401,6 +492,35 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
           </div>
         )}
       </div>
+      {debugCvi && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: 12,
+            zIndex: 6,
+            background: 'rgba(17,24,39,0.82)',
+            color: '#e5e7eb',
+            border: '1px solid rgba(148,163,184,0.45)',
+            borderRadius: 10,
+            padding: '8px 10px',
+            fontSize: 11,
+            lineHeight: 1.4,
+            maxWidth: 420,
+            pointerEvents: 'none',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          }}
+        >
+          <div>conversationId: {conversationId || '—'}</div>
+          <div>interviewId: {interviewId || '—'}</div>
+          <div>joinedRef.current: {String(joinedRef.current)}</div>
+          <div>remoteSessionId exists: {String(Boolean(remoteSessionId))}</div>
+          <div>meetingState: {meetingState || '—'}</div>
+          <div>candidateSpeakingRef.current: {String(candidateSpeakingRef.current)}</div>
+          <div>replicaSpeakingRef.current: {String(replicaSpeakingRef.current)}</div>
+          <div style={{ opacity: 0.65 }}>debugTick: {debugTick}</div>
+        </div>
+      )}
       <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
         <button
           type="button"
@@ -426,6 +546,10 @@ export default function InterviewCviPage() {
   const maxInterviewMinutes = Number.isFinite(maxInterviewMinutesRaw) && maxInterviewMinutesRaw > 0
     ? Math.floor(maxInterviewMinutesRaw)
     : null;
+  const debugCvi = (
+    (typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV)) ||
+    new URLSearchParams(location.search || '').get('debugCvi') === '1'
+  );
   const callObject = conversationUrl
     ? (__dailyCallObject || (__dailyCallObject = DailyIframe.createCallObject()))
     : null;
@@ -468,6 +592,7 @@ export default function InterviewCviPage() {
               interviewId={interviewId}
               roleToken={roleToken}
               maxInterviewMinutes={maxInterviewMinutes}
+              debugCvi={debugCvi}
               onDone={handleDone}
             />
           </DailyProvider>
