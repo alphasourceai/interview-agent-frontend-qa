@@ -504,7 +504,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
               event_type: 'conversation.echo',
               eventType: 'conversation.echo',
               properties: {
-                text: 'Please check in once naturally with the candidate by first name and ask whether they are still with you.',
+                text: 'Hi there, are you still with me?',
               },
             }, '*');
           } catch (e) {
