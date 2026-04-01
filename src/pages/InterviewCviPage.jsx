@@ -26,6 +26,8 @@ const SOFT_CLOSE_TEXT = 'We are approaching our time limit for this interview. T
 const SOFT_CLOSE_THRESHOLD_SECONDS = 10;
 const SOFT_CLOSE_END_DELAY_MS = 7000;
 const SOFT_CLOSE_MIN_PLAY_MS = 2500;
+const STARTUP_REMOTE_TIMEOUT_MS = 12000;
+const STARTUP_REPLICA_ACTIVITY_TIMEOUT_MS = 5000;
 
 let __dailyCallObject = null;
 
@@ -44,12 +46,20 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   const softClosePendingRef = useRef(false);
   const softCloseSentAtRef = useRef(0);
   const softCloseReplicaSpokeRef = useRef(false);
+  const startupRemoteSeenRef = useRef(false);
+  const startupReplicaSpeakingSeenRef = useRef(false);
+  const startupReplicaUtteranceSeenRef = useRef(false);
+  const startupRecoveryAttemptedRef = useRef(false);
+  const startupRecoveryInFlightRef = useRef(false);
+  const startupRemoteTimerRef = useRef(null);
+  const startupReplicaTimerRef = useRef(null);
   const prevRemoteSessionIdRef = useRef(null);
   const [secondsRemaining, setSecondsRemaining] = useState(null);
   const [isEnding, setIsEnding] = useState(false);
   const [fallbackMaxInterviewMinutes, setFallbackMaxInterviewMinutes] = useState(null);
   const [meetingState, setMeetingState] = useState('');
   const [debugTick, setDebugTick] = useState(0);
+  const [startupStatus, setStartupStatus] = useState('');
   const hasNavMaxInterviewMinutes = Number.isInteger(maxInterviewMinutes) && maxInterviewMinutes > 0;
   const effectiveMaxInterviewMinutes = hasNavMaxInterviewMinutes ? maxInterviewMinutes : fallbackMaxInterviewMinutes;
 
@@ -61,12 +71,100 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     });
   }, [conversationId, interviewId]);
 
-  useDailyEvent('left-meeting', onDone);
+  const clearStartupWatchdogTimers = useCallback(() => {
+    if (startupRemoteTimerRef.current) {
+      clearTimeout(startupRemoteTimerRef.current);
+      startupRemoteTimerRef.current = null;
+    }
+    if (startupReplicaTimerRef.current) {
+      clearTimeout(startupReplicaTimerRef.current);
+      startupReplicaTimerRef.current = null;
+    }
+  }, []);
+
+  const handleStartupFailure = useCallback(async (reason, extra = {}) => {
+    if (endTriggeredRef.current) return;
+    if (startupReplicaSpeakingSeenRef.current || startupReplicaUtteranceSeenRef.current) return;
+
+    clearStartupWatchdogTimers();
+    logDailyDiag('startup-failure', {
+      reason,
+      recoveryAttempted: startupRecoveryAttemptedRef.current,
+      ...extra,
+    });
+
+    if (!startupRecoveryAttemptedRef.current) {
+      startupRecoveryAttemptedRef.current = true;
+      setStartupStatus('Interviewer is reconnecting…');
+      logDailyDiag('startup-recovery-attempt', { reason, ...extra });
+      joinedRef.current = false;
+      startupRecoveryInFlightRef.current = true;
+      try {
+        await daily?.leave?.().catch(() => {});
+      } catch {}
+      if (!daily || !conversationUrl || endTriggeredRef.current) {
+        startupRecoveryInFlightRef.current = false;
+        return;
+      }
+      startupRemoteSeenRef.current = false;
+      startupReplicaSpeakingSeenRef.current = false;
+      startupReplicaUtteranceSeenRef.current = false;
+      setMeetingState('rejoining');
+      joinedRef.current = true;
+      startupRemoteTimerRef.current = setTimeout(() => {
+        startupRemoteTimerRef.current = null;
+        if (startupRemoteSeenRef.current || endTriggeredRef.current) return;
+        void handleStartupFailure('no_remote_participant_after_recovery_timeout');
+      }, STARTUP_REMOTE_TIMEOUT_MS);
+      logDailyDiag('join-attempt', { source: 'startup-recovery', conversationUrl });
+      daily.join({
+        url: conversationUrl,
+        userName: 'Candidate',
+        startVideoOff: false,
+        startAudioOff: false,
+      }).catch((error) => {
+        logDailyDiag('join-error', {
+          source: 'startup-recovery',
+          error: error?.message || String(error || 'join_failed'),
+        });
+        startupRecoveryInFlightRef.current = false;
+        clearStartupWatchdogTimers();
+        joinedRef.current = false;
+        setStartupStatus('');
+        toast.error('Interview did not start correctly. Please relaunch and try again.');
+        onDone();
+      });
+      return;
+    }
+
+    setStartupStatus('');
+    startupRecoveryInFlightRef.current = false;
+    toast.error('Interview did not start correctly. Please relaunch and try again.');
+    joinedRef.current = false;
+    try {
+      await daily?.leave?.().catch(() => {});
+    } catch {}
+    try { daily?.destroy?.() } catch {}
+    onDone();
+  }, [clearStartupWatchdogTimers, conversationUrl, daily, logDailyDiag, onDone]);
+
+  useDailyEvent('left-meeting', useCallback((event) => {
+    if (startupRecoveryInFlightRef.current) {
+      logDailyDiag('left-meeting-suppressed-for-recovery', { event });
+      return;
+    }
+    onDone();
+  }, [onDone, logDailyDiag]));
   useDailyEvent('joining-meeting', useCallback((event) => {
     setMeetingState('joining-meeting');
     logDailyDiag('joining-meeting', { event });
   }, [logDailyDiag]));
   useDailyEvent('joined-meeting', useCallback((event) => {
+    if (startupRecoveryInFlightRef.current) {
+      startupRecoveryInFlightRef.current = false;
+      setStartupStatus('');
+      logDailyDiag('startup-recovery-complete', { event });
+    }
     setMeetingState('joined-meeting');
     logDailyDiag('joined-meeting', { event });
   }, [logDailyDiag]));
@@ -123,6 +221,17 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
   useEffect(() => {
     if (!daily || !conversationUrl || joinedRef.current) return;
     joinedRef.current = true;
+    startupRecoveryInFlightRef.current = false;
+    startupRemoteSeenRef.current = false;
+    startupReplicaSpeakingSeenRef.current = false;
+    startupReplicaUtteranceSeenRef.current = false;
+    setStartupStatus('');
+    clearStartupWatchdogTimers();
+    startupRemoteTimerRef.current = setTimeout(() => {
+      startupRemoteTimerRef.current = null;
+      if (startupRemoteSeenRef.current || endTriggeredRef.current) return;
+      void handleStartupFailure('no_remote_participant_timeout');
+    }, STARTUP_REMOTE_TIMEOUT_MS);
     setMeetingState('joining-meeting');
     logDailyDiag('join-attempt', { conversationUrl });
     daily.join({
@@ -134,21 +243,45 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       logDailyDiag('join-error', {
         error: error?.message || String(error || 'join_failed'),
       });
+      clearStartupWatchdogTimers();
       joinedRef.current = false;
       toast.error('Could not join interview.');
       onDone();
     });
-  }, [daily, conversationUrl, onDone, logDailyDiag]);
+  }, [clearStartupWatchdogTimers, daily, conversationUrl, onDone, logDailyDiag, handleStartupFailure]);
 
   useEffect(() => {
     const prev = prevRemoteSessionIdRef.current;
     if (!prev && remoteSessionId) {
+      startupRemoteSeenRef.current = true;
+      if (startupRemoteTimerRef.current) {
+        clearTimeout(startupRemoteTimerRef.current);
+        startupRemoteTimerRef.current = null;
+      }
+      if (!startupReplicaSpeakingSeenRef.current && !startupReplicaUtteranceSeenRef.current) {
+        if (startupReplicaTimerRef.current) {
+          clearTimeout(startupReplicaTimerRef.current);
+          startupReplicaTimerRef.current = null;
+        }
+        startupReplicaTimerRef.current = setTimeout(() => {
+          startupReplicaTimerRef.current = null;
+          if (endTriggeredRef.current) return;
+          if (startupReplicaSpeakingSeenRef.current || startupReplicaUtteranceSeenRef.current) return;
+          void handleStartupFailure('remote_connected_without_replica_activity_timeout', { remoteSessionId });
+        }, STARTUP_REPLICA_ACTIVITY_TIMEOUT_MS);
+      } else {
+        setStartupStatus('');
+      }
       logDailyDiag('remote-session-available', { remoteSessionId });
     } else if (prev && !remoteSessionId) {
+      if (startupReplicaTimerRef.current) {
+        clearTimeout(startupReplicaTimerRef.current);
+        startupReplicaTimerRef.current = null;
+      }
       logDailyDiag('remote-session-disappeared', { previousRemoteSessionId: prev });
     }
     prevRemoteSessionIdRef.current = remoteSessionId;
-  }, [remoteSessionId, logDailyDiag]);
+  }, [handleStartupFailure, remoteSessionId, logDailyDiag]);
 
   useEffect(() => {
     return () => {
@@ -159,6 +292,14 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       if (softCloseEndTimerRef.current) {
         clearTimeout(softCloseEndTimerRef.current);
         softCloseEndTimerRef.current = null;
+      }
+      if (startupRemoteTimerRef.current) {
+        clearTimeout(startupRemoteTimerRef.current);
+        startupRemoteTimerRef.current = null;
+      }
+      if (startupReplicaTimerRef.current) {
+        clearTimeout(startupReplicaTimerRef.current);
+        startupReplicaTimerRef.current = null;
       }
     };
   }, []);
@@ -291,6 +432,9 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       }
     } else if (eventType === 'conversation.replica.started_speaking') {
       replicaSpeakingRef.current = true;
+      startupReplicaSpeakingSeenRef.current = true;
+      clearStartupWatchdogTimers();
+      setStartupStatus('');
       if (softCloseSentRef.current) {
         softCloseReplicaSpokeRef.current = true;
       }
@@ -312,8 +456,13 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
       }
     }
 
-    const et = String(data?.event_type || '').toLowerCase();
+    const et = String(data?.event_type || data?.eventType || '').toLowerCase();
     const role = String(data?.properties?.role || '').toLowerCase();
+    if (et === 'conversation.utterance' && role === 'replica') {
+      startupReplicaUtteranceSeenRef.current = true;
+      clearStartupWatchdogTimers();
+      setStartupStatus('');
+    }
     const speech = String(data?.properties?.speech || '');
     const s = speech.toLowerCase();
     const hasWrapUp =
@@ -353,7 +502,7 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
     if (toolName === 'end_interview') {
       endInterview('tool_call');
     }
-  }, [endInterview, sendSoftClose, logDailyDiag]);
+  }, [clearStartupWatchdogTimers, endInterview, sendSoftClose, logDailyDiag]);
 
   useDailyEvent('app-message', onAppMessage);
 
@@ -491,6 +640,28 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
             {timerLabel}
           </div>
         )}
+        {startupStatus && (
+          <div
+            aria-live="polite"
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 14,
+              transform: 'translateX(-50%)',
+              padding: '6px 10px',
+              borderRadius: 999,
+              background: 'rgba(30,41,59,0.9)',
+              border: '1px solid rgba(148,163,184,0.55)',
+              color: 'rgba(255,255,255,0.95)',
+              fontSize: 12,
+              fontWeight: 600,
+              zIndex: 6,
+              pointerEvents: 'none',
+            }}
+          >
+            {startupStatus}
+          </div>
+        )}
       </div>
       {debugCvi && (
         <div
@@ -518,6 +689,12 @@ function InterviewCviRoom({ conversationUrl, conversationId, interviewId, roleTo
           <div>meetingState: {meetingState || '—'}</div>
           <div>candidateSpeakingRef.current: {String(candidateSpeakingRef.current)}</div>
           <div>replicaSpeakingRef.current: {String(replicaSpeakingRef.current)}</div>
+          <div>startupRemoteSeenRef.current: {String(startupRemoteSeenRef.current)}</div>
+          <div>startupReplicaSpeakingSeenRef.current: {String(startupReplicaSpeakingSeenRef.current)}</div>
+          <div>startupReplicaUtteranceSeenRef.current: {String(startupReplicaUtteranceSeenRef.current)}</div>
+          <div>startupRecoveryAttemptedRef.current: {String(startupRecoveryAttemptedRef.current)}</div>
+          <div>startupRecoveryInFlightRef.current: {String(startupRecoveryInFlightRef.current)}</div>
+          <div>startupStatus: {startupStatus || '—'}</div>
           <div style={{ opacity: 0.65 }}>debugTick: {debugTick}</div>
         </div>
       )}
