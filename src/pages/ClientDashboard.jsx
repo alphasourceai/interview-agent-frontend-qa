@@ -46,6 +46,7 @@ const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
 const CLIENT_DASH_TOUR_SEEN_KEY = 'client_dash_tour_seen_v1';
 const CLIENT_DASH_TOUR_DISMISSED_KEY = 'client_dash_tour_dismissed_v1';
 const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;
+const VALID_DASHBOARD_TABS = new Set(['roles', 'candidates', 'members', 'billing', 'feedback']);
 
 function isDailyRoomUrl(url) {
   return !!url && DAILY_ROOM_RE.test(String(url));
@@ -561,19 +562,17 @@ export default function ClientDashboard() {
   const [selectedClientBillingSummary, setSelectedClientBillingSummary] = useState(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingPortalBusy, setBillingPortalBusy] = useState(false);
-  const urlBillingPrefill = useMemo(() => {
+  const urlDashboardState = useMemo(() => {
     if (typeof window === 'undefined') {
-      return { wantsBilling: false, clientId: '', roleId: '' };
+      return { clientId: '', tab: '', roleId: '' };
     }
     const params = new URLSearchParams(window.location.search || '');
-    const tab = String(params.get('tab') || '').trim().toLowerCase();
-    const intent = String(params.get('intent') || '').trim().toLowerCase();
     const clientIdParam = String(params.get('client_id') || '').trim();
+    const tabParam = String(params.get('tab') || '').trim().toLowerCase();
     const roleIdParam = String(params.get('role_id') || '').trim();
-    const wantsBilling = tab === 'billing' || intent === 'billing' || intent === 'role_capacity' || !!roleIdParam;
     return {
-      wantsBilling,
       clientId: clientIdParam,
+      tab: VALID_DASHBOARD_TABS.has(tabParam) ? tabParam : '',
       roleId: roleIdParam,
     };
   }, []);
@@ -607,7 +606,7 @@ export default function ClientDashboard() {
 
   // Tab selector
   const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | billing | feedback
-  const [billingRoleId, setBillingRoleId] = useState(() => urlBillingPrefill.roleId || '');
+  const [billingRoleId, setBillingRoleId] = useState(() => urlDashboardState.roleId || '');
   const [billingPurchaseQuantityInput, setBillingPurchaseQuantityInput] = useState('1');
   const [billingPurchaseBusy, setBillingPurchaseBusy] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
@@ -1610,8 +1609,8 @@ export default function ClientDashboard() {
         setClients(list)
         const listIds = new Set(list.map((c) => c?.client_id).filter(Boolean))
         const defaultClientId = meResp?.client_scope?.default_client_id || meResp?.default_client_id || ''
-        const urlClientId = urlBillingPrefill.clientId && listIds.has(urlBillingPrefill.clientId)
-          ? urlBillingPrefill.clientId
+        const urlClientId = urlDashboardState.clientId && listIds.has(urlDashboardState.clientId)
+          ? urlDashboardState.clientId
           : ''
         const memberships = Array.isArray(meResp?.client_scope?.memberships)
           ? meResp.client_scope.memberships
@@ -1624,8 +1623,8 @@ export default function ClientDashboard() {
           memberships[0]?.client_id ||
           ''
         setClientId(first)
-        if (urlBillingPrefill.wantsBilling) setActiveTab('billing')
-        if (urlBillingPrefill.roleId) setBillingRoleId(urlBillingPrefill.roleId)
+        if (urlDashboardState.tab) setActiveTab(urlDashboardState.tab)
+        if (urlDashboardState.roleId) setBillingRoleId(urlDashboardState.roleId)
       } catch (e) {
         setError(String(e?.message || e))
       } finally {
@@ -1644,6 +1643,27 @@ export default function ClientDashboard() {
       setClientId(fallback);
     }
   }, [clients, clientId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!clients.length && !clientId) return;
+    const params = new URLSearchParams(window.location.search || '');
+    if (clientId) params.set('client_id', clientId);
+    else params.delete('client_id');
+    const tab = VALID_DASHBOARD_TABS.has(String(activeTab || '').toLowerCase())
+      ? String(activeTab || '').toLowerCase()
+      : '';
+    if (tab) params.set('tab', tab);
+    else params.delete('tab');
+    if (tab === 'billing' && billingRoleId) params.set('role_id', String(billingRoleId));
+    else params.delete('role_id');
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash || ''}`;
+    const currentUrl = `${window.location.pathname}${window.location.search || ''}${window.location.hash || ''}`;
+    if (nextUrl !== currentUrl) {
+      window.history.replaceState(window.history.state, '', nextUrl);
+    }
+  }, [clients.length, clientId, activeTab, billingRoleId]);
 
   // Load candidate-centric rows for selected client
   useEffect(() => {
