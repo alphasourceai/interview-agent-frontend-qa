@@ -90,7 +90,7 @@ if (SENTRY_DSN) {
 
   const postSize = () => {
     // Use root.scrollHeight so expanded content is included
-    const h = Math.max(1, Math.min(6000, Math.ceil(root.scrollHeight)));
+    const h = Math.max(1, Math.ceil(root.scrollHeight));
     window.parent.postMessage({ type: 'EMBED_SIZE', height: h }, '*');
   };
 

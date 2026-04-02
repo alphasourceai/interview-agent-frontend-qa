@@ -581,18 +581,8 @@ export default function ClientDashboard() {
   // Clamp heights only if needed, but allow reduction, and always allow shrinkage.
   function postEmbedSize() {
     if (typeof window === 'undefined') return;
-    const doc = document;
-    // Measure the content height
-    const h = Math.max(
-      doc.body?.scrollHeight || 0,
-      doc.documentElement?.scrollHeight || 0,
-      doc.body?.offsetHeight || 0,
-      doc.documentElement?.offsetHeight || 0
-    );
-    // Optionally, clamp if you want a max/min, but allow reductions
-    // (Wix sometimes ignores shrinkage if height is same as before, so always post)
     try {
-      window.parent?.postMessage({ type: 'EMBED_SIZE', height: h }, '*');
+      window.__EMBED__?.updateSize?.();
     } catch (_) {
       // noop
     }
