@@ -1771,7 +1771,7 @@ export default function ClientDashboard() {
   useEffect(() => {
     postSizeSoon();
     setTimeout(postSizeSoon, 250);
-  }, [loading, rows.length, roleFilter, minOverall, sortBy, sortDir]);
+  }, [loading, rows.length, roleFilter, minOverall, sortBy, sortDir, expandedId, expandedRow]);
 
   // unique role titles available in current rows
   const availableRoles = useMemo(() => {
