@@ -90,7 +90,7 @@ if (SENTRY_DSN) {
 
   const postSize = () => {
     // Use root.scrollHeight so expanded content is included
-    const h = Math.max(600, Math.min(6000, Math.ceil(root.scrollHeight)));
+    const h = Math.max(1, Math.min(6000, Math.ceil(root.scrollHeight)));
     window.parent.postMessage({ type: 'EMBED_SIZE', height: h }, '*');
   };
 
@@ -215,9 +215,10 @@ function SessionRecoveryWrapper({ children }) {
 
 const __PATHNAME__ = (typeof window !== 'undefined' && window.location && window.location.pathname) ? window.location.pathname : '';
 const __IS_INTERVIEW_ACCESS__ = __PATHNAME__ === '/interview-access' || __PATHNAME__.startsWith('/interview-access/');
+const __IS_EMBEDDED__ = typeof window !== 'undefined' && window !== window.parent;
 const __APP_SHELL_STYLE__ = __IS_INTERVIEW_ACCESS__
   ? { minHeight: '100dvh', overflow: 'auto' }
-  : { height: '100vh', overflow: 'hidden' };
+  : (__IS_EMBEDDED__ ? { overflow: 'visible' } : { height: '100vh', overflow: 'hidden' });
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

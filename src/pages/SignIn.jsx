@@ -17,15 +17,8 @@ export default function SignIn() {
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
     if (typeof window === 'undefined') return;
-    const doc = document;
-    const h = Math.max(
-      doc.body?.scrollHeight || 0,
-      doc.documentElement?.scrollHeight || 0,
-      doc.body?.offsetHeight || 0,
-      doc.documentElement?.offsetHeight || 0
-    );
     try {
-      window.parent?.postMessage({ type: 'EMBED_SIZE', height: h }, '*');
+      window.__EMBED__?.updateSize?.();
     } catch (_) {
       // noop
     }
