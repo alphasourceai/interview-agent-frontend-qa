@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
 import toast from 'react-hot-toast'
+import { interviewHostBase } from '../lib/urlConfig'
 import SignOutButton from '../components/SignOutButton.jsx'
 import CustomFilePicker from '../components/CustomFilePicker'
 import TesterFeedbackForm from '../components/TesterFeedbackForm.jsx'
@@ -42,7 +43,7 @@ const th = {
 };
 const td = { borderBottom: '1px solid #f1f5f9', padding: '8px 6px', verticalAlign: 'top' };
 const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
-const SHARE_BASE = 'https://interviews.alphasourceai.com/interview-host';
+const SHARE_BASE = interviewHostBase;
 const CLIENT_DASH_TOUR_SEEN_KEY = 'client_dash_tour_seen_v1';
 const CLIENT_DASH_TOUR_DISMISSED_KEY = 'client_dash_tour_dismissed_v1';
 const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;

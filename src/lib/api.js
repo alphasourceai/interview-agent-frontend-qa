@@ -1,7 +1,8 @@
 // src/lib/api.js
 import { supabase } from './supabaseClient';
+import { backendBase } from './urlConfig';
 
-const base = import.meta.env.VITE_BACKEND_URL?.replace(/\/+$/, '') || '';
+const base = backendBase;
 const isDev = !!import.meta.env.DEV;
 const rolesPathRe = /^\/(api\/)?roles(\/|$)/i;
 

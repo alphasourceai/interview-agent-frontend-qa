@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
 import { apiGet } from '../lib/api';
+import { publicSiteBase, adminAppBase } from '../lib/urlConfig';
 import '../styles/alphaTheme.css';
 
 export default function AcceptInvite() {
@@ -78,13 +79,13 @@ export default function AcceptInvite() {
       }
     }
     if (hasMembership) {
-      window.location.href = 'https://www.alphasourceai.com/account';
+      window.location.href = `${publicSiteBase}/account`;
       return;
     }
     if (isAdmin) {
-      window.location.href = `${import.meta.env.VITE_FRONTEND_BASE || 'https://ia-frontend-prod.onrender.com'}/admin`;
+      window.location.href = `${adminAppBase}/admin`;
     } else {
-      window.location.href = 'https://www.alphasourceai.com/account';
+      window.location.href = `${publicSiteBase}/account`;
     }
   };
 

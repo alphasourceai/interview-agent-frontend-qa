@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiGet, apiPost, apiPatch, apiDelete, api, apiDownload } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
+import { interviewHostBase } from '../lib/urlConfig';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import CustomFilePicker from '../components/CustomFilePicker.jsx';
@@ -318,7 +319,7 @@ export default function Admin() {
   const [cancelContractNote, setCancelContractNote] = useState('');
   const [cancelContractSubmitBusy, setCancelContractSubmitBusy] = useState(false);
 
-  const shareBase = 'https://interviews.alphasourceai.com/interview-host';
+  const shareBase = interviewHostBase;
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
   const clientNameById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.name])), [clients]);
   const roleTitleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r.title])), [roles]);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
+import { publicSiteBase } from '../lib/urlConfig';
 import '../styles/clientTheme.css';
 
 export default function PwReset() {
@@ -117,7 +118,7 @@ export default function PwReset() {
       }
       toast.success('Password updated. Redirecting…', { duration: 1200 });
       const redirectOrigin = getResetOrigin();
-      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : 'https://www.alphasourceai.com/account';
+      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : `${publicSiteBase}/account`;
       await supabase.auth.signOut({ scope: 'local' });
       const cleanUrl = new URL(window.location.href);
       ['pwreset', 'code', 'token_hash', 'type', 'origin'].forEach((k) => cleanUrl.searchParams.delete(k));
