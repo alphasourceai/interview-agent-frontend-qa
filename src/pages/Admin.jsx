@@ -2,7 +2,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { apiGet, apiPost, apiPatch, apiDelete, api, apiDownload } from '../lib/api';
 import { supabase } from '../lib/supabaseClient';
-import { interviewHostBase } from '../lib/urlConfig';
+import {
+  buildAdminEntryUrl,
+  buildInterviewShareUrl,
+  buildPwResetUrl
+} from '../lib/urlConfig';
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import CustomFilePicker from '../components/CustomFilePicker.jsx';
@@ -319,7 +323,6 @@ export default function Admin() {
   const [cancelContractNote, setCancelContractNote] = useState('');
   const [cancelContractSubmitBusy, setCancelContractSubmitBusy] = useState(false);
 
-  const shareBase = interviewHostBase;
   const isAllClients = selectedClientId === ALL_CLIENTS_VALUE;
   const clientNameById = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c.name])), [clients]);
   const roleTitleById = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r.title])), [roles]);
@@ -561,7 +564,7 @@ export default function Admin() {
       setSession(sess || null);
       if (sess && window.location.pathname !== '/admin') {
         setTimeout(() => {
-          window.location.replace('/admin');
+          window.location.replace(buildAdminEntryUrl());
         }, 250);
       }
     });
@@ -590,7 +593,7 @@ export default function Admin() {
         localStorage.removeItem('adm_show_clients');
         localStorage.removeItem('adm_show_roles');
         localStorage.removeItem('adm_show_members');
-        window.location.replace('/admin');
+        window.location.replace(buildAdminEntryUrl());
       }
     };
     const resetTimer = () => {
@@ -1211,7 +1214,7 @@ export default function Admin() {
       }
       toast.dismiss(ADMIN_SIGNIN_ERROR_TOAST_ID);
       setSession(data?.session || null);
-      window.location.replace('/admin');
+      window.location.replace(buildAdminEntryUrl());
     } finally {
       adminSignInInFlightRef.current = false;
       setAdminSigningIn(false);
@@ -1229,10 +1232,9 @@ export default function Admin() {
       return;
     }
     setEmailError('');
-    const origin = window.location.origin;
     try { localStorage.setItem('pwreset_origin', 'admin'); } catch {}
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/pwreset?origin=admin`
+      redirectTo: buildPwResetUrl({ origin: 'admin' })
     });
     if (error) {
       toast.error('Could not start reset: ' + error.message, { duration: 2000 });
@@ -1264,7 +1266,7 @@ export default function Admin() {
       localStorage.removeItem('adm_show_clients');
       localStorage.removeItem('adm_show_roles');
       localStorage.removeItem('adm_show_members');
-      window.location.replace('/admin');
+      window.location.replace(buildAdminEntryUrl());
     }
   };
 
@@ -1275,7 +1277,7 @@ export default function Admin() {
       localStorage.removeItem('adm_show_clients');
       localStorage.removeItem('adm_show_roles');
       localStorage.removeItem('adm_show_members');
-      window.location.replace('/admin');
+      window.location.replace(buildAdminEntryUrl());
     }
   };
 
@@ -1838,7 +1840,7 @@ export default function Admin() {
             <input className="alpha-input" type="password" value={newPass2} onChange={e => setNewPass2(e.target.value)} required />
             <button type="submit">Update Password</button>
             <div style={{ marginTop: 8 }}>
-              <button type="button" onClick={() => { setShowReset(false); window.location.replace('/admin'); }}>
+              <button type="button" onClick={() => { setShowReset(false); window.location.replace(buildAdminEntryUrl()); }}>
                 Back to sign in
               </button>
             </div>
@@ -2516,7 +2518,7 @@ export default function Admin() {
                               )}
                             </div>
                             <div>
-                              <button className="btn lilac client-dash-pill" onClick={() => safeCopy(`${shareBase}/${r.slug_or_token}`)}>Copy link</button>
+                              <button className="btn lilac client-dash-pill" onClick={() => safeCopy(buildInterviewShareUrl(r.slug_or_token))}>Copy link</button>
                             </div>
                             <div className="center">
                               <button

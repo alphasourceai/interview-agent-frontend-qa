@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
+import { buildPwResetUrl } from '../lib/urlConfig';
 import '../styles/clientTheme.css';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
@@ -137,10 +138,9 @@ export default function SignIn() {
       return;
     }
     setEmailError('');
-    const origin = window.location.origin;
     try { localStorage.setItem('pwreset_origin', 'client'); } catch {}
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${origin}/pwreset?origin=client`
+      redirectTo: buildPwResetUrl({ origin: 'client' })
     });
     if (error) toast.error('Could not start reset: ' + error.message, { duration: 2000 });
     else toast.success('Check your email for a password reset link.', { duration: 1500 });

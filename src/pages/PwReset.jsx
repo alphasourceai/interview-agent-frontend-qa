@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
-import { publicSiteBase } from '../lib/urlConfig';
+import { buildAdminDashboardUrl, buildPublicAccountUrl } from '../lib/urlConfig';
 import '../styles/clientTheme.css';
 
 export default function PwReset() {
@@ -26,7 +26,7 @@ export default function PwReset() {
     return '';
   };
   const resetOrigin = getResetOrigin();
-  const signInPath = resetOrigin === 'admin' ? '/admin-dashboard' : '/signin';
+  const signInPath = resetOrigin === 'admin' ? buildAdminDashboardUrl() : '/signin';
   const signInLabel = resetOrigin === 'admin' ? 'Back to Admin Sign In' : 'Back to Client Sign In';
 
   const requestId = useMemo(() => {
@@ -118,7 +118,7 @@ export default function PwReset() {
       }
       toast.success('Password updated. Redirecting…', { duration: 1200 });
       const redirectOrigin = getResetOrigin();
-      const redirectPath = redirectOrigin === 'admin' ? '/admin-dashboard' : `${publicSiteBase}/account`;
+      const redirectPath = redirectOrigin === 'admin' ? buildAdminDashboardUrl() : buildPublicAccountUrl();
       await supabase.auth.signOut({ scope: 'local' });
       const cleanUrl = new URL(window.location.href);
       ['pwreset', 'code', 'token_hash', 'type', 'origin'].forEach((k) => cleanUrl.searchParams.delete(k));

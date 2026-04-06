@@ -69,3 +69,45 @@ export const interviewAppBase = firstBase(
 );
 
 export const interviewHostBase = `${interviewAppBase}/interview-host`;
+
+function serializeQuery(query) {
+  if (!query) return '';
+  if (query instanceof URLSearchParams) return query.toString();
+  if (typeof query === 'string') return query.replace(/^\?+/, '');
+  try {
+    return new URLSearchParams(query).toString();
+  } catch {
+    return '';
+  }
+}
+
+function appendQuery(url, query) {
+  const serialized = serializeQuery(query);
+  return serialized ? `${url}?${serialized}` : url;
+}
+
+export function buildPublicAccountUrl(query, { absolute = true } = {}) {
+  const base = absolute ? publicSiteBase : '';
+  return appendQuery(`${base}/account`, query);
+}
+
+export function buildAdminEntryUrl(query, { absolute = false } = {}) {
+  const base = absolute ? adminAppBase : '';
+  return appendQuery(`${base}/admin`, query);
+}
+
+export function buildAdminDashboardUrl(query, { absolute = false } = {}) {
+  const base = absolute ? adminAppBase : '';
+  return appendQuery(`${base}/admin-dashboard`, query);
+}
+
+export function buildPwResetUrl(query, { base } = {}) {
+  const originBase = firstBase(base, typeof window !== 'undefined' ? window.location.origin : '');
+  const normalizedBase = trimTrailingSlashes(originBase);
+  const pwResetBase = normalizedBase ? `${normalizedBase}/pwreset` : '/pwreset';
+  return appendQuery(pwResetBase, query);
+}
+
+export function buildInterviewShareUrl(token, { base = interviewHostBase } = {}) {
+  return `${trimTrailingSlashes(base)}/${String(token || '')}`;
+}
