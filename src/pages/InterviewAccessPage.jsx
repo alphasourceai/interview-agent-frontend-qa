@@ -6,6 +6,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import InterviewAccessForm from '../components/InterviewAccessForm';
+import { backendBase } from '../lib/urlConfig';
 import '../styles/agentTheme.css';
 
 function joinUrl(base, path) {
@@ -15,9 +16,7 @@ function joinUrl(base, path) {
   return base + path;
 }
 
-const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
-  ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
-  : '';
+const BK = backendBase;
 
 function isEmailContact(s) {
   const v = String(s || '').trim();

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import CustomFilePicker from '../components/CustomFilePicker';
+import { backendBase } from '../lib/urlConfig';
 import '../styles/agentTheme.css';
 
 function joinUrl(base, path) {
@@ -12,9 +13,7 @@ function joinUrl(base, path) {
   return base + path;
 }
 
-const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
-  ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
-  : '';
+const BK = backendBase;
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})$/.test(String(value || '').trim());

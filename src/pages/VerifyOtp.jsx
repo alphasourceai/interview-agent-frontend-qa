@@ -1,6 +1,7 @@
 // src/pages/VerifyOtp.jsx
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { backendBase } from "../lib/urlConfig";
 
 export default function VerifyOtp() {
   const [params] = useSearchParams();
@@ -23,7 +24,7 @@ export default function VerifyOtp() {
   );
 
   const otpRef = useRef(null);
-  const API_BASE = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
+  const API_BASE = backendBase;
 
   useEffect(() => {
     otpRef.current?.focus();

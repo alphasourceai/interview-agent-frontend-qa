@@ -4,6 +4,7 @@
 import React, { useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import CustomFilePicker from './CustomFilePicker';
+import { backendBase } from '../lib/urlConfig';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 const isValidPhone = (value) => /^(\d{10}|\(\d{3}\)\s?\d{3}-\d{4}|\d{3}-\d{3}-\d{4}|\d{3}\.\d{3}\.\d{4})$/.test(String(value || '').trim());
@@ -15,9 +16,7 @@ function joinUrl(base, path) {
   return base + path;
 }
 
-const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
-  ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
-  : '';
+const BK = backendBase;
 
 export default function InterviewAccessForm({ roleToken, onSubmitted, onInactive }) {
   const [form, setForm] = useState({

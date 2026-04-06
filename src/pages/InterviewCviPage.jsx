@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import DailyIframe from '@daily-co/daily-js';
 import * as Sentry from '@sentry/react';
+import { backendBase } from '../lib/urlConfig';
 import {
   DailyAudioTrack,
   DailyProvider,
@@ -20,9 +21,7 @@ function joinUrl(base, path) {
   return base + path;
 }
 
-const BK = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_BACKEND_URL)
-  ? String(import.meta.env.VITE_BACKEND_URL).replace(/\/+$/, '')
-  : '';
+const BK = backendBase;
 const SOFT_CLOSE_TEXT = 'We are approaching our time limit for this interview. Thank you for your time today. Our session will end momentarily.';
 const SOFT_CLOSE_THRESHOLD_SECONDS = 10;
 const SOFT_CLOSE_END_DELAY_MS = 7000;

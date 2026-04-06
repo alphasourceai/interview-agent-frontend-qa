@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { CardElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import toast from 'react-hot-toast';
+import { backendBase } from '../lib/urlConfig';
 
-const backendBase = (import.meta.env.VITE_BACKEND_URL || '').replace(/\/+$/, '');
 const paymentsUrl = backendBase ? `${backendBase}/api/payments/create-intent` : '/api/payments/create-intent';
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 
