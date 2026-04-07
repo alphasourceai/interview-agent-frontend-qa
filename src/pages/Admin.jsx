@@ -26,6 +26,7 @@ const isValidPhoneLike = (value) => {
 const ADMIN_SIGNIN_ERROR_TOAST_ID = 'admin-signin-error';
 const ALL_CLIENTS_VALUE = 'ALL';
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
+const VALID_ADMIN_TABS = new Set(['clients', 'roles', 'candidates', 'role-config', 'members', 'accommodations', 'billing', 'audit-logs']);
 
 const IconTrash = ({ size = 24 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1059,20 +1060,39 @@ export default function Admin() {
   }, [isAdmin, activeTab]);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isAdmin || loading) return;
     const params = new URLSearchParams(window.location.search);
-    const checkout = params.get('checkout');
-    const client_id = params.get('client_id');
+    const checkout = String(params.get('checkout') || '').trim().toLowerCase();
     if (checkout !== 'success' && checkout !== 'cancel') return;
-    void client_id;
+
+    const clientIdParam = String(params.get('client_id') || '').trim();
+    if (clientIdParam && clients.some((c) => String(c?.id || '') === clientIdParam)) {
+      setSelectedClientId(clientIdParam);
+    }
+
+    const tabParam = String(params.get('tab') || '').trim().toLowerCase();
+    if (VALID_ADMIN_TABS.has(tabParam)) {
+      setActiveTab(tabParam);
+    } else {
+      setActiveTab('billing');
+    }
+
     refreshClients();
     if (checkout === 'success') {
       toast.success('Membership checkout completed.', { duration: 1800 });
     } else {
       toast('Membership checkout canceled.', { duration: 1800 });
     }
-    window.history.replaceState({}, '', window.location.pathname);
-  }, [isAdmin]);
+
+    params.delete('checkout');
+    params.delete('purchase');
+    params.delete('role_checkout');
+    params.delete('intent');
+    params.delete('session_id');
+    const nextSearch = params.toString();
+    const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash || ''}`;
+    window.history.replaceState(window.history.state, '', nextUrl);
+  }, [isAdmin, loading, clients]);
 
   useEffect(() => {
     if (!isAdmin) return;

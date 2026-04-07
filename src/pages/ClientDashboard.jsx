@@ -48,6 +48,37 @@ const CLIENT_DASH_TOUR_DISMISSED_KEY = 'client_dash_tour_dismissed_v1';
 const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;
 const VALID_DASHBOARD_TABS = new Set(['roles', 'candidates', 'members', 'billing', 'feedback']);
 
+function parseDashboardReturnState(search) {
+  const params = new URLSearchParams(search || '');
+  const clientIdParam = String(params.get('client_id') || '').trim();
+  const tabParam = String(params.get('tab') || '').trim().toLowerCase();
+  const roleIdParam = String(params.get('role_id') || '').trim();
+  const checkoutParam = String(params.get('checkout') || '').trim().toLowerCase();
+  const purchaseParam = String(params.get('purchase') || '').trim().toLowerCase();
+  const roleCheckoutParam = String(params.get('role_checkout') || '').trim().toLowerCase();
+  const intentParam = String(params.get('intent') || '').trim().toLowerCase();
+  const isSuccessOrCancel = (value) => value === 'success' || value === 'cancel';
+
+  let resolvedTab = VALID_DASHBOARD_TABS.has(tabParam) ? tabParam : '';
+  if (!resolvedTab) {
+    if (isSuccessOrCancel(roleCheckoutParam)) {
+      resolvedTab = 'roles';
+    } else if (
+      isSuccessOrCancel(checkoutParam) ||
+      isSuccessOrCancel(purchaseParam) ||
+      intentParam === 'role_capacity'
+    ) {
+      resolvedTab = 'billing';
+    }
+  }
+
+  return {
+    clientId: clientIdParam,
+    tab: resolvedTab,
+    roleId: roleIdParam,
+  };
+}
+
 function isDailyRoomUrl(url) {
   return !!url && DAILY_ROOM_RE.test(String(url));
 }
@@ -566,15 +597,7 @@ export default function ClientDashboard() {
     if (typeof window === 'undefined') {
       return { clientId: '', tab: '', roleId: '' };
     }
-    const params = new URLSearchParams(window.location.search || '');
-    const clientIdParam = String(params.get('client_id') || '').trim();
-    const tabParam = String(params.get('tab') || '').trim().toLowerCase();
-    const roleIdParam = String(params.get('role_id') || '').trim();
-    return {
-      clientId: clientIdParam,
-      tab: VALID_DASHBOARD_TABS.has(tabParam) ? tabParam : '',
-      roleId: roleIdParam,
-    };
+    return parseDashboardReturnState(window.location.search || '');
   }, []);
 
   // --- Wix embed: report our height to parent so the iframe can auto-resize ---
@@ -595,7 +618,7 @@ export default function ClientDashboard() {
   }
 
   // Tab selector
-  const [activeTab, setActiveTab] = useState('roles'); // roles | candidates | members | billing | feedback
+  const [activeTab, setActiveTab] = useState(() => urlDashboardState.tab || 'roles'); // roles | candidates | members | billing | feedback
   const [billingRoleId, setBillingRoleId] = useState(() => urlDashboardState.roleId || '');
   const [billingPurchaseQuantityInput, setBillingPurchaseQuantityInput] = useState('1');
   const [billingPurchaseBusy, setBillingPurchaseBusy] = useState(false);
