@@ -109,5 +109,24 @@ export function buildPwResetUrl(query, { base } = {}) {
 }
 
 export function buildInterviewShareUrl(token, { base = interviewHostBase } = {}) {
-  return `${trimTrailingSlashes(base)}/${String(token || '')}`;
+  const safeToken = String(token || '');
+  const interviewOrigin = originFromUrl(interviewAppBase);
+  const currentOrigin = (typeof window !== 'undefined' && window.location)
+    ? originFromUrl(window.location.origin)
+    : '';
+  const publicOrigin = originFromUrl(publicSiteBase);
+  const clientOrigin = originFromUrl(clientAppBase);
+
+  if (
+    interviewOrigin &&
+    (
+      interviewOrigin === currentOrigin ||
+      interviewOrigin === publicOrigin ||
+      interviewOrigin === clientOrigin
+    )
+  ) {
+    return `${interviewOrigin}/interview-access/${safeToken}`;
+  }
+
+  return `${trimTrailingSlashes(base)}/${safeToken}`;
 }
