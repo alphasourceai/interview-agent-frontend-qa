@@ -48,24 +48,24 @@ export const publicSiteBase = firstBase(
   canonical.publicSiteBase,
   trimTrailingSlashes(env.VITE_APP_URL),
   originFromUrl(env.VITE_AUTH_REDIRECT_URL),
-  'https://www.alphasourceai.com'
+  trimTrailingSlashes(env.VITE_PUBLIC_SITE_BASE_FALLBACK)
 );
 
 export const adminAppBase = firstBase(
   canonical.adminAppBase,
   legacyAppBase,
-  'https://ia-frontend-prod.onrender.com'
+  trimTrailingSlashes(env.VITE_ADMIN_APP_BASE_FALLBACK)
 );
 
 export const clientAppBase = firstBase(
   canonical.clientAppBase,
   legacyAppBase,
-  'https://ia-frontend-prod.onrender.com'
+  trimTrailingSlashes(env.VITE_CLIENT_APP_BASE_FALLBACK)
 );
 
 export const interviewAppBase = firstBase(
   canonical.interviewAppBase,
-  'https://interviews.alphasourceai.com'
+  trimTrailingSlashes(env.VITE_INTERVIEW_APP_BASE_FALLBACK)
 );
 
 export const interviewHostBase = `${interviewAppBase}/interview-host`;

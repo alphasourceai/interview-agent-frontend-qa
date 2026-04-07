@@ -12,8 +12,16 @@ services:
       - key: Feature-Policy
         value: camera 'self' https://tavus.daily.co https://*.daily.co; microphone 'self' https://tavus.daily.co https://*.daily.co; fullscreen *
     envVars:
+      - key: VITE_PUBLIC_SITE_BASE
+        sync: false
+      - key: VITE_CLIENT_APP_BASE
+        sync: false
+      - key: VITE_ADMIN_APP_BASE
+        sync: false
+      - key: VITE_INTERVIEW_APP_BASE
+        sync: false
       - key: VITE_BACKEND_URL
-        value: https://ia-backend-prod.onrender.com
+        sync: false
       # keep these managed in the Render UI; don't let blueprint overwrite
       - key: VITE_SUPABASE_URL
         sync: false
