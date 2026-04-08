@@ -2409,7 +2409,7 @@ export default function Admin() {
                       key={fileKey}
                       accept=".pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       onFileSelected={handleRoleFileFromPicker}
-                      label="Drag JD file here or click to browse"
+                      label={jobFile?.name ? jobFile.name : 'Drag JD file here or click to browse'}
                       className="client-dash-input client-dash-file-input"
                       inputRef={fileInputRef}
                     />

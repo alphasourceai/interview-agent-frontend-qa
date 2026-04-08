@@ -1030,6 +1030,21 @@ export default function ClientDashboard() {
     }
   }
 
+  async function openResumeForRow(row) {
+    const candidateId = row?.candidate?.id || row?.candidate_id;
+    if (!candidateId) return;
+    try {
+      const qs = `?candidate_id=${encodeURIComponent(candidateId)}`;
+      const resp = await apiGet('/files/resume-signed-url' + qs);
+      const url = resp?.url;
+      if (!url) throw new Error('Could not open resume');
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e) {
+      setError(String(e?.message || e));
+      showToast(String(e?.message || 'Could not open resume'), 'error');
+    }
+  }
+
   async function generatePdfForRow(row) {
     const interviewId = row.latest_interview_id || null;
     const key = `${interviewId || row.id}:pdf`;
@@ -1730,6 +1745,7 @@ export default function ClientDashboard() {
         id: r.candidate?.id || null,
         name: r.candidate?.name || '',
         email: r.candidate?.email || '',
+        resume_url: r.candidate?.resume_url || null,
       },
       role: r.role || null,
 
@@ -2272,6 +2288,7 @@ export default function ClientDashboard() {
                             pdfKey={pdfKey}
                             showToast={showToast}
                             onOpenTranscript={openTranscriptModal}
+                            onOpenResume={openResumeForRow}
                             onRefresh={handleManualRefresh}
                             refreshing={refreshing}
                           />
@@ -3012,7 +3029,7 @@ TECHNICAL: skill-heavy interview focused on technical reasoning and execution.`}
 }
 
 function FragmentRow({
-  r, opened, toggleRow, pctText, fmtDate, opening, generatePdfForRow, pdfKey, showToast, onOpenTranscript, onRefresh, refreshing
+  r, opened, toggleRow, pctText, fmtDate, opening, generatePdfForRow, pdfKey, showToast, onOpenTranscript, onOpenResume, onRefresh, refreshing
 }) {
   const videoReady = isUsableRecordingUrl(r.video_url);
   const handleVideoClick = () => {
@@ -3067,6 +3084,11 @@ function FragmentRow({
       return;
     }
     if (typeof onOpenTranscript === 'function') await onOpenTranscript(r);
+  };
+  const resumeReady = !!r?.candidate?.resume_url;
+  const handleResumeClick = async () => {
+    if (!resumeReady) return;
+    if (typeof onOpenResume === 'function') await onOpenResume(r);
   };
   return (
     <>
@@ -3148,6 +3170,15 @@ function FragmentRow({
                   aria-disabled={!transcriptReady}
                 >
                   Transcript
+                </button>
+
+                <button
+                  onClick={handleResumeClick}
+                  disabled={!resumeReady}
+                  className={`btn lilac${!resumeReady ? ' is-disabled' : ''}`}
+                  style={!resumeReady ? disabledBtn : undefined}
+                >
+                  Resume
                 </button>
 
                 <button
