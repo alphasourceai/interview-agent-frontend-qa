@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { supabase } from '../lib/supabaseClient';
 import { apiGet } from '../lib/api';
-import { buildAdminEntryUrl, buildPublicAccountUrl } from '../lib/urlConfig';
+import { buildAdminEntryUrl, buildClientDashboardReturnUrl } from '../lib/urlConfig';
 import '../styles/alphaTheme.css';
 
 export default function AcceptInvite() {
@@ -79,13 +79,13 @@ export default function AcceptInvite() {
       }
     }
     if (hasMembership) {
-      window.location.href = buildPublicAccountUrl();
+      window.location.href = buildClientDashboardReturnUrl();
       return;
     }
     if (isAdmin) {
       window.location.href = buildAdminEntryUrl(undefined, { absolute: true });
     } else {
-      window.location.href = buildPublicAccountUrl();
+      window.location.href = buildClientDashboardReturnUrl();
     }
   };
 

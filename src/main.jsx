@@ -12,6 +12,7 @@ import './styles/alphaTheme.css'
 
 // Route components (lazy to prevent TDZ/circular init during first render)
 const SignIn = React.lazy(() => import('./pages/SignIn.jsx'))
+const AcceptInvite = React.lazy(() => import('./pages/AcceptInvite.jsx'))
 const PwReset = React.lazy(() => import('./pages/PwReset.jsx'))
 const VerifyOtp = React.lazy(() => import('./pages/VerifyOtp.jsx'))
 const InterviewAccessPage = React.lazy(() => import('./pages/InterviewAccessPage.jsx'))
@@ -173,6 +174,7 @@ const router = createBrowserRouter([
 
   // public
   { path: '/signin', element: <SignIn />, errorElement },
+  { path: '/accept-invite', element: <AcceptInvite />, errorElement },
   { path: '/pwreset', element: <PwReset />, errorElement },
   { path: '/verify-otp', element: <VerifyOtp />, errorElement },
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
