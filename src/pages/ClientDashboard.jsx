@@ -1085,7 +1085,7 @@ export default function ClientDashboard() {
   const fetchRolesForClient = async (clientIdArg, options = {}) => {
     const silent = options?.silent === true;
     const targetId = clientIdArg || clientId;
-    if (!targetId || !canManage) {
+    if (!targetId) {
       setRoles([]);
       return;
     }
