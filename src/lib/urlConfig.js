@@ -98,7 +98,12 @@ export function buildAdminEntryUrl(query, { absolute = false } = {}) {
 
 export function buildAdminDashboardUrl(query, { absolute = false } = {}) {
   const base = absolute ? adminAppBase : '';
-  return appendQuery(`${base}/admin-dashboard`, query);
+  return appendQuery(`${base}/admin`, query);
+}
+
+export function buildClientDashboardReturnUrl(query, { absolute = true } = {}) {
+  const base = absolute ? firstBase(clientAppBase, publicSiteBase, legacyAppBase) : '';
+  return appendQuery(`${base}/dashboard`, query);
 }
 
 export function buildPwResetUrl(query, { base } = {}) {
