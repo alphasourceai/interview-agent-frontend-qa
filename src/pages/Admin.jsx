@@ -213,7 +213,9 @@ export default function Admin() {
   const [session, setSession] = useState(null);
   const [me, setMe] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminAccessDenied, setAdminAccessDenied] = useState(false);
   const [loading, setLoading] = useState(true);
+  const nonAdminSwitchInFlightRef = useRef(false);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -639,11 +641,14 @@ export default function Admin() {
           if (!alive || !initializing) return;
           const list = (probe?.items || []).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
           setIsAdmin(true);
+          setAdminAccessDenied(false);
           setClients(list);
           if (list.length && !selectedClientId) setSelectedClientId(list[0].id);
-        } catch {
+        } catch (e) {
           if (!alive || !initializing) return;
           setIsAdmin(false);
+          const status = e?.status || e?.response?.status;
+          setAdminAccessDenied(status === 401 || status === 403);
         }
       }
       if (alive && initializing) setLoading(false);
@@ -651,6 +656,27 @@ export default function Admin() {
     })();
     return () => { alive = false; initializing = false; };
   }, []);
+
+  useEffect(() => {
+    if (loading || !session || isAdmin || !adminAccessDenied || nonAdminSwitchInFlightRef.current) return;
+    nonAdminSwitchInFlightRef.current = true;
+    setLoading(true);
+    (async () => {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } finally {
+        setSession(null);
+        setMe(null);
+        setIsAdmin(false);
+        setAdminAccessDenied(false);
+        localStorage.removeItem('adm_show_clients');
+        localStorage.removeItem('adm_show_roles');
+        localStorage.removeItem('adm_show_members');
+        nonAdminSwitchInFlightRef.current = false;
+        setLoading(false);
+      }
+    })();
+  }, [loading, session, isAdmin, adminAccessDenied]);
 
   async function refreshClients() {
     const probe = await apiGet('/admin/clients');

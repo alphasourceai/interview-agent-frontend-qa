@@ -1,6 +1,7 @@
 // src/pages/ClientDashboard.jsx
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { apiGet, apiDownload, apiPost, apiDelete, api } from '../lib/api'
+import { supabase } from '../lib/supabaseClient'
 import toast from 'react-hot-toast'
 import { buildInterviewShareUrl } from '../lib/urlConfig'
 import SignOutButton from '../components/SignOutButton.jsx'
@@ -373,6 +374,29 @@ export default function ClientDashboard() {
     }
     toast.success(msg, { duration: ttlMs });
   }
+
+  useEffect(() => {
+    const IDLE_LIMIT_MS = 60 * 60 * 1000;
+    let timer;
+    const triggerLogout = async () => {
+      try {
+        await supabase.auth.signOut({ scope: 'local' });
+      } finally {
+        window.location.assign('/signin');
+      }
+    };
+    const resetTimer = () => {
+      clearTimeout(timer);
+      timer = setTimeout(triggerLogout, IDLE_LIMIT_MS);
+    };
+    const activityEvents = ['mousemove','mousedown','keydown','scroll','touchstart','visibilitychange','click'];
+    activityEvents.forEach((ev) => window.addEventListener(ev, resetTimer));
+    resetTimer();
+    return () => {
+      clearTimeout(timer);
+      activityEvents.forEach((ev) => window.removeEventListener(ev, resetTimer));
+    };
+  }, []);
 
   const getPerceptionScores = (row) => {
     return normalizeScoreObject(row?.perception_scores) || {};
