@@ -179,6 +179,7 @@ const router = createBrowserRouter([
   { path: '/verify-otp', element: <VerifyOtp />, errorElement },
   { path: '/interview-access', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-access/:role_token', element: <InterviewAccessPage />, errorElement },
+  { path: '/interview-host/:role_token', element: <InterviewAccessPage />, errorElement },
   { path: '/interview-cvi', element: <InterviewCviPage />, errorElement },
   { path: '/interview-complete', element: <InterviewComplete />, errorElement },
   { path: '/accommodation-request', element: <AccommodationRequestPage />, errorElement },
