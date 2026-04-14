@@ -13,7 +13,11 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState('');
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [loginOpen, setLoginOpen] = useState(false);
   const signInInFlightRef = useRef(false);
+  const dropdownRef = useRef(null);
 
   // --- Wix embed: report our height to the parent so the iframe can auto-resize ---
   function postEmbedSize() {
@@ -80,6 +84,22 @@ export default function SignIn() {
     return () => window.removeEventListener('load', onLoad);
   }, []);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setLoginOpen(false);
+      }
+    };
+    if (loginOpen) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [loginOpen]);
+
   // Safari/WebKit: request third‑party storage access when embedded (Wix)
   async function requestSafariStorageAccess() {
     try {
@@ -116,6 +136,8 @@ export default function SignIn() {
         });
         return;
       }
+      setLoginOpen(false);
+      setMobileOpen(false);
       toast.dismiss(CLIENT_SIGNIN_ERROR_TOAST_ID);
       const url = new URL(window.location.href);
       const next = url.searchParams.get('next');
@@ -146,55 +168,204 @@ export default function SignIn() {
     else toast.success('Check your email for a password reset link.', { duration: 1500 });
   }
 
+  const navLinks = [
+    { label: 'Home', href: '/' },
+    { label: 'About', href: '/about' },
+    { label: 'alphaScreen', href: '/alphascreen' },
+    { label: 'How It Works', href: '/#how-it-works' },
+    { label: 'Get in Touch', href: '/#contact' },
+  ];
+
+  const currentLocation = typeof window !== 'undefined' ? window.location.pathname : '';
+
   return (
-    <div className="alpha-theme client-auth" style={EMBEDDED ? { overflow: 'hidden' } : { minHeight: '100vh' }}>
-      <div className="alpha-card auth-wrap client-card">
-        <div className="auth-head">
-          <h2>Client Sign In</h2>
-        </div>
+    <div className="alpha-theme" style={EMBEDDED ? { overflow: 'hidden', minHeight: '100vh' } : { minHeight: '100vh' }}>
+      <nav
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          scrolled
+            ? 'bg-white/95 backdrop-blur-md shadow-sm border-b border-gray-100'
+            : 'bg-white/80 backdrop-blur-sm'
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <a href="/" className="flex items-center gap-0" data-testid="nav-logo">
+              <img
+                src="/logo-dark-text.png"
+                alt="AlphaSource AI"
+                className="h-8 w-auto"
+                onError={(e) => { e.currentTarget.src = '/No bg - color logo - dark text.png'; }}
+              />
+            </a>
 
-        <form onSubmit={handleSignIn}>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            className={`alpha-input ${emailError ? 'input-error' : ''}`}
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
-            required
-            autoComplete="email"
-          />
-          {emailError && <div className="input-error-text">{emailError}</div>}
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                    currentLocation === link.href
+                      ? 'text-[#A380F6]'
+                      : 'text-[#0A1547] hover:text-[#A380F6]'
+                  }`}
+                  data-testid={`nav-link-${link.label.toLowerCase().replace(/\s+/g, '-')}`}
+                >
+                  {link.label}
+                </a>
+              ))}
+            </div>
 
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            className="alpha-input"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-          />
+            <div className="hidden md:flex items-center gap-3" ref={dropdownRef}>
+              <div className="relative">
+                <button
+                  onClick={() => setLoginOpen(!loginOpen)}
+                  className="px-5 py-2.5 text-sm font-semibold text-[#0A1547] border border-[#0A1547]/15 rounded-full transition-all duration-200 hover:border-[#A380F6] hover:text-[#A380F6] hover:shadow-sm active:scale-95 flex items-center gap-2"
+                  data-testid="nav-login-button"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                    <polyline points="10 17 15 12 10 7"/>
+                    <line x1="15" y1="12" x2="3" y2="12"/>
+                  </svg>
+                  Log In
+                </button>
 
-          <button type="submit" disabled={!email || !password || loading}>
-            {loading ? 'Signing in…' : 'Sign In'}
-          </button>
+                {loginOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-6 z-50">
+                    <div className="mb-5">
+                      <h3 className="text-base font-black text-[#0A1547] mb-1">Sign In to alphaSource</h3>
+                      <p className="text-xs text-[#0A1547]/50">Access your client dashboard</p>
+                    </div>
 
-          <div style={{ marginTop: 10 }}>
+                    <form onSubmit={handleSignIn} className="space-y-3">
+                      <input
+                        type="email"
+                        placeholder="Email address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-[#0A1547] text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A380F6]/30 focus:border-[#A380F6] transition-all"
+                        autoComplete="email"
+                      />
+                      {emailError && <p className="text-xs text-red-500 -mt-1">{emailError}</p>}
+                      <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-[#0A1547] text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#A380F6]/30 focus:border-[#A380F6] transition-all"
+                        autoComplete="current-password"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!email || !password || loading}
+                        className="w-full py-2.5 text-sm font-semibold text-white rounded-full transition-all hover:opacity-90 active:scale-[0.99]"
+                        style={{ backgroundColor: '#A380F6' }}
+                      >
+                        {loading ? 'Signing in…' : 'Sign In'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={startReset}
+                        className="text-xs text-[#A380F6] hover:underline"
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+                      >
+                        Forgot password?
+                      </button>
+                    </form>
+
+                    <p className="mt-4 text-center text-xs text-[#0A1547]/40">
+                      Need access?{' '}
+                      <a href="/#contact" className="text-[#A380F6] hover:underline" onClick={() => setLoginOpen(false)}>
+                        Get in touch
+                      </a>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <button
-              type="button"
-              onClick={startReset}
-              className="btn-ghost"
-              style={{ background: 'none', border: 'none', padding: 0, textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
+              className="md:hidden p-2 rounded-lg text-[#0A1547]"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              data-testid="nav-mobile-menu-button"
+              aria-label="Toggle menu"
             >
-              Forgot password?
+              <svg width="22" height="22" fill="none" viewBox="0 0 24 24">
+                {mobileOpen ? (
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    d="M6 6l12 12M6 18L18 6"
+                  />
+                ) : (
+                  <path
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
+                )}
+              </svg>
             </button>
           </div>
-        </form>
-      </div>
+        </div>
+
+        {mobileOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100 px-6 py-4 space-y-1">
+            {navLinks.map((link) => (
+              <a
+                key={link.label}
+                href={link.href}
+                className="block px-3 py-2.5 text-sm font-medium text-[#0A1547] hover:text-[#A380F6] hover:bg-purple-50 rounded-lg transition-colors"
+                onClick={() => setMobileOpen(false)}
+              >
+                {link.label}
+              </a>
+            ))}
+            <div className="pt-3 border-t border-gray-100 mt-3">
+              <p className="text-xs font-semibold text-[#0A1547]/40 uppercase tracking-wider mb-3 px-3">Client Login</p>
+              <form onSubmit={handleSignIn} className="space-y-2 px-3">
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setEmailError(isValidEmail(email) ? '' : (email ? 'Please enter a valid email address.' : ''))}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-[#0A1547] text-sm placeholder-gray-400 focus:outline-none"
+                  autoComplete="email"
+                />
+                {emailError && <p className="text-xs text-red-500">{emailError}</p>}
+                <input
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-[#0A1547] text-sm placeholder-gray-400 focus:outline-none"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="submit"
+                  disabled={!email || !password || loading}
+                  className="w-full py-2.5 text-sm font-semibold text-white rounded-full"
+                  style={{ backgroundColor: '#A380F6' }}
+                >
+                  {loading ? 'Signing in…' : 'Sign In'}
+                </button>
+                <button
+                  type="button"
+                  onClick={startReset}
+                  className="text-xs text-[#A380F6] hover:underline"
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+                >
+                  Forgot password?
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+      </nav>
     </div>
   );
 }
