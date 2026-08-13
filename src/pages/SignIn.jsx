@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import toast from 'react-hot-toast';
 import { buildPwResetUrl } from '../lib/urlConfig';
 import '../styles/clientTheme.css';
+import '../styles/publicRefresh.css';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 const CLIENT_SIGNIN_ERROR_TOAST_ID = 'client-signin-error';
@@ -88,6 +89,15 @@ export default function SignIn() {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.add('public-refresh-page');
+    document.body.classList.add('public-refresh-page');
+    return () => {
+      document.documentElement.classList.remove('public-refresh-page');
+      document.body.classList.remove('public-refresh-page');
+    };
   }, []);
 
   useEffect(() => {
@@ -237,7 +247,7 @@ export default function SignIn() {
                       <p className="text-xs text-[#0A1547]/50">Access your client dashboard</p>
                     </div>
 
-                    <form onSubmit={handleSignIn} className="space-y-3">
+                    <form onSubmit={handleSignIn} className="space-y-3 alpha-refresh-login-form">
                       <input
                         type="email"
                         placeholder="Email address"
@@ -326,7 +336,7 @@ export default function SignIn() {
             ))}
             <div className="pt-3 border-t border-gray-100 mt-3">
               <p className="text-xs font-semibold text-[#0A1547]/40 uppercase tracking-wider mb-3 px-3">Client Login</p>
-              <form onSubmit={handleSignIn} className="space-y-2 px-3">
+              <form onSubmit={handleSignIn} className="space-y-2 px-3 alpha-refresh-login-form">
                 <input
                   type="email"
                   placeholder="Email address"
@@ -366,6 +376,81 @@ export default function SignIn() {
           </div>
         )}
       </nav>
+
+      <main id="top" className="public-refresh">
+        <section id="about" className="public-refresh-hero">
+          <div className="public-refresh-hero-copy">
+            <div className="public-refresh-category"><span />AI INTERVIEW AGENT</div>
+            <h1>alphaScreen</h1>
+            <h2>Providing a clearer picture of more candidates.</h2>
+            <p className="public-refresh-lead">Freeing up your time to focus on what you do best.</p>
+            <p id="how-it-works" className="public-refresh-description">
+              A membership-based AI interview agent that lets you create job roles and conduct automated screening interviews with AI avatars—with flexible scheduling so candidates can interview anytime, day or night.
+            </p>
+            <div className="public-refresh-hero-actions">
+              <a href="#pricing" className="public-refresh-button public-refresh-button--primary">View pricing</a>
+              <a href="#how-it-works" className="public-refresh-button public-refresh-button--secondary">See how it works</a>
+            </div>
+            <p className="public-refresh-proof">Structured interviews · Flexible scheduling · Hiring decisions stay with people</p>
+          </div>
+
+          <div className="public-refresh-demo" aria-label="Illustrative alphaScreen candidate evaluation">
+            <div className="public-refresh-demo-head">
+              <span className="public-refresh-demo-dots" aria-hidden="true"><i /><i /><i /></span>
+              <span>alphaScreen candidate workspace</span>
+            </div>
+            <div className="public-refresh-report">
+              <div className="public-refresh-report-main">
+                <div className="public-refresh-report-kicker">CANDIDATE EVALUATION</div>
+                <h3>Jordan Lee</h3>
+                <p>Dental Assistant</p>
+                <div className="public-refresh-score-row"><span>Resume match</span><strong>92%</strong></div>
+                <div className="public-refresh-score-track"><span style={{ width: '92%' }} /></div>
+                <div className="public-refresh-score-row"><span>Interview performance</span><strong>87%</strong></div>
+                <div className="public-refresh-score-track"><span style={{ width: '87%' }} /></div>
+                <div className="public-refresh-score-row"><span>Communication</span><strong>94%</strong></div>
+                <div className="public-refresh-score-track"><span style={{ width: '94%' }} /></div>
+              </div>
+              <div className="public-refresh-fit-card">
+                <span>OVERALL FIT</span>
+                <strong>90<small>%</small></strong>
+                <b>Advance</b>
+              </div>
+              <div className="public-refresh-report-note">
+                <strong>Clearer signal for a faster human review.</strong>
+                <p>AI organizes the evidence. Your team decides what happens next.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="public-refresh-pricing">
+          <div className="public-refresh-pricing-copy">
+            <div className="public-refresh-section-kicker">PRICING AND SIGNUP</div>
+            <h2>Choose the membership that best fits your team.</h2>
+            <p>Start with Basic or Pro, then complete agreement review and secure checkout when you are ready.</p>
+            <a href="/#contact">Talk to sales →</a>
+          </div>
+          <div className="public-refresh-memberships">
+            <article>
+              <span>BASIC</span>
+              <h3>Focused hiring needs</h3>
+              <p>20 interviews per role · 10-minute interviews</p>
+              <a href="/#pricing">View membership →</a>
+            </article>
+            <article className="public-refresh-membership--featured">
+              <span>PRO</span>
+              <h3>More active roles</h3>
+              <p>30 interviews per role · 12-minute interviews</p>
+              <a href="/#pricing">View membership →</a>
+            </article>
+            <a className="public-refresh-compare" href="/#pricing">
+              <strong>See memberships and pricing</strong>
+              <span>Compare Basic, Pro, and Enterprise options.</span>
+            </a>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }

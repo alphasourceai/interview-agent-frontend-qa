@@ -10,10 +10,12 @@ import {
 import toast from 'react-hot-toast';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import CustomFilePicker from '../components/CustomFilePicker.jsx';
+import { AdminOverview } from '../components/DashboardOverview.jsx';
 
 import '../styles/adminTheme.css';
 import '../styles/clientDashboard.css';
 import '../styles/clientTheme.css';
+import '../styles/dashboardRefresh.css';
 
 const isValidEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
 const isValidPhoneLike = (value) => {
@@ -26,7 +28,7 @@ const isValidPhoneLike = (value) => {
 const ADMIN_SIGNIN_ERROR_TOAST_ID = 'admin-signin-error';
 const ALL_CLIENTS_VALUE = 'ALL';
 const EMBEDDED = typeof window !== 'undefined' && window !== window.parent;
-const VALID_ADMIN_TABS = new Set(['clients', 'roles', 'candidates', 'role-config', 'members', 'accommodations', 'billing', 'audit-logs']);
+const VALID_ADMIN_TABS = new Set(['overview', 'clients', 'roles', 'candidates', 'role-config', 'members', 'accommodations', 'billing', 'audit-logs']);
 
 const IconTrash = ({ size = 24 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -278,7 +280,7 @@ export default function Admin() {
   const [confirmMember, setConfirmMember] = useState({ open: false, id: null });
   const [emailError, setEmailError] = useState('');
 
-  const [activeTab, setActiveTab] = useState('clients');
+  const [activeTab, setActiveTab] = useState('overview');
   const [clientsSortBy, setClientsSortBy] = useState('name');
   const [clientsSortDir, setClientsSortDir] = useState('asc');
   const [rolesSortBy, setRolesSortBy] = useState('created');
@@ -1963,10 +1965,10 @@ export default function Admin() {
           align-self: flex-start !important;
         }
       `}</style>
-      <div className="dash-page alpha-theme client-dash admin-page">
+      <div className="dash-page alpha-theme client-dash admin-page dashboard-refresh">
         <div className="dash-center dash-inner">
           <div className="dash-head">
-            <h1 style={{ margin: 0 }}>Admin Dashboard</h1>
+            <h1 style={{ margin: 0 }}>alphaScreen</h1>
             <div className="dash-actions" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <span>{me?.user?.email || me?.email}</span>
               <button className="btn lilac client-dash-pill" onClick={handleSignOut}>Sign Out</button>
@@ -1974,7 +1976,7 @@ export default function Admin() {
           </div>
 
           {activeTab !== 'billing' && (
-            <div className="client-dash-card" style={{ marginBottom: 8 }}>
+            <div className="client-dash-card refresh-context-bar" style={{ marginBottom: 8 }}>
               <div className="client-dash-row" style={{ marginBottom: 0 }}>
                 <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
                 <select
@@ -1986,14 +1988,14 @@ export default function Admin() {
                   <option value={ALL_CLIENTS_VALUE}>All</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <div style={{ color: '#9CA3AF' }}>
+                <div className="refresh-context-meta" style={{ color: '#9CA3AF' }}>
                   Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
                 </div>
               </div>
             </div>
           )}
           {activeTab === 'billing' && (
-            <div className="client-dash-card" style={{ marginBottom: 8, opacity: 0.6, pointerEvents: 'none' }}>
+            <div className="client-dash-card refresh-context-bar" style={{ marginBottom: 8, opacity: 0.6, pointerEvents: 'none' }}>
               <div className="client-dash-row" style={{ marginBottom: 0 }}>
                 <label htmlFor="admin-client-sel" style={{ minWidth: 110 }}>Current client</label>
                 <select
@@ -2005,7 +2007,7 @@ export default function Admin() {
                   <option value={ALL_CLIENTS_VALUE}>All</option>
                   {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
-                <div style={{ color: '#9CA3AF' }}>
+                <div className="refresh-context-meta" style={{ color: '#9CA3AF' }}>
                   Viewing <strong>{currentClientName || selectedClientId || '—'}</strong>
                 </div>
                 <div style={{ color: '#9CA3AF', marginLeft: 12, fontSize: 13 }}>
@@ -2016,6 +2018,13 @@ export default function Admin() {
           )}
 
           <div className="dash-tabs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`client-dash-tab ${activeTab === 'overview' ? 'client-dash-tab--active' : ''}`}
+            >
+              Overview
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab('clients')}
@@ -2075,6 +2084,14 @@ export default function Admin() {
           </div>
 
           <div className="dash-scroll">
+            {activeTab === 'overview' && (
+              <AdminOverview
+                clients={clients}
+                roles={roles}
+                members={members}
+                onNavigate={setActiveTab}
+              />
+            )}
             {activeTab === 'clients' && (
               <div className="client-dash-card">
                 <div className="client-dash-section-head">

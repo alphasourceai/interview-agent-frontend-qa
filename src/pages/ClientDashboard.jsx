@@ -8,7 +8,9 @@ import SignOutButton from '../components/SignOutButton.jsx'
 import CustomFilePicker from '../components/CustomFilePicker'
 import TesterFeedbackForm from '../components/TesterFeedbackForm.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import { ClientOverview } from '../components/DashboardOverview.jsx'
 import '../styles/clientDashboard.css';
+import '../styles/dashboardRefresh.css';
 
 // --- Dashboard enhancements: sorting, filtering, tooltips (no summaries) ---
 const TIPS = {
@@ -47,7 +49,7 @@ const disabledBtn = { opacity: 0.6, cursor: 'not-allowed' };
 const CLIENT_DASH_TOUR_SEEN_KEY = 'client_dash_tour_seen_v1';
 const CLIENT_DASH_TOUR_DISMISSED_KEY = 'client_dash_tour_dismissed_v1';
 const DAILY_ROOM_RE = /(^https?:\/\/)?([a-z0-9-]+\.)?(tavus\.daily\.co|c\.daily\.co)(\/|\?|$)/i;
-const VALID_DASHBOARD_TABS = new Set(['roles', 'candidates', 'members', 'billing', 'feedback']);
+const VALID_DASHBOARD_TABS = new Set(['overview', 'roles', 'candidates', 'members', 'billing', 'feedback']);
 
 function parseDashboardReturnState(search) {
   const params = new URLSearchParams(search || '');
@@ -642,7 +644,7 @@ export default function ClientDashboard() {
   }
 
   // Tab selector
-  const [activeTab, setActiveTab] = useState(() => urlDashboardState.tab || 'roles'); // roles | candidates | members | billing | feedback
+  const [activeTab, setActiveTab] = useState(() => urlDashboardState.tab || 'overview'); // overview | roles | candidates | members | billing | feedback
   const [billingRoleId, setBillingRoleId] = useState(() => urlDashboardState.roleId || '');
   const [billingPurchaseQuantityInput, setBillingPurchaseQuantityInput] = useState('1');
   const [billingPurchaseBusy, setBillingPurchaseBusy] = useState(false);
@@ -2001,10 +2003,10 @@ export default function ClientDashboard() {
   })();
 
   return (
-    <div className="dash-page alpha-theme client-dash">
+    <div className="dash-page alpha-theme client-dash dashboard-refresh">
       <div className="dash-center dash-inner">
         <div className="dash-head">
-          <h1 style={{ margin: 0 }}>Dashboard</h1>
+          <h1 style={{ margin: 0 }}>alphaScreen</h1>
           <div className="dash-actions">
             <SignOutButton />
           </div>
@@ -2013,7 +2015,7 @@ export default function ClientDashboard() {
         {error && <div style={{ color: 'crimson', marginBottom: 16 }}>{error}</div>}
 
         {hasMembership && (
-          <div className="client-dash-card" style={{ marginBottom: 8 }}>
+          <div className="client-dash-card refresh-context-bar" style={{ marginBottom: 8 }}>
             <div className="client-dash-row" style={{ marginBottom: 0, alignItems: 'center', gap: 10 }} data-tour="client-context">
               <label htmlFor="clientSel">Client</label>
               <select
@@ -2028,7 +2030,7 @@ export default function ClientDashboard() {
                   </option>
                 ))}
               </select>
-              <div style={{ color:'#6b7280', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div className="refresh-context-meta" style={{ color:'#6b7280', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span>Viewing: <strong>{currentName}</strong> · Role: <strong>{effectiveRole}</strong></span>
                 <span className={selectedClientAccessStatusClass}>{selectedClientAccessStatusLabel}</span>
               </div>
@@ -2085,6 +2087,13 @@ export default function ClientDashboard() {
 
         {hasMembership && (
           <div className="dash-tabs" data-tour="client-tabs">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`client-dash-tab ${activeTab === 'overview' ? 'client-dash-tab--active' : ''}`}
+            >
+              Overview
+            </button>
             {!selectedClientIsEffectivelyInactive && (
               <button
                 type="button"
@@ -2148,6 +2157,16 @@ export default function ClientDashboard() {
         )}
 
         <div className="dash-scroll">
+          {activeTab === 'overview' && hasMembership && (
+            <ClientOverview
+              clientName={currentName}
+              roles={roles}
+              candidates={items}
+              canManage={canManage && !selectedClientIsEffectivelyInactive}
+              isComplete={isRowComplete}
+              onNavigate={setActiveTab}
+            />
+          )}
           {activeTab === 'candidates' && !selectedClientIsEffectivelyInactive && (
             <div className="client-dash-card" data-tour="candidates-section">
               {/* Filters: Role + Min Overall */}
