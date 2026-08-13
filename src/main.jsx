@@ -8,7 +8,6 @@ import { loadStripe } from '@stripe/stripe-js'
 
 import * as Sentry from '@sentry/react'
 
-import './styles/tailwind.css'
 import './styles/alphaTheme.css'
 
 // Route components (lazy to prevent TDZ/circular init during first render)
@@ -23,6 +22,7 @@ const TextInterviewPage = React.lazy(() => import('./pages/TextInterviewPage.jsx
 const Admin = React.lazy(() => import('./pages/Admin.jsx'))
 const PaymentTerminal = React.lazy(() => import('./pages/PaymentTerminal.jsx'))
 const TesterFeedback = React.lazy(() => import('./pages/TesterFeedback.jsx'))
+
 const ClientDashboard = React.lazy(() => import('./pages/ClientDashboard.jsx'))
 const RoleCreator = React.lazy(() => import('./pages/RoleCreator.jsx'))
 const RoleReports = React.lazy(() => import('./pages/RoleReports.jsx'))

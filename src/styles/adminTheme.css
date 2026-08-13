@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
-
 /* Admin Sign In to match client login */
 .admin-auth.auth-wrap { max-width: 480px; }
 .admin-auth .auth-head {
@@ -22,6 +20,8 @@
 }
 
 /* --- AlphaSource theme (Wix-matched) ------------------------------------- */
+
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;600;700&display=swap');
 
 .alpha-theme {
   --alpha-bg: #061551;
